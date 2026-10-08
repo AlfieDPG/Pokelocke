@@ -1,0 +1,680 @@
+html {
+  /* Tamaño base: crece o se encoge según la ventana.
+     Sube el 1.65vh para tarjetas más grandes, bájalo si hace falta hacer scroll. */
+  font-size: clamp(12px, min(1.72vh, 1.3vw), 24px);
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #1e1f2b;
+  color: #f2f2f2;
+  margin: 0;
+  font-size: 1rem;
+}
+
+main {
+  max-width: 78rem;
+  margin: 0.85rem auto;
+  padding: 0 1.15rem;
+}
+
+/* ---------- Fila superior: contador | buscador | vaciar ---------- */
+
+.barra-superior {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 32rem) 1fr;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.lado-izq {
+  justify-self: start;
+}
+
+.lado-der {
+  justify-self: end;
+}
+
+#contador {
+  font-weight: bold;
+}
+
+#aviso {
+  display: block;
+  font-size: 0.8rem;
+  color: #f1c40f;
+}
+
+.buscador {
+  display: flex;
+  gap: 0.6rem;
+  position: relative;
+}
+
+.buscador input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.45rem;
+  border: none;
+  font-size: 1rem;
+}
+
+.buscador button {
+  padding: 0.6rem 1.15rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #f1c40f;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#vaciar,
+.quitar-pokemon {
+  padding: 0.45rem 0.85rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #c0392b;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#vaciar:hover,
+.quitar-pokemon:hover {
+  background: #e74c3c;
+}
+
+/* ---------- Cuadrícula de tarjetas ---------- */
+
+#resultado {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(34rem, 100%), 1fr));
+  gap: 0.85rem;
+  margin-top: 0.85rem;
+}
+
+#resultado > p {
+  grid-column: 1 / -1;
+}
+
+.tarjeta {
+  display: flex;
+  gap: 0.85rem;
+  align-items: stretch;
+  background: #2c2e3e;
+  border-radius: 0.7rem;
+  padding: 0.85rem;
+  text-align: left;
+}
+
+.tarjeta-izq {
+  flex: 0 0 12.5rem;
+  text-align: center;
+}
+
+.tarjeta-izq img {
+  width: 8.6rem;
+  display: block;
+  margin: 0 auto;
+}
+
+.tarjeta-izq h2 {
+  font-size: 1.15rem;
+  margin: 0.3rem 0 0.45rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  padding: 0.12rem 0.5rem 0.12rem 0.4rem;
+  border-radius: 0.7rem;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.quitar-pokemon {
+  display: block;
+  width: 100%;
+  margin-top: 0.85rem;
+}
+
+.tarjeta-der {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.fila-superior {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.ataques {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.campo,
+.hueco {
+  position: relative;
+}
+
+.campo input,
+.hueco input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.45rem;
+  border: none;
+  font-size: 0.93rem;
+}
+
+/* ---------- Tarjetas de ataque / habilidad / objeto ---------- */
+
+.ataque {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.45rem;
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.93rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.ataque-nombre {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ataque-tipo {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.pp {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.pp button {
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.pp-valor {
+  display: inline-block;
+  min-width: 3.15rem;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.quitar {
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+/* Habilidad y objeto: etiqueta arriba, nombre debajo */
+
+.ataque.habilidad,
+.ataque.objeto {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 0.45rem;
+  color: #2b2d3a;
+  text-shadow: none;
+}
+
+.ataque.habilidad .ataque-tipo,
+.ataque.objeto .ataque-tipo {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 0.65rem;
+  text-align: left;
+  opacity: 0.7;
+}
+
+.ataque.habilidad .ataque-nombre,
+.ataque.objeto .ataque-nombre {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.ataque.habilidad .quitar,
+.ataque.objeto .quitar {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  background: rgba(0, 0, 0, 0.12);
+  color: #2b2d3a;
+}
+
+.ataque.habilidad {
+  background: #c3d0e0;
+}
+
+.ataque.objeto {
+  background: #d9dae0;
+}
+
+/* ---------- Desplegable de sugerencias ---------- */
+
+.sugerencias {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  color: #222;
+  border-radius: 0.45rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  text-align: left;
+  overflow: hidden;
+}
+
+.sugerencias .opcion {
+  padding: 0.6rem 0.85rem;
+  cursor: pointer;
+}
+
+.sugerencias .opcion:hover {
+  background: #f1c40f;
+}
+
+/* ---------- Pantallas estrechas (móvil) ---------- */
+
+@media (max-width: 760px) {
+  .barra-superior {
+    grid-template-columns: 1fr auto;
+  }
+
+  .buscador {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 520px) {
+  .tarjeta {
+    flex-direction: column;
+  }
+
+  .tarjeta-izq {
+    flex: none;
+  }
+
+  .tarjeta-izq img {
+    max-width: 10rem;
+    margin: 0 auto;
+  }
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ---------- Fila superior: nombre, guardar ---------- */
+
+.lado-izq {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+#nombre-equipo {
+  width: 11rem;
+  box-sizing: border-box;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-size: 0.93rem;
+}
+
+/* El aviso flota debajo para no cambiar la altura de la fila */
+#aviso {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  white-space: nowrap;
+  z-index: 5;
+}
+
+.lado-der {
+  display: flex;
+  gap: 0.5rem;
+}
+
+#guardar {
+  padding: 0.45rem 0.85rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #27ae60;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#guardar:hover {
+  background: #2ecc71;
+}
+
+/* ---------- Mis equipos ---------- */
+
+#lista-equipos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(34rem, 100%), 1fr));
+  gap: 0.85rem;
+}
+
+#lista-equipos > p {
+  grid-column: 1 / -1;
+}
+
+.equipo-guardado {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: #2c2e3e;
+  border-radius: 0.7rem;
+  padding: 0.85rem;
+}
+
+.equipo-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.equipo-cabecera h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+
+.fecha {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.equipo-botones {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.equipo-botones button {
+  padding: 0.45rem 0.85rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.equipo-botones .abrir {
+  background: #f1c40f;
+  color: #2b2d3a;
+}
+
+.equipo-botones .borrar {
+  background: #c0392b;
+  color: #fff;
+}
+
+.equipo-botones .borrar:hover {
+  background: #e74c3c;
+}
+
+.equipo-miniaturas {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.equipo-miniaturas img {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 3.2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.45rem;
+  padding: 0.2rem;
+  box-sizing: border-box;
+}
+
+.icono-tipo {
+  flex: none;
+  width: 0.8rem;
+  height: 0.8rem;
+  background: #fff;
+  -webkit-mask: var(--icono) center / contain no-repeat;
+  mask: var(--icono) center / contain no-repeat;
+}
+
+dialog {
+  width: min(42rem, 92vw);
+  padding: 1.15rem;
+  border: none;
+  border-radius: 0.7rem;
+  background: #2c2e3e;
+  color: #f2f2f2;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+dialog h2 {
+  margin: 0 0 0.45rem;
+  font-size: 1.2rem;
+}
+
+dialog p {
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+dialog textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-family: Consolas, monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.dialogo-botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+}
+
+.dialogo-botones button {
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#importar-aceptar {
+  background: #27ae60;
+  color: #fff;
+}
+
+#importar-cancelar {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+#importar-aceptar:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* ---------- Panel lateral ---------- */
+
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.barra-lateral {
+  flex: 0 0 13rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: #171822;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.logo {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  background: #c0392b;
+  font-size: 1.45rem;
+  text-align: center;
+}
+
+.menu-lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 0.7rem;
+  overflow-y: auto;
+}
+
+.titulo-seccion {
+  margin: 0.4rem 0.3rem 0.1rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+  opacity: 0.5;
+}
+
+.menu-lateral button {
+  padding: 0.6rem 0.8rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #f2f2f2;
+  font-weight: bold;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-lateral button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.menu-lateral button.activa {
+  background: #c0392b;
+  color: #fff;
+}
+
+.menu-lateral button.accion {
+  background: #f1c40f;
+  color: #2b2d3a;
+}
+
+.menu-lateral button.accion:hover {
+  background: #f7d44a;
+}
+
+.contenido {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .barra-lateral {
+    position: static;
+    height: auto;
+    flex: none;
+  }
+
+  .menu-lateral {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .titulo-seccion {
+    display: none;
+  }
+}
+
+/* ---------- Icono de objeto ---------- */
+
+.ataque.objeto {
+  grid-template-columns: auto 1fr auto;
+}
+
+.ataque.objeto .icono-objeto {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  image-rendering: pixelated;
+}
+
+.ataque.objeto .ataque-tipo,
+.ataque.objeto .ataque-nombre {
+  grid-column: 2;
+}
+
+.ataque.objeto .quitar {
+  grid-column: 3;
+}
+
+/* ---------- Miniaturas HOME en Mis equipos ---------- */
+
+.equipo-miniaturas img {
+  max-width: 5rem;
+}

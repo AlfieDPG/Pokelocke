@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PokeTeams</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="barra-lateral">
+      <h1 class="logo">PokeTeams</h1>
+      <nav class="menu-lateral">
+        <span class="titulo-seccion">Equipos</span>
+        <button id="tab-crear" class="activa">Crear equipo</button>
+        <button id="tab-equipos">Mis equipos</button>
+        <button id="boton-importar" class="accion">Importar paste</button>
+      </nav>
+    </aside>
+
+    <div class="contenido">
+      <main>
+        <section id="vista-crear">
+          <div class="barra-superior">
+            <div class="lado-izq">
+              <input id="nombre-equipo" type="text" placeholder="Nombre del equipo">
+              <span id="contador"></span>
+              <span id="aviso"></span>
+            </div>
+
+            <div class="buscador">
+              <input id="nombre" type="text" placeholder="Añadir Pokémon al equipo...">
+              <button id="buscar">Añadir</button>
+            </div>
+
+            <div class="lado-der">
+              <button id="guardar">Guardar equipo</button>
+              <button id="vaciar">Vaciar equipo</button>
+            </div>
+          </div>
+
+          <div id="resultado"></div>
+        </section>
+
+        <section id="vista-equipos" hidden>
+          <div id="lista-equipos"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="dialogo-importar">
+    <h2>Importar equipo de Showdown</h2>
+    <p>Pega aquí el texto (paste) de tu equipo. Reemplazará el equipo actual.</p>
+    <textarea id="texto-paste" rows="12" placeholder="Pikachu @ Light Ball&#10;Ability: Static&#10;- Thunderbolt&#10;- Surf"></textarea>
+    <div class="dialogo-botones">
+      <button id="importar-cancelar">Cancelar</button>
+      <button id="importar-aceptar">Importar</button>
+    </div>
+  </dialog>
+
+  <script src="script.js"></script>
+</body>
+</html>
