@@ -1,0 +1,74 @@
+rules_version = '2';
+
+// Reglas de Firestore. Hay que pegarlas en la consola de Firebase
+// (Firestore Database -> Reglas -> Publicar) CADA VEZ que cambien.
+//
+// Si no se publican, Firestore se queda como estaba y la web dará errores de permisos
+// en Amigos y Versus (o, en modo de prueba, cualquiera podría leerlo todo).
+//
+// Resumen:
+//   usuarios/{uid}/datos  -> privado: equipos, rutas, level caps. Solo su dueño.
+//   perfiles/{uid}        -> lo lee cualquiera identificado (hace falta para buscar por
+//                            correo y para ver el palmarés de un amigo). Lo escribe su dueño.
+//   amistades/{par}       -> solo los dos implicados. El id es los dos uid ordenados.
+//   lockes/{id}           -> solo los que juegan ese locke. Cualquiera de ellos puede
+//                            tocar marcador y vidas: es un marcador compartido.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function identificado() {
+      return request.auth != null;
+    }
+
+    // ---------- Datos privados ----------
+
+    match /usuarios/{uid}/datos/{clave} {
+      allow read, write: if identificado() && request.auth.uid == uid;
+    }
+
+    // ---------- Perfil público ----------
+    //
+    // Lleva nombre, foto, correo, los tipos de locke que usa esa persona y su palmarés.
+    // Nada privado: es la ficha que ven tus amigos.
+
+    match /perfiles/{uid} {
+      allow read: if identificado();
+      allow write: if identificado() && request.auth.uid == uid;
+    }
+
+    // ---------- Amistades ----------
+    //
+    // Un documento por pareja, con el id formado por los dos uid ordenados y unidos con
+    // "_". Así no pueden existir dos solicitudes de lo mismo. Cualquiera de los dos puede
+    // aceptarla o borrarla.
+
+    match /amistades/{par} {
+      allow create: if identificado()
+        && request.auth.uid in request.resource.data.miembros
+        && request.resource.data.miembros.size() == 2;
+      allow read, update, delete: if identificado()
+        && request.auth.uid in resource.data.miembros;
+    }
+
+    // ---------- Lockes (sección Versus) ----------
+    //
+    // Quien lo crea elige a los jugadores. A partir de ahí todos los que están dentro
+    // pueden editarlo, porque la idea es justo esa: que cada uno apunte sus vidas y su
+    // marcador y le salga al otro. Borrarlo solo puede el que lo creó.
+
+    match /lockes/{id} {
+      allow create: if identificado()
+        && request.auth.uid in request.resource.data.jugadores;
+      allow read, update: if identificado()
+        && request.auth.uid in resource.data.jugadores;
+      allow delete: if identificado()
+        && request.auth.uid == resource.data.creador;
+    }
+
+    // Todo lo demás, cerrado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

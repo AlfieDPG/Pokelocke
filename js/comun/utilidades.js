@@ -10,3 +10,14 @@ export function normalizarNombre(texto) {
 export function copiaProfunda(objeto) {
   return JSON.parse(JSON.stringify(objeto));
 }
+
+// Para meter texto escrito por una persona dentro de una plantilla HTML sin que
+// unos <> o unas comillas rompan la página (o metan código de otro).
+export function escaparHTML(texto) {
+  return String(texto == null ? "" : texto)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}

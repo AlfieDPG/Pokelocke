@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pokelocke</title>
+  <title>Pokely</title>
   <link rel="icon" type="image/png" sizes="32x32" href="img/pokeball-32.png">
   <link rel="icon" type="image/png" sizes="512x512" href="img/pokeball-512.png">
   <link rel="apple-touch-icon" href="img/pokeball-180.png">
@@ -11,15 +11,17 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/equipos.css">
   <link rel="stylesheet" href="css/nuzlocke.css">
-  <link rel="stylesheet" href="css/jugadores.css">
+  <link rel="stylesheet" href="css/amigos.css">
+  <link rel="stylesheet" href="css/versus.css">
   <link rel="stylesheet" href="css/pokedex.css">
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
   <div class="app">
     <aside class="barra-lateral">
-      <h1 class="logo">Pokelocke</h1>
+      <h1 class="logo">Pokely</h1>
       <nav class="menu-lateral">
+        <button data-vista="versus" class="boton-destacado">Versus</button>
         <details class="grupo-menu" open>
           <summary>Equipos</summary>
           <div class="submenu">
@@ -32,8 +34,18 @@
         <button data-vista="levelcaps">Level caps</button>
         <button data-vista="pokedex">Pokédex</button>
         <button data-vista="normas">Normas</button>
-        <button data-vista="jugadores">Jugadores</button>
+        <button data-vista="amigos">Amigos</button>
       </nav>
+
+      <div class="sesion" hidden>
+        <div class="sesion-usuario" hidden>
+          <img class="sesion-foto" alt="" referrerpolicy="no-referrer">
+          <span class="sesion-nombre"></span>
+          <button class="avisos-boton" title="Invitaciones"></button>
+        </div>
+        <button class="sesion-boton"></button>
+        <span class="sesion-aviso"></span>
+      </div>
     </aside>
 
     <div class="contenido">
@@ -114,7 +126,21 @@
           <div class="normas"></div>
         </section>
 
-        <section id="vista-jugadores" hidden>
+        <section id="vista-versus" hidden>
+          <div class="barra-versus">
+            <button id="nuevo-locke">Nuevo locke</button>
+            <span class="versus-aviso"></span>
+          </div>
+          <div class="versus-lista"></div>
+        </section>
+
+        <section id="vista-amigos" hidden>
+          <div class="barra-amigos">
+            <input class="amigos-correo" type="email" placeholder="Correo de Google de tu amigo...">
+            <button class="amigos-agregar">Agregar</button>
+            <span class="amigos-aviso"></span>
+          </div>
+          <div class="amigos-solicitudes" hidden></div>
           <div class="jugadores"></div>
         </section>
       </main>
@@ -136,6 +162,88 @@
     <div class="debilidades-cuerpo"></div>
     <div class="dialogo-botones">
       <button id="debilidades-cerrar">Cerrar</button>
+    </div>
+  </dialog>
+
+  <dialog id="dialogo-tipos">
+    <h2>Tipos de locke</h2>
+    <p>Los que usas tú al crear un locke. Puedes renombrarlos, cambiarles el color, quitarlos o añadir los tuyos. Los lockes que ya has ganado se quedan como estaban.</p>
+    <div class="tipos-lista"></div>
+    <button class="tipos-anadir">Añadir tipo</button>
+    <div class="dialogo-botones">
+      <button id="tipos-cancelar">Cancelar</button>
+      <button id="tipos-guardar">Guardar</button>
+    </div>
+  </dialog>
+
+  <dialog id="dialogo-invitar">
+    <h2>Invitar a <span class="invitar-titulo"></span></h2>
+    <p>Les llegará al buzón. Entran cuando acepten, con las vidas con las que empezó el locke.</p>
+    <div class="locke-amigos invitar-amigos"></div>
+    <span class="invitar-error"></span>
+    <div class="dialogo-botones">
+      <button id="invitar-cancelar">Cancelar</button>
+      <button id="invitar-enviar">Invitar</button>
+    </div>
+  </dialog>
+
+  <dialog id="dialogo-avisos">
+    <h2>Invitaciones</h2>
+    <p>Solicitudes de amistad y lockes a los que te han metido.</p>
+    <div class="avisos-lista"></div>
+    <div class="dialogo-botones">
+      <button id="avisos-cerrar">Cerrar</button>
+    </div>
+  </dialog>
+
+  <dialog id="dialogo-palmares">
+    <h2>Mis lockes ganados</h2>
+    <p>Los lockes que ganes en «Versus» se apuntan solos. Aquí puedes añadir a mano los de antes o corregir algo.</p>
+    <div class="palmares-legado" hidden></div>
+    <div class="palmares-lista"></div>
+    <button class="palmares-anadir">Añadir locke</button>
+    <div class="dialogo-botones">
+      <button id="palmares-cancelar">Cancelar</button>
+      <button id="palmares-guardar">Guardar</button>
+    </div>
+  </dialog>
+
+  <dialog id="dialogo-nuevo-locke">
+    <h2>Nuevo locke</h2>
+    <p>Todos los que metas veréis el mismo marcador. Puedes crearlo solo para ti y meter gente luego.</p>
+
+    <div class="campos-locke">
+      <label class="campo-ancho">
+        <span>Nombre</span>
+        <input id="locke-nombre" type="text" placeholder="Megalocke 2026">
+      </label>
+      <label>
+        <span>Tipo</span>
+        <select id="locke-tipo"></select>
+      </label>
+      <label class="campo-vidas">
+        <span>Vidas</span>
+        <input id="locke-vidas" type="number" min="0" max="999" value="3">
+      </label>
+      <label class="campo-casilla">
+        <input id="locke-infinitas" type="checkbox">
+        <span>Vidas ilimitadas</span>
+      </label>
+    </div>
+
+    <span class="etiqueta-campo">Integrantes</span>
+    <div class="locke-amigos"></div>
+
+    <label class="campo-ancho campo-descripcion">
+      <span>Descripción (opcional)</span>
+      <textarea id="locke-descripcion" rows="3"
+        placeholder="Normas especiales, Pokémon prohibidos, cómo contáis las vidas..."></textarea>
+    </label>
+
+    <span class="locke-error"></span>
+    <div class="dialogo-botones">
+      <button id="locke-cancelar">Cancelar</button>
+      <button id="locke-crear">Crear locke</button>
     </div>
   </dialog>
 

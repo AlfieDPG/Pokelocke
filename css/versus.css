@@ -1,0 +1,468 @@
+/* Sección «Versus»: el marcador compartido de cada locke */
+
+.barra-versus {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+#nuevo-locke {
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #f1c40f;
+  color: #2b2d3a;
+  font-family: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#nuevo-locke:hover {
+  background: #f4d03f;
+}
+
+.versus-aviso {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.versus-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* ---------- Tarjeta de un locke ---------- */
+
+.locke {
+  border-left: 0.35rem solid var(--color-locke, #3498db);
+  border-radius: 0.7rem;
+  background: #2c2e3e;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.locke.cerrado {
+  opacity: 0.75;
+}
+
+.locke-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.95rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.locke-tipo {
+  flex: none;
+  padding: 0.2rem 0.55rem;
+  border-radius: 0.35rem;
+  background: var(--color-locke, #3498db);
+  color: #1e1f2b;
+  font-size: 0.72rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.locke-titulo {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.locke-resultado {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #f1c40f;
+}
+
+.locke-resultado .icono {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Invitar y borrar, pegados al extremo derecho */
+.locke-acciones {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.locke-acciones button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.35rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  cursor: pointer;
+}
+
+.locke-acciones .icono {
+  width: 1rem;
+  height: 1rem;
+}
+
+.locke-invitar:hover {
+  background: #27ae60;
+}
+
+.locke-borrar:hover {
+  background: #c0392b;
+}
+
+/* ---------- Diálogo de invitar ---------- */
+
+.invitar-error {
+  display: block;
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #e74c3c;
+}
+
+#invitar-enviar {
+  background: #27ae60;
+  color: #fff;
+}
+
+#invitar-enviar:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#invitar-cancelar {
+  background: #3a3d52;
+  color: #f2f2f2;
+}
+
+.locke-descripcion {
+  margin: 0;
+  padding: 0.6rem 0.95rem 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  white-space: pre-wrap; /* se respetan los saltos de línea que escriba la persona */
+  opacity: 0.75;
+}
+
+/* ---------- Jugadores ---------- */
+
+.locke-jugadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.85rem;
+  padding: 0.95rem;
+}
+
+.locke-jugador {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.85rem 0.7rem;
+  border-radius: 0.55rem;
+  background: #252735;
+}
+
+.locke-jugador.ganador {
+  background: #2f3142;
+  box-shadow: inset 0 0 0 1px rgba(241, 196, 15, 0.5);
+}
+
+/* Invitado que todavía no ha entrado */
+.locke-jugador.pendiente {
+  opacity: 0.6;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.locke-pendiente {
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #f1c40f;
+}
+
+.locke-cara {
+  position: relative;
+  width: 4.2rem;
+  height: 4.2rem;
+  border-radius: 50%;
+  border: 0.18rem solid #c0392b;
+  background: #1e1f2b;
+  overflow: hidden;
+}
+
+.locke-cara img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.locke-quien {
+  font-size: 1rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+.locke-corona {
+  color: #f1c40f;
+}
+
+.locke-corona .icono {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+/* ---------- Contadores de marcador y vidas ---------- */
+
+.locke-numero {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.locke-numero button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #3a3d52;
+  color: #f2f2f2;
+  cursor: pointer;
+}
+
+.locke-numero button:hover:not(:disabled) {
+  background: #4a4e68;
+}
+
+.locke-numero button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.locke-numero .icono {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.locke-valor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 3rem;
+  font-weight: bold;
+}
+
+/* El marcador, grande: es lo que se mira */
+.locke-numero.marcador .locke-valor {
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.locke-numero.vidas .locke-valor {
+  font-size: 1.1rem;
+  color: #e74c3c;
+}
+
+.locke-numero.vidas .icono {
+  width: 1rem;
+  height: 1rem;
+}
+
+.locke-numero.vidas.ilimitadas .locke-valor {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.locke-ganador {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.locke-ganador:hover {
+  background: #f1c40f;
+  color: #2b2d3a;
+}
+
+.locke-ganador .icono {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+/* ---------- Diálogo de nuevo locke ---------- */
+
+.campos-locke {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.7rem;
+  margin-bottom: 0.85rem;
+}
+
+.campos-locke label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.campos-locke input,
+.campos-locke select {
+  padding: 0.45rem 0.55rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* El nombre se queda con todo el ancho que sobre */
+.campo-ancho {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.campos-locke .campo-vidas input {
+  width: 5rem;
+}
+
+.campos-locke .campo-vidas input:disabled {
+  opacity: 0.4;
+}
+
+/* La casilla de ilimitadas va en fila, no en columna como los demás campos */
+.campos-locke .campo-casilla {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.45rem;
+  background: #252735;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.campos-locke .campo-casilla:hover {
+  background: #32354a;
+}
+
+.campos-locke .campo-casilla input {
+  width: auto;
+  padding: 0;
+  accent-color: #f1c40f;
+  cursor: pointer;
+}
+
+/* ---------- Descripción ---------- */
+
+.campo-descripcion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.85rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.campo-descripcion textarea {
+  font-family: inherit;
+  font-size: 0.95rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: normal;
+}
+
+.etiqueta-campo {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.locke-amigos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.locke-amigo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.45rem;
+  background: #252735;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.locke-amigo:hover {
+  background: #32354a;
+}
+
+.locke-amigo input {
+  accent-color: #f1c40f;
+  cursor: pointer;
+}
+
+.locke-sin-amigos {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.locke-error {
+  display: block;
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #e74c3c;
+}
+
+#locke-crear {
+  background: #27ae60;
+  color: #fff;
+}
+
+#locke-cancelar {
+  background: #3a3d52;
+  color: #f2f2f2;
+}

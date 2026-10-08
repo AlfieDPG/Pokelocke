@@ -33,10 +33,14 @@ main {
   text-align: center;
 }
 
+/* flex: 1 hace que el menú se coma el hueco libre, y así el buzón y la sesión se quedan
+   pegados abajo sin tener que ponerle a cada uno un margin-top: auto (si los dos lo
+   llevan, el navegador reparte el hueco entre ambos y el buzón se queda a media altura). */
 .menu-lateral {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  flex: 1 1 auto;
   padding: 0.85rem 0.7rem;
   overflow-y: auto;
 }
@@ -60,6 +64,247 @@ main {
 .menu-lateral button.activa {
   background: #c0392b;
   color: #fff;
+}
+
+/* Versus: arriba del todo y en amarillo, para que se vea que es lo principal */
+.menu-lateral .boton-destacado {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  background: rgba(241, 196, 15, 0.12);
+  color: #f1c40f;
+  box-shadow: inset 0 0 0 1px rgba(241, 196, 15, 0.45);
+}
+
+.menu-lateral .boton-destacado:hover {
+  background: rgba(241, 196, 15, 0.22);
+}
+
+.menu-lateral .boton-destacado.activa {
+  background: #f1c40f;
+  color: #2b2d3a;
+  box-shadow: none;
+}
+
+.menu-lateral .boton-destacado .icono {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+/* ---------- Campana de invitaciones (a la derecha de tu nombre) ---------- */
+
+/* margin-left: auto la empuja al borde derecho aunque el nombre sea corto */
+.avisos-boton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  margin-left: auto;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+}
+
+.avisos-boton:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f2f2f2;
+}
+
+.avisos-boton .icono {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+/* Cuando hay algo pendiente, la campana se pone amarilla */
+.avisos-boton.con-avisos {
+  color: #f1c40f;
+}
+
+/* El número, como un globito en la esquina de la campana */
+.avisos-cuenta {
+  position: absolute;
+  top: -0.25rem;
+  right: -0.25rem;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
+  box-sizing: border-box;
+  border-radius: 1rem;
+  background: #c0392b;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: bold;
+  line-height: 1rem;
+  text-align: center;
+}
+
+/* ---------- Lista del buzón ---------- */
+
+.avisos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.aviso {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.45rem;
+  background: #252735;
+}
+
+.aviso-icono {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #32354a;
+}
+
+.aviso-icono.amistad {
+  color: #3498db;
+}
+
+.aviso-icono.locke {
+  color: var(--color-locke, #3498db);
+}
+
+.aviso-icono .icono {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.aviso-texto {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.aviso-texto small {
+  display: block;
+  font-size: 0.78rem;
+  opacity: 0.65;
+}
+
+.aviso button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.35rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  cursor: pointer;
+}
+
+.aviso button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.aviso .aviso-si {
+  background: #27ae60;
+}
+
+.aviso .aviso-si:hover:not(:disabled) {
+  background: #2ecc71;
+}
+
+.aviso .aviso-no:hover:not(:disabled) {
+  background: #c0392b;
+}
+
+.aviso .icono {
+  width: 1rem;
+  height: 1rem;
+}
+
+.aviso-vacio {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
+
+#avisos-cerrar {
+  background: #3a3d52;
+  color: #f2f2f2;
+}
+
+/* ---------- Sesión (abajo del panel lateral) ---------- */
+
+.sesion {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.85rem 0.7rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sesion-usuario {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.sesion-foto {
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* min-width: 0 deja que un nombre largo se corte con «…» en vez de echar la campana fuera */
+.sesion-nombre {
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: bold;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sesion-boton {
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #2c2e3e;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.sesion-boton:hover {
+  background: #3a3d52;
+}
+
+.sesion-aviso {
+  font-size: 0.72rem;
+  line-height: 1.3;
+  opacity: 0.55;
 }
 
 .contenido {

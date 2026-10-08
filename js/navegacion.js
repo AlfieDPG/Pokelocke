@@ -10,12 +10,15 @@
 // El código de cada sección solo se descarga cuando se abre por primera vez,
 // así que añadir secciones no hace más lenta la carga inicial.
 
+import { icono } from "./comun/iconos.js";
+
 const SECCIONES = {
   equipos: () => import("./equipos/index.js"),
   rutas: () => import("./rutas/index.js"),
   levelcaps: () => import("./levelcaps/index.js"),
   normas: () => import("./normas/index.js"),
-  jugadores: () => import("./jugadores/index.js"),
+  amigos: () => import("./amigos/index.js"),
+  versus: () => import("./versus/index.js"),
   pokedex: () => import("./pokedex/index.js")
 };
 
@@ -26,7 +29,8 @@ const VISTAS = {
   rutas: "rutas",
   levelcaps: "levelcaps",
   normas: "normas",
-  jugadores: "jugadores",
+  amigos: "amigos",
+  versus: "versus",
   pokedex: "pokedex"
 };
 
@@ -62,6 +66,11 @@ export async function irA(vista) {
 
 // Un solo oyente para todos los botones del menú
 export function iniciarNavegacion() {
+  // Versus va destacado, con su icono delante
+  for (const boton of document.querySelectorAll(".menu-lateral .boton-destacado")) {
+    boton.insertAdjacentHTML("afterbegin", icono("espadas"));
+  }
+
   document.querySelector(".menu-lateral").addEventListener("click", (e) => {
     const boton = e.target.closest("[data-vista]");
     if (boton) irA(boton.dataset.vista);

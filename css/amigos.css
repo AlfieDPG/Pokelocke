@@ -1,0 +1,477 @@
+/* Sección «Amigos» (antes «Jugadores») */
+
+/* ---------- Barra de arriba ---------- */
+
+.barra-amigos {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+}
+
+.amigos-correo {
+  width: 22rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-size: 0.93rem;
+}
+
+.amigos-agregar {
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #f1c40f;
+  color: #2b2d3a;
+  font-family: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.amigos-agregar:hover {
+  background: #f4d03f;
+}
+
+.amigos-aviso {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #f1c40f;
+}
+
+/* ---------- Solicitudes ---------- */
+
+.amigos-solicitudes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+}
+
+.solicitud {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-left: 0.3rem solid #7f8c8d;
+  border-radius: 0.45rem;
+  background: #2c2e3e;
+  font-size: 0.9rem;
+}
+
+/* Las que te han mandado a ti se ven: son las que hay que contestar */
+.solicitud.entrante {
+  border-left-color: #f1c40f;
+}
+
+.solicitud button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.35rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  cursor: pointer;
+}
+
+.solicitud button:hover {
+  background: #4a4e68;
+}
+
+.solicitud .solicitud-aceptar {
+  background: #27ae60;
+}
+
+.solicitud .solicitud-aceptar:hover {
+  background: #2ecc71;
+}
+
+.solicitud .icono {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ---------- Rejilla de fichas ---------- */
+
+/* Sin max-width: ocupa todo el ancho del contenido, así no sobra hueco a la derecha.
+   align-items: start evita que las fichas de una misma fila se estiren hasta la altura
+   de la más larga (si no, a los que no tienen lockes les quedaba un hueco debajo). */
+.jugadores {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  gap: 1.15rem;
+}
+
+@media (max-width: 1400px) {
+  .jugadores {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .jugadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .jugadores {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ficha-jugador {
+  position: relative;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.15rem 1rem;
+  border-radius: 0.7rem;
+  background: #2c2e3e;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.ficha-jugador:hover {
+  outline: 2px solid rgba(241, 196, 15, 0.5);
+}
+
+.ficha-jugador.arrastrando {
+  opacity: 0.4;
+  cursor: grabbing;
+  outline: none;
+}
+
+/* La tuya, un poco destacada */
+.ficha-jugador.mia {
+  background: #32354a;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(241, 196, 15, 0.35);
+}
+
+/* Al pulsar en la ficha se esconde la lista y queda solo la foto, el nombre y el recuento */
+.ficha-jugador.plegada .lockes-ganados {
+  display: none;
+}
+
+/* ---------- Botones de la esquina ---------- */
+
+.ficha-acciones {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.3rem;
+  opacity: 0;
+}
+
+.ficha-jugador:hover .ficha-acciones {
+  opacity: 1;
+}
+
+.ficha-acciones button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.35rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  cursor: pointer;
+}
+
+.ficha-acciones button:hover {
+  background: #4a4e68;
+}
+
+.ficha-acciones .accion-quitar:hover {
+  background: #c0392b;
+}
+
+.ficha-acciones .icono {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.accion-soy-yo {
+  margin-top: 0.85rem;
+  padding: 0.45rem 0.9rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.accion-soy-yo:hover {
+  background: #f1c40f;
+  color: #2b2d3a;
+}
+
+/* ---------- Foto y nombre ---------- */
+
+.jugador-foto {
+  position: relative;
+  width: 8.5rem;
+  height: 8.5rem;
+  border-radius: 50%;
+  border: 0.25rem solid #c0392b;
+  background: #1e1f2b;
+  overflow: hidden;
+}
+
+/* Si la foto no carga (se quita el <img>), queda la inicial del nombre */
+.jugador-foto::before {
+  content: attr(data-inicial);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.5rem;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.jugador-foto img {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.jugador-nombre {
+  margin: 0.7rem 0 0;
+  font-size: 1.35rem;
+  color: #e74c3c;
+  text-align: center;
+}
+
+.jugador-etiqueta {
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #f1c40f;
+}
+
+/* ---------- Contadores por tipo de locke ---------- */
+
+.contadores-locke {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin: 0.85rem 0 0;
+}
+
+.contador-locke {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 4.6rem;
+  padding: 0.5rem 0.5rem;
+  border-radius: 0.45rem;
+  background: #252735;
+}
+
+.contador-numero {
+  font-size: 1.6rem;
+  font-weight: bold;
+  line-height: 1.1;
+  color: var(--color-locke, #3498db);
+}
+
+.contador-tipo {
+  font-size: 0.72rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-align: center;
+  opacity: 0.8;
+}
+
+/* ---------- Lista de lockes ganados ---------- */
+
+.lockes-ganados {
+  list-style: none;
+  width: 100%;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.locke-ganado {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border-left: 0.3rem solid var(--color-locke, #3498db);
+  border-radius: 0.45rem;
+  background: #252735;
+}
+
+.locke-nombre {
+  font-weight: bold;
+  font-size: 0.93rem;
+}
+
+.locke-nota {
+  font-size: 0.78rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: #f1c40f;
+  opacity: 0.85;
+}
+
+/* ---------- Diálogos de tipos y de palmarés ---------- */
+
+/* Atajo para traerse los lockes de antes de que hubiera cuentas */
+.palmares-legado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.palmares-traer {
+  padding: 0.35rem 0.7rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.palmares-traer:hover {
+  background: #f1c40f;
+  color: #2b2d3a;
+}
+
+.tipos-lista,
+.palmares-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.fila-tipo,
+.fila-palmares {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.fila-tipo input[type="text"],
+.fila-palmares input[type="text"],
+.fila-palmares select {
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.fila-tipo input[type="text"] {
+  flex: 1;
+}
+
+.fila-palmares .palmares-nombre {
+  flex: 2;
+}
+
+.fila-palmares .palmares-nota {
+  flex: 1;
+}
+
+.fila-palmares select {
+  flex: 0 0 9rem;
+}
+
+.fila-tipo input[type="color"] {
+  flex: none;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.45rem;
+  background: none;
+  cursor: pointer;
+}
+
+.tipo-quitar,
+.palmares-quitar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.45rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  cursor: pointer;
+}
+
+.tipo-quitar:hover,
+.palmares-quitar:hover {
+  background: #c0392b;
+}
+
+.tipos-anadir,
+.palmares-anadir {
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.9rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.tipos-anadir:hover,
+.palmares-anadir:hover {
+  background: #4a4e68;
+}
+
+#tipos-guardar,
+#palmares-guardar {
+  background: #27ae60;
+  color: #fff;
+}
+
+#tipos-cancelar,
+#palmares-cancelar {
+  background: #3a3d52;
+  color: #f2f2f2;
+}
