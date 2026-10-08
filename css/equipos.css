@@ -1,0 +1,632 @@
+/* Sección «Equipos»: Crear equipo, Mis equipos e importar paste */
+
+/* ---------- Fila superior: nombre + contador | buscador | guardar + vaciar ---------- */
+
+.barra-superior {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 32rem) 1fr;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.lado-izq {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  justify-self: start;
+}
+
+.lado-der {
+  display: flex;
+  gap: 0.5rem;
+  justify-self: end;
+}
+
+#contador {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+#nombre-equipo {
+  width: 17rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-size: 0.93rem;
+}
+
+/* El aviso sale en la misma fila, a la derecha del contador */
+#aviso {
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #f1c40f;
+}
+
+.buscador {
+  display: flex;
+  gap: 0.6rem;
+  position: relative;
+}
+
+.buscador input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.45rem;
+  border: none;
+  font-size: 1rem;
+}
+
+.buscador button {
+  padding: 0.6rem 1.15rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #f1c40f;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#vaciar,
+.quitar-pokemon {
+  padding: 0.45rem 0.85rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #c0392b;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#vaciar:hover,
+.quitar-pokemon:hover {
+  background: #e74c3c;
+}
+
+#guardar {
+  padding: 0.45rem 0.85rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #27ae60;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#guardar:hover {
+  background: #2ecc71;
+}
+
+/* ---------- Cuadrícula de tarjetas ---------- */
+
+#resultado {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.85rem;
+}
+
+#resultado > p {
+  grid-column: 1 / -1;
+}
+
+.tarjeta {
+  position: relative;
+  display: flex;
+  gap: 0.85rem;
+  align-items: stretch;
+  background: #2c2e3e;
+  border-radius: 0.7rem;
+  padding: 0.85rem;
+  text-align: left;
+}
+
+.tarjeta-izq {
+  flex: 0 0 12.5rem;
+  text-align: center;
+}
+
+.tarjeta-izq img {
+  width: 8.6rem;
+  aspect-ratio: 1; /* reserva el hueco aunque la imagen aún no haya cargado */
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+.tarjeta-izq h2 {
+  font-size: 1.15rem;
+  margin: 0.3rem 0 0.45rem;
+}
+
+.forma-nombre {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  margin: -0.25rem 0 0.45rem;
+}
+
+/* Botón shiny (arriba a la izquierda de la tarjeta) */
+
+.btn-shiny {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 2;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.btn-shiny:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.btn-shiny.activo {
+  background: #f1c40f;
+  color: #2b2d3a;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  padding: 0.12rem 0.5rem 0.12rem 0.4rem;
+  border-radius: 0.7rem;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.quitar-pokemon {
+  display: block;
+  width: 100%;
+  margin-top: 0.85rem;
+}
+
+.tarjeta-der {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.fila-superior {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.ataques {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.campo,
+.hueco {
+  position: relative;
+}
+
+.campo input,
+.hueco input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.45rem;
+  border: none;
+  font-size: 0.93rem;
+}
+
+/* ---------- Tarjetas de ataque / habilidad / objeto ---------- */
+
+.ataque {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.45rem;
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.93rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.ataque-nombre {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ataque-tipo {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.pp {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.pp button {
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.pp-valor {
+  display: inline-block;
+  min-width: 3.15rem;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.quitar {
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+/* Habilidad y objeto: etiqueta arriba, nombre debajo */
+
+.ataque.habilidad,
+.ataque.objeto {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 0.45rem;
+  color: #2b2d3a;
+  text-shadow: none;
+}
+
+.ataque.habilidad .ataque-tipo,
+.ataque.objeto .ataque-tipo {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 0.65rem;
+  text-align: left;
+  opacity: 0.7;
+}
+
+.ataque.habilidad .ataque-nombre,
+.ataque.objeto .ataque-nombre {
+  grid-column: 1;
+  grid-row: 2;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.ataque.habilidad .quitar,
+.ataque.objeto .quitar {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  background: rgba(0, 0, 0, 0.12);
+  color: #2b2d3a;
+}
+
+.ataque.habilidad {
+  background: #c3d0e0;
+}
+
+.ataque.objeto {
+  background: #d9dae0;
+}
+
+/* Icono de objeto */
+
+.ataque.objeto {
+  grid-template-columns: auto 1fr auto;
+}
+
+.ataque.objeto .icono-objeto {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  object-fit: contain;
+}
+
+.ataque.objeto .ataque-tipo,
+.ataque.objeto .ataque-nombre {
+  grid-column: 2;
+}
+
+.ataque.objeto .quitar {
+  grid-column: 3;
+}
+
+/* ---------- Mis equipos ---------- */
+
+#lista-equipos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(34rem, 100%), 1fr));
+  gap: 0.85rem;
+}
+
+#lista-equipos > p {
+  grid-column: 1 / -1;
+}
+
+.equipo-guardado {
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: #2c2e3e;
+  border-radius: 0.7rem;
+  padding: 0.85rem;
+}
+
+/* Tarjeta que se está arrastrando para cambiarla de sitio */
+.equipo-guardado.arrastrando {
+  opacity: 0.4;
+  outline: 2px dashed #f1c40f;
+}
+
+.equipo-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.equipo-cabecera h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+}
+
+.fecha {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.equipo-botones {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.equipo-botones button {
+  padding: 0.45rem 0.85rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.equipo-botones .abrir {
+  background: #f1c40f;
+  color: #2b2d3a;
+}
+
+.equipo-botones .borrar {
+  background: #c0392b;
+  color: #fff;
+}
+
+.equipo-botones .borrar:hover {
+  background: #e74c3c;
+}
+
+.equipo-miniaturas {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.equipo-miniaturas img {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.45rem;
+  padding: 0.2rem;
+  box-sizing: border-box;
+  image-rendering: pixelated;
+}
+
+/* ---------- Diálogos (importar paste y elegir forma) ---------- */
+
+#importar-aceptar {
+  background: #27ae60;
+  color: #fff;
+}
+
+#importar-cancelar,
+#forma-cancelar {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
+
+#importar-aceptar:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.forma-opciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.forma-opciones button {
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #f1c40f;
+  color: #2b2d3a;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.forma-opciones button:hover {
+  background: #f7d44a;
+}
+/* ---------- Pantallas estrechas (móvil) ---------- */
+
+@media (max-width: 900px) {
+  #resultado {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .barra-superior {
+    grid-template-columns: 1fr auto;
+  }
+
+  .buscador {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 520px) {
+  .tarjeta {
+    flex-direction: column;
+  }
+
+  .tarjeta-izq {
+    flex: none;
+  }
+
+  .tarjeta-izq img {
+    max-width: 10rem;
+    margin: 0 auto;
+  }
+}
+
+/* ---------- Fichas de la tarjeta: stats base y ataques ---------- */
+
+.tarjeta-izq img.arte {
+  cursor: help;
+}
+
+.ficha-stats {
+  background: #171822;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ficha-stats .ficha-titulo {
+  margin-bottom: 0.45rem;
+}
+
+.stat {
+  display: grid;
+  grid-template-columns: 4.6rem 2.2rem 1fr;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.12rem 0;
+}
+
+.stat-nombre {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.stat-valor {
+  font-weight: bold;
+  text-align: right;
+}
+
+.stat-barra {
+  height: 0.55rem;
+  border-radius: 0.3rem;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.stat-barra span {
+  display: block;
+  height: 100%;
+  border-radius: 0.3rem;
+}
+
+.stat-total {
+  margin-top: 0.3rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.stat-total .stat-nombre {
+  font-weight: bold;
+  opacity: 1;
+}
+
+/* Ficha de ataque: con el color de su tipo */
+.ficha-ataque {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.ficha-ataque .ficha-tipo {
+  margin-left: auto;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+/* Categoría, potencia y precisión del ataque */
+.ficha-datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.8rem;
+  margin-top: 0.45rem;
+  font-size: 0.75rem;
+  font-weight: bold;
+  opacity: 0.9;
+}
+
+/* Ficha de habilidad u objeto */
+.ficha-texto {
+  background: #171822;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ficha-texto .ficha-tipo {
+  margin-left: auto;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.ficha-icono {
+  width: 1.6rem;
+  height: 1.6rem;
+  object-fit: contain;
+}

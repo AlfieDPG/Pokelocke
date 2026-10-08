@@ -1,0 +1,142 @@
+/* Estilos generales, compartidos por todas las secciones */
+
+html {
+  /* Tamaño base: crece o se encoge según la ventana. (NO TOCAR el 1.72vh) */
+  font-size: clamp(12px, min(1.72vh, 1.3vw), 24px);
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #1e1f2b;
+  color: #f2f2f2;
+  margin: 0;
+  font-size: 1rem;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ---------- Desplegable de sugerencias ---------- */
+
+.sugerencias {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  color: #222;
+  border-radius: 0.45rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  text-align: left;
+  overflow: hidden;
+}
+
+.sugerencias .opcion {
+  padding: 0.6rem 0.85rem;
+  cursor: pointer;
+}
+
+.sugerencias .opcion:hover {
+  background: #f1c40f;
+}
+
+/* ---------- Iconos de tipo ---------- */
+
+.icono-tipo {
+  flex: none;
+  width: 0.8rem;
+  height: 0.8rem;
+  background: #fff;
+  -webkit-mask: var(--icono) center / contain no-repeat;
+  mask: var(--icono) center / contain no-repeat;
+}
+
+/* ---------- Diálogos ---------- */
+
+dialog {
+  width: min(42rem, 92vw);
+  padding: 1.15rem;
+  border: none;
+  border-radius: 0.7rem;
+  background: #2c2e3e;
+  color: #f2f2f2;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+dialog h2 {
+  margin: 0 0 0.45rem;
+  font-size: 1.2rem;
+}
+
+dialog p {
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+dialog textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-family: Consolas, monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.dialogo-botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+}
+
+.dialogo-botones button {
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* ---------- Fichas al pasar el ratón (js/comun/tooltip.js) ---------- */
+
+.tooltip {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none; /* que no tape al ratón */
+}
+
+.ficha {
+  width: 16rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.7rem;
+  background: #2c2e3e;
+  color: #f2f2f2;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  font-size: 0.85rem;
+}
+
+.ficha p {
+  margin: 0.4rem 0 0;
+  line-height: 1.35;
+}
+
+.ficha-titulo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.ficha-titulo small {
+  font-weight: normal;
+  opacity: 0.75;
+}

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pokelocke</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/equipos.css">
+  <link rel="stylesheet" href="css/nuzlocke.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <div class="app">
+    <aside class="barra-lateral">
+      <h1 class="logo">Pokelocke</h1>
+      <nav class="menu-lateral">
+        <details class="grupo-menu" open>
+          <summary>Equipos</summary>
+          <div class="submenu">
+            <button data-vista="crear">Crear equipo</button>
+            <button data-vista="equipos">Mis equipos</button>
+            <button id="boton-importar">Importar paste</button>
+          </div>
+        </details>
+        <button data-vista="rutas">Rutas</button>
+        <button data-vista="levelcaps">Level caps</button>
+        <button data-vista="normas">Normas</button>
+      </nav>
+    </aside>
+
+    <div class="contenido">
+      <main>
+        <!-- Cada vista es un <section id="vista-XXX"> y se abre con un botón data-vista="XXX" -->
+        <section id="vista-crear" hidden>
+          <div class="barra-superior">
+            <div class="lado-izq">
+              <input id="nombre-equipo" type="text" placeholder="Nombre del equipo">
+              <span id="contador"></span>
+              <span id="aviso"></span>
+            </div>
+
+            <div class="buscador">
+              <input id="nombre" type="text" placeholder="Añadir Pokémon al equipo...">
+              <button id="buscar">Añadir</button>
+            </div>
+
+            <div class="lado-der">
+              <button id="guardar">Guardar equipo</button>
+              <button id="vaciar">Vaciar equipo</button>
+            </div>
+          </div>
+
+          <div id="resultado"></div>
+        </section>
+
+        <section id="vista-equipos" hidden>
+          <div id="lista-equipos"></div>
+        </section>
+
+        <section id="vista-rutas" hidden>
+          <div class="selector-juego"></div>
+          <div class="barra-nuzlocke">
+            <input class="rutas-buscar" type="search" placeholder="Buscar lugar...">
+            <span class="rutas-progreso"></span>
+            <button class="rutas-reiniciar boton-reiniciar">Desmarcar todo</button>
+          </div>
+          <div class="rutas-lista"></div>
+        </section>
+
+        <section id="vista-levelcaps" hidden>
+          <div class="selector-juego"></div>
+          <div class="barra-nuzlocke">
+            <div class="caps-actual"></div>
+            <div class="multiplicador" title="Multiplicador de nivel de los entrenadores (randomizer)">
+              <span>Multiplicador</span>
+              <button class="multiplicador-menos" aria-label="Bajar multiplicador">−</button>
+              <span class="multiplicador-valor">×1.0</span>
+              <button class="multiplicador-mas" aria-label="Subir multiplicador">+</button>
+            </div>
+            <button class="caps-reiniciar boton-reiniciar">Desmarcar todo</button>
+          </div>
+          <ol class="caps-lista"></ol>
+        </section>
+
+        <section id="vista-normas" hidden>
+          <div class="normas"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="dialogo-importar">
+    <h2>Importar equipo de Showdown</h2>
+    <p>Pega aquí el texto (paste) de tu equipo. Reemplazará el equipo actual. Se ignoran nivel, EVs, IVs y naturaleza.</p>
+    <textarea id="texto-paste" rows="12" placeholder="Pikachu @ Light Ball&#10;Ability: Static&#10;- Thunderbolt&#10;- Surf"></textarea>
+    <div class="dialogo-botones">
+      <button id="importar-cancelar">Cancelar</button>
+      <button id="importar-aceptar">Importar</button>
+    </div>
+  </dialog>
+
+  <dialog id="dialogo-forma">
+    <h2 id="forma-titulo">Elige la forma</h2>
+    <div id="forma-opciones" class="forma-opciones"></div>
+    <div class="dialogo-botones">
+      <button id="forma-cancelar">Cancelar</button>
+    </div>
+  </dialog>
+</body>
+</html>

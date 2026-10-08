@@ -1,0 +1,121 @@
+/* Estructura de la página: panel lateral + contenido */
+
+main {
+  max-width: 120rem;
+  margin: 0.85rem auto;
+  padding: 0 1.15rem;
+}
+
+/* ---------- Panel lateral ---------- */
+
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.barra-lateral {
+  flex: 0 0 13rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: #171822;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.logo {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  background: #c0392b;
+  font-size: 1.45rem;
+  text-align: center;
+}
+
+.menu-lateral {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 0.7rem;
+  overflow-y: auto;
+}
+
+.menu-lateral button {
+  padding: 0.6rem 0.8rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #f2f2f2;
+  font-weight: bold;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-lateral button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.menu-lateral button.activa {
+  background: #c0392b;
+  color: #fff;
+}
+
+.contenido {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Grupos desplegables del menú */
+
+.grupo-menu summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.45rem;
+  font-weight: bold;
+  font-size: 0.95rem;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.grupo-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.grupo-menu summary::after {
+  content: "▾";
+  transition: transform 0.2s;
+}
+
+.grupo-menu:not([open]) summary::after {
+  transform: rotate(-90deg);
+}
+
+.grupo-menu summary:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.3rem 0 0.3rem 0.8rem;
+}
+
+/* ---------- Pantallas estrechas (móvil) ---------- */
+
+@media (max-width: 760px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .barra-lateral {
+    position: static;
+    height: auto;
+    flex: none;
+  }
+}
