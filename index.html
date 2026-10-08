@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/equipos.css">
   <link rel="stylesheet" href="css/nuzlocke.css">
+  <link rel="stylesheet" href="css/jugadores.css">
+  <link rel="stylesheet" href="css/pokedex.css">
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
@@ -25,7 +27,9 @@
         </details>
         <button data-vista="rutas">Rutas</button>
         <button data-vista="levelcaps">Level caps</button>
+        <button data-vista="pokedex">Pokédex</button>
         <button data-vista="normas">Normas</button>
+        <button data-vista="jugadores">Jugadores</button>
       </nav>
     </aside>
 
@@ -83,8 +87,20 @@
           <ol class="caps-lista"></ol>
         </section>
 
+        <section id="vista-pokedex" hidden>
+          <div class="pokedex-aviso" hidden></div>
+          <table class="tabla-pokedex" hidden>
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </section>
+
         <section id="vista-normas" hidden>
           <div class="normas"></div>
+        </section>
+
+        <section id="vista-jugadores" hidden>
+          <div class="jugadores"></div>
         </section>
       </main>
     </div>

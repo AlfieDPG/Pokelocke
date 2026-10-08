@@ -3,7 +3,7 @@ import { quitarAcentos, normalizarNombre } from "./utilidades.js";
 // ---------- Carga de datos (nombres en español e inglés) ----------
 
 // NO cambiar esta clave sin motivo: si se cambia, se vuelven a descargar los datos
-const CLAVE_DATOS = "poketeams-datos-v7";
+const CLAVE_DATOS = "poketeams-datos-v8";
 
 // Nombres que en español salen repetidos y hay que distinguir (id -> nombre)
 const NOMBRES_CORREGIDOS = {
@@ -25,7 +25,7 @@ const URLS_BASE = [
 // Nombres de Pokémon, ataques, habilidades y objetos. Vale null hasta que termina cargarDatos().
 export let datos = null;
 
-async function descargarCSV(archivo) {
+export async function descargarCSV(archivo) {
   for (const base of URLS_BASE) {
     try {
       const respuesta = await fetch(base + archivo);
@@ -74,6 +74,7 @@ async function leerODescargar() {
     localStorage.removeItem("poketeams-datos-v4"); // versión antigua
     localStorage.removeItem("poketeams-datos-v5"); // versión antigua (con formas en el buscador)
     localStorage.removeItem("poketeams-datos-v6"); // versión antigua (Unidad Ecuestre repetida)
+    localStorage.removeItem("poketeams-datos-v7"); // versión antigua (sin las megapiedras de Leyendas Z-A)
     const guardado = localStorage.getItem(CLAVE_DATOS);
     if (guardado) return JSON.parse(guardado);
   } catch (error) {

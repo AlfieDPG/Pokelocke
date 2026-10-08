@@ -1,0 +1,140 @@
+/* Sección «Jugadores» */
+
+.jugadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+  gap: 1.15rem;
+  max-width: 60rem;
+}
+
+.ficha-jugador {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.15rem 1rem;
+  border-radius: 0.7rem;
+  background: #2c2e3e;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+/* ---------- Foto y nombre ---------- */
+
+.jugador-foto {
+  position: relative;
+  width: 8.5rem;
+  height: 8.5rem;
+  border-radius: 50%;
+  border: 0.25rem solid #c0392b;
+  background: #1e1f2b;
+  overflow: hidden;
+}
+
+/* Si la foto no carga (se quita el <img>), queda la inicial del nombre */
+.jugador-foto::before {
+  content: attr(data-inicial);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.5rem;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.jugador-foto img {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.jugador-nombre {
+  margin: 0.7rem 0 0;
+  font-size: 1.35rem;
+  color: #e74c3c;
+}
+
+/* ---------- Contadores por tipo de locke ---------- */
+
+.contadores-locke {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin: 0.85rem 0 0;
+}
+
+.contador-locke {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 5.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.45rem;
+  background: #252735;
+}
+
+.contador-numero {
+  font-size: 1.6rem;
+  font-weight: bold;
+  line-height: 1.1;
+  color: var(--color-locke);
+}
+
+.contador-tipo {
+  font-size: 0.72rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.8;
+}
+
+/* ---------- Lista de lockes ganados ---------- */
+
+.lockes-ganados {
+  list-style: none;
+  width: 100%;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.locke-ganado {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border-left: 0.3rem solid var(--color-locke);
+  border-radius: 0.45rem;
+  background: #252735;
+}
+
+.locke-nombre {
+  font-weight: bold;
+  font-size: 0.93rem;
+}
+
+.locke-nota {
+  font-size: 0.78rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--color-mega); /* la nota siempre es del Megalocke, va en amarillo */
+  opacity: 0.85;
+}
+
+/* ---------- Color por tipo de locke ---------- */
+
+.jugadores {
+  --color-normal: #3498db; /* locke normal */
+  --color-mega: #f1c40f;   /* megalocke */
+  --color-bebe: #e84393;   /* bebelocke */
+}
+
+.ficha-jugador .locke { --color-locke: var(--color-normal); }
+.ficha-jugador .mega  { --color-locke: var(--color-mega); }
+.ficha-jugador .bebe  { --color-locke: var(--color-bebe); }

@@ -17,7 +17,13 @@ export function formaVisible(slug) {
 // Nombres para una variedad concreta (cuando el sufijo solo no basta)
 const NOMBRES_VARIEDAD = {
   "necrozma-dusk": "Melena Crepuscular", "necrozma-dawn": "Alas del Alba",
-  "calyrex-ice": "Jinete Glacial", "calyrex-shadow": "Jinete Espectral"
+  "calyrex-ice": "Jinete Glacial", "calyrex-shadow": "Jinete Espectral",
+  "pikachu-starter": "Compañero", "eevee-starter": "Compañero",
+  "terapagos-terastal": "Teracristal", "terapagos-stellar": "Astral",
+  "minior-red": "Núcleo", // los siete colores del núcleo tienen las mismas estadísticas
+  // Formas cuyo sufijo no aporta nada en la tabla de estadísticas: las variantes
+  // (Tatsugiri curvada/lánguida/recta, Meowstic macho/hembra) megaevolucionan igual
+  "tatsugiri-curly-mega": "Mega", "meowstic-male-mega": "Mega"
 };
 
 const NOMBRES_FORMA = {
@@ -48,7 +54,7 @@ const NOMBRES_FORMA = {
   "resolute": "Brío", "aria": "Lírica", "pirouette": "Pirueta",
   "red-striped": "Raya Roja", "blue-striped": "Raya Azul", "white-striped": "Raya Blanca",
   "bloodmoon": "Luna Carmesí", "hearthflame": "Horno", "wellspring": "Fuente",
-  "cornerstone": "Cimiento", "teal": "Turquesa"
+  "cornerstone": "Cimiento", "teal": "Turquesa", "black": "Negro", "white": "Blanco"
 };
 
 // "persian-alola" + "persian" -> "Alola"

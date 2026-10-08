@@ -14,7 +14,9 @@ const SECCIONES = {
   equipos: () => import("./equipos/index.js"),
   rutas: () => import("./rutas/index.js"),
   levelcaps: () => import("./levelcaps/index.js"),
-  normas: () => import("./normas/index.js")
+  normas: () => import("./normas/index.js"),
+  jugadores: () => import("./jugadores/index.js"),
+  pokedex: () => import("./pokedex/index.js")
 };
 
 // Vista -> sección que la gestiona
@@ -23,7 +25,9 @@ const VISTAS = {
   equipos: "equipos",
   rutas: "rutas",
   levelcaps: "levelcaps",
-  normas: "normas"
+  normas: "normas",
+  jugadores: "jugadores",
+  pokedex: "pokedex"
 };
 
 const iniciadas = new Map(); // sección -> promesa con su módulo ya iniciado

@@ -1,0 +1,136 @@
+/* Sección «Pokédex» */
+
+.pokedex-aviso {
+  margin: 0.85rem 0;
+  font-weight: bold;
+  opacity: 0.85;
+}
+
+/* Ancho automático y centrada: así las columnas ocupan lo que necesitan (el nombre
+   no se queda estirado y separado de los datos) y no sobra medio ancho a la derecha. */
+.tabla-pokedex {
+  width: auto;
+  max-width: 100%;
+  margin: 0.85rem auto;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+/* ---------- Cabecera: se queda arriba al bajar por la lista ---------- */
+
+.tabla-pokedex thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0;
+  background: #171822;
+  border-bottom: 2px solid #c0392b;
+}
+
+.tabla-pokedex thead button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.6rem 0.5rem;
+  border: none;
+  background: transparent;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tabla-pokedex thead button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tabla-pokedex thead .col-nombre button {
+  justify-content: flex-start;
+}
+
+/* Flecha del orden: apagada mientras no se ordene por esa columna */
+.flecha {
+  font-size: 0.78rem;
+  opacity: 0.35;
+}
+
+.tabla-pokedex th.ordenada {
+  background: #2c2e3e;
+}
+
+.tabla-pokedex th.ordenada button {
+  color: #f1c40f;
+}
+
+.tabla-pokedex th.ordenada .flecha {
+  opacity: 1;
+}
+
+/* ---------- Filas ---------- */
+
+.tabla-pokedex td {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tabla-pokedex tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tabla-pokedex tbody tr:hover {
+  background: rgba(241, 196, 15, 0.1);
+}
+
+.col-numero {
+  width: 4rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.55;
+}
+
+.col-foto {
+  width: 2.8rem;
+  text-align: center;
+}
+
+.pokedex-foto {
+  display: block;
+  width: 2.4rem;
+  height: 2.4rem;
+  object-fit: contain;
+  image-rendering: pixelated; /* los retratos de Mundo Misterioso son pixelados */
+}
+
+.col-nombre {
+  padding-right: 1.15rem;
+  font-weight: bold;
+}
+
+.col-dato {
+  width: 4.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.col-total {
+  font-weight: bold;
+  color: #f1c40f;
+}
+
+/* ---------- Pantallas estrechas ---------- */
+
+@media (max-width: 760px) {
+  .tabla-pokedex {
+    font-size: 0.8rem;
+  }
+
+  .tabla-pokedex td,
+  .tabla-pokedex thead button {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+}

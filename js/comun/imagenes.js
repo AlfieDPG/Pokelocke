@@ -23,6 +23,12 @@ export function urlsArte(p) {
   return [urlArte(p), p.imagen, urlSpriteHome(p)];
 }
 
+// Sprite pixelado pequeño (96x96). Sirve también para las formas alternativas,
+// que tienen su propio id (Mega-Charizard X es el 10034).
+export function urlSpritePixel(id) {
+  return `${URL_SPRITES}pokemon/${id}.png`;
+}
+
 function cuatroCifras(n) {
   return String(n).padStart(4, "0");
 }
@@ -41,8 +47,11 @@ export function urlsPMD(p) {
 // Iconos de objetos, de mejor a peor:
 //   1) Icono HD de Escarlata/Púrpura (Serebii): "Heavy-Duty Boots" -> heavy-dutyboots.png,
 //      "King's Rock" -> king'srock.png (minúsculas, sin espacios ni acentos; guiones y apóstrofos se quedan)
-//   2) Icono pixelado de PokeAPI (objetos que no salen en Escarlata/Púrpura)
+//   2) Icono HD de Leyendas Z-A (Serebii), con el mismo nombre de archivo: objetos que no
+//      salen en Escarlata/Púrpura, sobre todo las megapiedras nuevas ("Chandelurite" -> chandelurite.png)
+//   3) Icono pixelado de PokeAPI (lo que no esté en ninguno de los dos)
 const URL_OBJETOS_SV = "https://www.serebii.net/itemdex/sprites/sv/";
+const URL_OBJETOS_ZA = "https://www.serebii.net/itemdex/sprites/za/";
 
 export function urlsIconoObjeto(en) {
   const sinAcentos = en.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/’/g, "'");
@@ -51,7 +60,11 @@ export function urlsIconoObjeto(en) {
     .replace(/['.]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-  return [`${URL_OBJETOS_SV}${serebii}.png`, `${URL_SPRITES}items/${pokeapi}.png`];
+  return [
+    `${URL_OBJETOS_SV}${serebii}.png`,
+    `${URL_OBJETOS_ZA}${serebii}.png`,
+    `${URL_SPRITES}items/${pokeapi}.png`
+  ];
 }
 
 // ---------- <img> con direcciones de respaldo ----------
