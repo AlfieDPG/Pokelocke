@@ -1,5 +1,7 @@
 // ---------- Imágenes (arte, HOME, Mundo Misterioso, objetos) ----------
 
+import { indicePMD } from "./formas-pmd.js";
+
 const URL_SPRITES = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/";
 const URL_PMD = "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/portrait/";
 
@@ -7,10 +9,11 @@ function idImagen(p) {
   return p.idForma || p.id;
 }
 
-// Arte grande (normal o shiny)
+// Arte grande (normal o shiny). Se arma con el id de la FORMA en vez de usar p.imagen:
+// los Pokémon guardados hace tiempo pueden tener ahí el arte de la especie, y entonces
+// una Mega o una forma de Alola salían con el dibujo de la forma normal.
 export function urlArte(p) {
-  if (!p.shiny) return p.imagen;
-  return `${URL_SPRITES}pokemon/other/official-artwork/shiny/${idImagen(p)}.png`;
+  return `${URL_SPRITES}pokemon/other/official-artwork/${p.shiny ? "shiny/" : ""}${idImagen(p)}.png`;
 }
 
 // Render HOME (normal o shiny)
@@ -36,11 +39,18 @@ function cuatroCifras(n) {
 // Retratos de Pokémon Mundo Misterioso (PMD SpriteCollab), de más a menos concreto
 export function urlsPMD(p) {
   const dex = cuatroCifras(p.id);
-  const forma = p.formaPMD || 0;
+  // Se corrige aquí (y no solo al añadir el Pokémon) para que también se arreglen
+  // los equipos que ya estaban guardados con el número antiguo.
+  const forma = indicePMD(p.idForma, p.formaPMD);
   const lista = [];
   if (p.shiny) lista.push(`${URL_PMD}${dex}/${cuatroCifras(forma)}/0001/Normal.png`);
+
+  // Si es una forma y Mundo Misterioso no la tiene, NO se cae al retrato de la especie:
+  // saldría dibujada la forma normal (Mega-Meowstic hembra salía como un Meowstic macho).
+  // Quien llame a esto ya pone detrás un respaldo que sí distingue la forma.
   if (forma) lista.push(`${URL_PMD}${dex}/${cuatroCifras(forma)}/Normal.png`);
-  lista.push(`${URL_PMD}${dex}/Normal.png`);
+  else lista.push(`${URL_PMD}${dex}/Normal.png`);
+
   return lista;
 }
 

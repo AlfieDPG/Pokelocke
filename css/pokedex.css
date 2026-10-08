@@ -6,13 +6,58 @@
   opacity: 0.85;
 }
 
-/* Ancho automático y centrada: así las columnas ocupan lo que necesitan (el nombre
-   no se queda estirado y separado de los datos) y no sobra medio ancho a la derecha. */
+/* ---------- Barra de búsqueda y filtros ---------- */
+
+/* Mismo ancho que la tabla y anclada a la izquierda: así ni el buscador ni el
+   desplegable se mueven al cambiar de tipo o al filtrar. */
+.barra-pokedex {
+  width: 100%;
+  margin: 0.85rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.pokedex-buscar {
+  flex: 0 0 18rem;
+  min-width: 0;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-size: 0.93rem;
+}
+
+/* Ancho fijo: si no, el desplegable se encoge según lo largo que sea el tipo elegido */
+.pokedex-tipo {
+  flex: 0 0 11rem;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #2c2e3e;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.pokedex-cuenta {
+  margin-left: auto;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+/* Centrada y de ancho fijo. «table-layout: fixed» es lo que hace que las columnas midan
+   siempre lo mismo: sin esto, al filtrar por tipo la tabla se encogía o se estiraba según
+   lo largos que fueran los nombres que quedaran a la vista.
+   Las anchuras de cada columna son proporciones: con «fixed» el sobrante se reparte
+   siempre igual, así que la tabla no se mueve al filtrar aunque ocupe todo el ancho. */
 .tabla-pokedex {
-  width: auto;
-  max-width: 100%;
-  margin: 0.85rem auto;
+  width: 100%;
+  margin: 0.85rem 0;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 0.9rem;
 }
 
@@ -86,14 +131,14 @@
 }
 
 .col-numero {
-  width: 4rem;
+  width: 4.5rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
   opacity: 0.55;
 }
 
 .col-foto {
-  width: 2.8rem;
+  width: 3rem;
   text-align: center;
 }
 
@@ -106,12 +151,34 @@
 }
 
 .col-nombre {
-  padding-right: 1.15rem;
+  width: 18rem;
   font-weight: bold;
 }
 
+.col-tipos {
+  width: 3.5rem;
+  padding-right: 1.15rem;
+  white-space: nowrap;
+}
+
+.chip-tipo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  margin-right: 0.15rem;
+  border-radius: 0.3rem;
+  vertical-align: middle;
+}
+
+.chip-tipo .icono-tipo {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
 .col-dato {
-  width: 4.5rem;
+  width: 6.2rem;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }

@@ -43,6 +43,7 @@
           <div class="barra-superior">
             <div class="lado-izq">
               <input id="nombre-equipo" type="text" placeholder="Nombre del equipo">
+              <button id="ver-debilidades">Debilidades</button>
               <span id="contador"></span>
               <span id="aviso"></span>
             </div>
@@ -53,6 +54,7 @@
             </div>
 
             <div class="lado-der">
+              <button id="exportar-equipo">Exportar</button>
               <button id="guardar">Guardar equipo</button>
               <button id="vaciar">Vaciar equipo</button>
             </div>
@@ -62,6 +64,9 @@
         </section>
 
         <section id="vista-equipos" hidden>
+          <div class="barra-equipos">
+            <button id="cambiar-vista">Ver en lista</button>
+          </div>
           <div id="lista-equipos"></div>
         </section>
 
@@ -92,6 +97,13 @@
 
         <section id="vista-pokedex" hidden>
           <div class="pokedex-aviso" hidden></div>
+          <div class="barra-pokedex" hidden>
+            <input class="pokedex-buscar" type="search" placeholder="Buscar Pokémon...">
+            <select class="pokedex-tipo">
+              <option value="">Todos los tipos</option>
+            </select>
+            <span class="pokedex-cuenta"></span>
+          </div>
           <table class="tabla-pokedex" hidden>
             <thead></thead>
             <tbody></tbody>
@@ -110,12 +122,20 @@
   </div>
 
   <dialog id="dialogo-importar">
-    <h2>Importar equipo de Showdown</h2>
+    <h2>Importar equipo</h2>
     <p>Pega aquí el texto (paste) de tu equipo. Reemplazará el equipo actual. Se ignoran nivel, EVs, IVs y naturaleza.</p>
     <textarea id="texto-paste" rows="12" placeholder="Pikachu @ Light Ball&#10;Ability: Static&#10;- Thunderbolt&#10;- Surf"></textarea>
     <div class="dialogo-botones">
       <button id="importar-cancelar">Cancelar</button>
       <button id="importar-aceptar">Importar</button>
+    </div>
+  </dialog>
+
+  <dialog id="dialogo-debilidades">
+    <h2>Puntos débiles del equipo</h2>
+    <div class="debilidades-cuerpo"></div>
+    <div class="dialogo-botones">
+      <button id="debilidades-cerrar">Cerrar</button>
     </div>
   </dialog>
 

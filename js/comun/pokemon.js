@@ -1,5 +1,6 @@
 import { pedirJSON, URL_API } from "./api.js";
 import { etiquetaForma, obtenerVariedades } from "./formas.js";
+import { indicePMD } from "./formas-pmd.js";
 
 // Icono estilo HOME/Switch (el mismo que se usa en Espada/Escudo y versiones posteriores)
 function obtenerSpriteIcono(p) {
@@ -136,16 +137,23 @@ export async function pokemonDesdeAPI(p, entrada) {
   // Solo se guarda la forma si no es la normal (Alola, Mega, Galar...)
   const etiqueta = info.lista.length > 1 && posicion >= 0 ? etiquetaForma(p.name, info.especie) : "Normal";
 
+  // Lo que PokeAPI le añade al nombre de la especie ("meowstic-female-mega" -> "female-mega").
+  // Hace falta para exportar el equipo con el nombre que entiende Showdown.
+  const sufijoForma =
+    info.especie && p.name.startsWith(info.especie + "-") ? p.name.slice(info.especie.length + 1) : "";
+
   return {
     id: entrada.id,
     idForma: p.id,
+    formaSlug: sufijoForma,
     es: entrada.es,
     en: entrada.en,
+    mote: null,
     imagen: imagen,
     sprite: obtenerSpriteIcono(p) || imagen,
     shiny: false,
     forma: etiqueta === "Normal" ? null : "Forma " + etiqueta,
-    formaPMD: posicion > 0 ? posicion : 0,
+    formaPMD: indicePMD(p.id, posicion > 0 ? posicion : 0),
     tipos: p.types.map((t) => t.type.name),
     stats: statsBase(p),
     habilidad: null,

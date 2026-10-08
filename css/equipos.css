@@ -70,7 +70,6 @@
   font-weight: bold;
 }
 
-#vaciar,
 .quitar-pokemon {
   padding: 0.45rem 0.85rem;
   border: none;
@@ -81,30 +80,91 @@
   cursor: pointer;
 }
 
-#vaciar:hover,
 .quitar-pokemon:hover {
   background: #e74c3c;
 }
 
-#guardar {
-  padding: 0.45rem 0.85rem;
+/* Botones de la barra de arriba: cuadrados, solo con el icono dentro */
+#exportar-equipo,
+#guardar,
+#vaciar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
   border: none;
   border-radius: 0.45rem;
+  cursor: pointer;
+}
+
+#exportar-equipo .icono,
+#guardar .icono,
+#vaciar .icono {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+#exportar-equipo {
+  background: #f1c40f;
+  color: #2b2d3a;
+}
+
+#exportar-equipo:hover {
+  background: #f4d03f;
+}
+
+#guardar {
   background: #27ae60;
   color: #fff;
-  font-weight: bold;
-  cursor: pointer;
 }
 
 #guardar:hover {
   background: #2ecc71;
 }
 
+#vaciar {
+  background: #c0392b;
+  color: #fff;
+}
+
+#vaciar:hover {
+  background: #e74c3c;
+}
+
+#ver-debilidades {
+  padding: 0.45rem 0.85rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #2c2e3e;
+  color: #f2f2f2;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#ver-debilidades:hover {
+  background: #3a3d52;
+}
+
 /* ---------- Cuadrícula de tarjetas ---------- */
 
+/* La vista ocupa el alto de la pantalla (menos los márgenes de main) y la cuadrícula se
+   queda con lo que sobra de la barra de arriba. Las tres filas se reparten ese alto a
+   partes iguales, así no queda hueco abajo. Si el contenido de una tarjeta no cupiera,
+   minmax(min-content, ...) deja que crezca en vez de recortarla. */
+#vista-crear {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 1.7rem);
+}
+
 #resultado {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(min-content, 1fr));
   gap: 0.85rem;
   margin-top: 0.85rem;
 }
@@ -129,6 +189,40 @@
   text-align: center;
 }
 
+.tarjeta:hover {
+  outline: 2px solid rgba(241, 196, 15, 0.5);
+}
+
+/* Hueco de un Pokémon que todavía no está. No lleva alto propio: lo da su fila. */
+.tarjeta-vacia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.3);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tarjeta-vacia:hover {
+  border-color: #f1c40f;
+  color: #f1c40f;
+  outline: none;
+}
+
+.tarjeta-vacia .mas {
+  font-size: 3rem;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* Tarjeta que se está arrastrando para cambiarla de sitio */
+.tarjeta.arrastrando {
+  opacity: 0.4;
+  outline: 2px dashed #f1c40f;
+}
+
 .tarjeta-izq img {
   width: 8.6rem;
   aspect-ratio: 1; /* reserva el hueco aunque la imagen aún no haya cargado */
@@ -139,13 +233,20 @@
 
 .tarjeta-izq h2 {
   font-size: 1.15rem;
-  margin: 0.3rem 0 0.45rem;
+  margin: 0.3rem 0 0;
 }
 
+/* Especie (cuando hay mote) y forma, en una sola línea que se dibuja siempre aunque esté
+   vacía: así la tarjeta mide igual con mote y forma que sin ellos y la página no crece. */
 .forma-nombre {
+  min-height: 1.15em;
   font-size: 0.8rem;
+  line-height: 1.15;
   opacity: 0.8;
-  margin: -0.25rem 0 0.45rem;
+  margin: 0 0 0.45rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* Botón shiny (arriba a la izquierda de la tarjeta) */
@@ -373,10 +474,69 @@
 
 /* ---------- Mis equipos ---------- */
 
+.barra-equipos {
+  display: flex;
+  margin-bottom: 0.85rem;
+}
+
+#cambiar-vista {
+  padding: 0.45rem 0.85rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #2c2e3e;
+  color: #f2f2f2;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#cambiar-vista:hover {
+  background: #3a3d52;
+}
+
 #lista-equipos {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(34rem, 100%), 1fr));
   gap: 0.85rem;
+}
+
+/* ---------- Modo lista: una fila por equipo, de lado a lado ---------- */
+
+#lista-equipos.modo-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#lista-equipos.modo-lista .equipo-guardado {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.5rem 0.85rem;
+}
+
+/* Los iconos primero aunque en el HTML vayan detrás */
+#lista-equipos.modo-lista .equipo-miniaturas {
+  order: -1;
+  flex: none;
+}
+
+#lista-equipos.modo-lista .equipo-miniaturas img {
+  width: 2.6rem;
+  max-width: none;
+}
+
+#lista-equipos.modo-lista .equipo-cabecera {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+#lista-equipos.modo-lista .equipo-cabecera h3 {
+  font-size: 1rem;
+}
+
+#lista-equipos.modo-lista .equipo-botones {
+  margin-left: auto;
 }
 
 #lista-equipos > p {
@@ -422,17 +582,39 @@
   gap: 0.45rem;
 }
 
+/* Cuadrados, que solo llevan un icono */
 .equipo-botones button {
-  padding: 0.45rem 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
   border: none;
   border-radius: 0.45rem;
-  font-weight: bold;
   cursor: pointer;
 }
 
-.equipo-botones .abrir {
+.equipo-botones .icono {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.equipo-guardado:hover {
+  outline: 2px solid rgba(241, 196, 15, 0.5);
+}
+
+.equipo-botones .exportar {
   background: #f1c40f;
   color: #2b2d3a;
+}
+
+.equipo-botones .exportar:hover {
+  background: #f4d03f;
+}
+
+.equipo-botones .exportar:disabled {
+  cursor: default;
 }
 
 .equipo-botones .borrar {
@@ -538,6 +720,8 @@
 }
 
 .ficha-stats {
+  /* algo más ancha que las demás fichas: ahora lleva también las debilidades */
+  width: 19rem;
   background: #171822;
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
@@ -629,4 +813,132 @@
   width: 1.6rem;
   height: 1.6rem;
   object-fit: contain;
+}
+
+/* ---------- Puntos débiles del equipo (diálogo del botón «Debilidades») ---------- */
+
+#dialogo-debilidades {
+  width: min(34rem, 92vw);
+}
+
+#dialogo-debilidades h2 {
+  color: #f1c40f;
+}
+
+.debilidades-vacio {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.lista-debilidades {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.debilidad {
+  display: grid;
+  grid-template-columns: auto 5.5rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  border-left: 0.3rem solid var(--color-tipo);
+  border-radius: 0.45rem;
+  background: #252735;
+}
+
+.debilidad-tipo {
+  font-weight: bold;
+  font-size: 0.88rem;
+}
+
+.debilidad-cuenta {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+/* Barra proporcional a cuántos del equipo son débiles */
+.debilidad-barra {
+  width: 4rem;
+  height: 0.45rem;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.debilidad-barra i {
+  display: block;
+  height: 100%;
+  background: #e67e22;
+}
+
+.debilidad.critico .debilidad-barra i {
+  background: #e74c3c;
+}
+
+.debilidad.critico .debilidad-cuenta {
+  color: #e74c3c;
+  opacity: 1;
+}
+
+.debilidades-bien {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #2ecc71;
+}
+
+.debilidades-sin-aguante {
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+/* ---------- Debilidades en la ficha de cada Pokémon ---------- */
+
+.ficha-tipos {
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ficha-tipos-fila {
+  display: grid;
+  grid-template-columns: 4.3rem 1fr;
+  align-items: start;
+  gap: 0.45rem;
+}
+
+.ficha-tipos-titulo {
+  font-size: 0.78rem;
+  opacity: 0.75;
+}
+
+.ficha-tipos-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.marca-tipo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.marca-tipo .icono-tipo {
+  width: 0.65rem;
+  height: 0.65rem;
 }

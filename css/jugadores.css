@@ -1,13 +1,35 @@
 /* Sección «Jugadores» */
 
+/* Sin max-width: ocupa todo el ancho del contenido, así no sobra hueco a la derecha.
+   align-items: start evita que las fichas de una misma fila se estiren hasta la altura
+   de la más larga (si no, a los que no tienen lockes les quedaba un hueco debajo). */
 .jugadores {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
   gap: 1.15rem;
-  max-width: 60rem;
+}
+
+@media (max-width: 1400px) {
+  .jugadores {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .jugadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .jugadores {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ficha-jugador {
+  cursor: grab;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -15,6 +37,21 @@
   border-radius: 0.7rem;
   background: #2c2e3e;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.ficha-jugador:hover {
+  outline: 2px solid rgba(241, 196, 15, 0.5);
+}
+
+.ficha-jugador.arrastrando {
+  opacity: 0.4;
+  cursor: grabbing;
+  outline: none;
+}
+
+/* Al pulsar en la ficha se esconde la lista y queda solo la foto, el nombre y el recuento */
+.ficha-jugador.plegada .lockes-ganados {
+  display: none;
 }
 
 /* ---------- Foto y nombre ---------- */
@@ -70,8 +107,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 5.5rem;
-  padding: 0.5rem 0.6rem;
+  min-width: 4.6rem;
+  padding: 0.5rem 0.5rem;
   border-radius: 0.45rem;
   background: #252735;
 }

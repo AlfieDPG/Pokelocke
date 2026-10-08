@@ -16,33 +16,20 @@
 
 import { descargarCSV, cargarDatos, datos } from "../comun/datos.js";
 import { etiquetaForma, formaVisible } from "../comun/formas.js";
+import { indicePMD } from "../comun/formas-pmd.js";
 import { leer, escribir } from "../comun/almacen.js";
 
 // NO cambiar esta clave sin motivo: si se cambia, se vuelve a descargar todo
-const CLAVE_POKEDEX = "poketeams-pokedex-v3";
+const CLAVE_POKEDEX = "poketeams-pokedex-v4";
 
-// Retratos de Mundo Misterioso: cada forma es una subcarpeta numerada por su posición
-// entre las variedades de la especie, en el orden de PokeAPI (la normal es la 0).
-// Mundo Misterioso casi siempre numera igual, pero no siempre. Estas son las que no
-// coinciden, comprobadas una a una contra su tracker.json; las que valen 0 es que no
-// tienen retrato propio, así que se usa el de la especie.
-const CORRECCIONES_PMD = {
-  10071: 2, // Slowbro Mega (Mundo Misterioso pone la de Galar delante)
-  10165: 1, // Slowbro de Galar
-  10117: 1, // Greninja Ash
-  10294: 2, // Greninja Mega
-  10061: 5, // Floette Eterna
-  10296: 6, // Floette Mega
-  10181: 1, // Zygarde 10%
-  10120: 2, // Zygarde Completa
-  10136: 1, // Minior Núcleo
-  10312: 2, // Darkrai Mega
-  10314: 1, // Meowstic Mega
-  10248: 0, // Basculegion hembra: Mundo Misterioso no tiene retrato suyo
-  10254: 0, // Oinkologne hembra: tampoco
-  10158: 0, // Pikachu Compañero: tampoco
-  10159: 0  // Eevee Compañero: tampoco
+// Los tipos van por número en pokemon_types.csv y esta numeración no cambia nunca
+// (el 19, Estelar, no es un tipo de Pokémon, así que no entra).
+const TIPOS_POR_ID = {
+  1: "normal", 2: "fighting", 3: "flying", 4: "poison", 5: "ground", 6: "rock",
+  7: "bug", 8: "ghost", 9: "steel", 10: "fire", 11: "water", 12: "grass",
+  13: "electric", 14: "psychic", 15: "ice", 16: "dragon", 17: "dark", 18: "fairy"
 };
+
 
 // PokeAPI numera las estadísticas del 1 al 6 y en este orden:
 // PS, Ataque, Defensa, Ataque especial, Defensa especial, Velocidad.
@@ -99,6 +86,22 @@ function leerEspecies(csv) {
   return slugs;
 }
 
+// pokemon_types.csv: pokemon_id,type_id,slot -> { idForma: ["grass", "poison"] }
+function leerTipos(csv) {
+  const tipos = {};
+
+  for (const [idTexto, tipoTexto, ranuraTexto] of filasCSV(csv)) {
+    const id = Number(idTexto);
+    const tipo = TIPOS_POR_ID[Number(tipoTexto)];
+    if (!id || !tipo) continue;
+
+    if (!tipos[id]) tipos[id] = [];
+    tipos[id][Number(ranuraTexto) - 1] = tipo; // la ranura 1 es el tipo principal
+  }
+
+  return tipos;
+}
+
 function completo(bases) {
   return (bases || []).length === TOTAL_ESTADISTICAS && bases.every(Number.isFinite);
 }
@@ -152,12 +155,10 @@ function indicesPMD(variedades) {
 }
 
 function formaPMD(variedad, indices) {
-  const correccion = CORRECCIONES_PMD[variedad.id];
-  if (correccion !== undefined) return correccion;
-  return variedad.porDefecto ? 0 : indices.get(variedad.id) || 0;
+  return indicePMD(variedad.id, variedad.porDefecto ? 0 : indices.get(variedad.id) || 0);
 }
 
-function montarTabla(bases, variedades, slugsEspecie) {
+function montarTabla(bases, variedades, slugsEspecie, tipos) {
   const porEspecie = new Map();
   for (const variedad of variedades) {
     if (!porEspecie.has(variedad.especie)) porEspecie.set(variedad.especie, []);
@@ -180,6 +181,7 @@ function montarTabla(bases, variedades, slugsEspecie) {
         clave: variedad.id,   // id de PokeAPI: único, también para las formas
         numero: especie,      // número de la Pokédex: la forma comparte el de su especie
         forma: formaPMD(variedad, indices), // subcarpeta del retrato de Mundo Misterioso
+        tipos: (tipos[variedad.id] || []).filter(Boolean),
         nombre: etiqueta && etiqueta !== "Normal" ? `${nombre} (${etiqueta})` : nombre,
         bases: bases[variedad.id],
         total: suma(bases[variedad.id])
@@ -191,11 +193,12 @@ function montarTabla(bases, variedades, slugsEspecie) {
 }
 
 // Lista ordenada por número de Pokédex (y cada especie seguida de sus formas):
-// { clave, numero, nombre, bases: [PS, At, Def, AtEsp, DefEsp, Vel], total }
+// { clave, numero, forma, tipos, nombre, bases: [PS, At, Def, AtEsp, DefEsp, Vel], total }
 export async function cargarPokedex() {
   try {
     localStorage.removeItem("poketeams-pokedex-v1"); // versión antigua (sin formas alternativas)
     localStorage.removeItem("poketeams-pokedex-v2"); // versión antigua (sin el retrato de cada forma)
+    localStorage.removeItem("poketeams-pokedex-v3"); // versión antigua (sin los tipos)
   } catch (error) {
     // si el navegador no deja tocar el almacén, da igual: solo es limpieza
   }
@@ -205,16 +208,18 @@ export async function cargarPokedex() {
 
   await cargarDatos(); // nombres en español de las especies
 
-  const [csvEstadisticas, csvPokemon, csvEspecies] = await Promise.all([
+  const [csvEstadisticas, csvPokemon, csvEspecies, csvTipos] = await Promise.all([
     descargarCSV("pokemon_stats.csv"),
     descargarCSV("pokemon.csv"),
-    descargarCSV("pokemon_species.csv")
+    descargarCSV("pokemon_species.csv"),
+    descargarCSV("pokemon_types.csv")
   ]);
 
   const tabla = montarTabla(
     leerEstadisticas(csvEstadisticas),
     leerVariedades(csvPokemon),
-    leerEspecies(csvEspecies)
+    leerEspecies(csvEspecies),
+    leerTipos(csvTipos)
   );
 
   escribir(CLAVE_POKEDEX, tabla);

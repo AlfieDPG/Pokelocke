@@ -67,7 +67,7 @@ function pintarLista() {
   lista.innerHTML = apartadosDelJuego()
     .map(
       (a) => `
-        <section class="rutas-grupo">
+        <section class="rutas-grupo ${a.clave}">
           <h3>${a.titulo}</h3>
           <div class="rutas-botones ${a.clave}">${lugares[a.clave].map((texto) => botonLugar(a.clave, texto)).join("")}</div>
         </section>`

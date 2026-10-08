@@ -179,7 +179,8 @@ const DATOS = [
       historia("Gran prueba (Ula-Ula)", "Kahuna Denio", 39),
       historia("Cañón de Poni", "Kommo-o dominante", 45),
       historia("Gran prueba (Poni)", "Kahuna Hela", 54),
-      am("Hala, Mayla, Zarala y Kahili", 55, { aprox: true }),
+      am("Hala", 55, { aprox: true }), am("Mayla", 55, { aprox: true }),
+      am("Zarala", 55, { aprox: true }), am("Kahili", 55, { aprox: true }),
       campeon("Kukui", 58, { aprox: true })
     ]
   },
@@ -200,8 +201,8 @@ const DATOS = [
       historia("Gran prueba (Poni)", "Kahuna Hela", 54),
       historia("Prueba de Mina", "Ribombee dominante", 55),
       historia("Ultrópolis", "Ultra Necrozma", 60),
-      am("Hala, Mayla, Zarala y Kahili", 57),
-      campeon("Campeón de la Liga", 60)
+      am("Hala", 57), am("Mayla", 57), am("Zarala", 57), am("Kahili", 57),
+      campeon("Tilo", 60)
     ]
   },
   {

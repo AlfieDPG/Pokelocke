@@ -4,17 +4,22 @@ import {
 import { datos } from "../comun/datos.js";
 import { pedirJSON, URL_API } from "../comun/api.js";
 import { coloresTipo, tiposEs, iconoTipo } from "../comun/tipos.js";
+import { resumenEquipo, puntosDe, multiplicadoresDe, textoMultiplicador } from "../comun/efectividad.js";
 import { etiquetaForma, obtenerVariedades } from "../comun/formas.js";
 import {
   pokemonDesdeAPI, ataqueDesdeAPI, obtenerStats, obtenerDatosCombate, descripcionHabilidad, descripcionObjeto, textoForma
 } from "../comun/pokemon.js";
 import { activarTooltips, actualizarTooltip, ocultarTooltip, escaparHTML } from "../comun/tooltip.js";
 import { activarAutocompletado } from "../comun/autocompletado.js";
+import { pasteDelEquipo, copiarAlPortapapeles } from "./exportar.js";
+import { icono } from "../comun/iconos.js";
 import {
   imagenConRespaldo, urlArte, urlsArte, urlsIconoObjeto, cambiarImagen, precargarEnReposo
 } from "../comun/imagenes.js";
 
 const resultado = document.getElementById("resultado");
+const dialogoDebilidades = document.getElementById("dialogo-debilidades");
+const debilidadesEl = dialogoDebilidades.querySelector(".debilidades-cuerpo");
 const campoBuscar = document.getElementById("nombre");
 const campoNombre = document.getElementById("nombre-equipo");
 const contadorEl = document.getElementById("contador");
@@ -118,7 +123,10 @@ export function renderCrear() {
   ocultarTooltip();
   if (campoNombre.value !== estado.nombre) campoNombre.value = estado.nombre;
   contadorEl.textContent = `Equipo: ${estado.equipo.length}/${MAX_EQUIPO}`;
-  resultado.replaceChildren(...estado.equipo.map((poke) => crearTarjeta(poke)));
+  // Las tarjetas del equipo y, detrás, un hueco vacío por cada sitio que quede libre
+  const tarjetas = estado.equipo.map((poke) => crearTarjeta(poke));
+  for (let i = estado.equipo.length; i < MAX_EQUIPO; i++) tarjetas.push(crearHueco());
+  resultado.replaceChildren(...tarjetas);
 
   // Deja descargada la otra versión (normal/shiny) de cada arte para que el cambio sea instantáneo
   precargarEnReposo(estado.equipo.map((p) => urlArte({ ...p, shiny: !p.shiny })));
@@ -133,9 +141,134 @@ function refrescarTarjeta(poke) {
   }
 }
 
+// ---------- Puntos débiles del equipo ----------
+
+// Un tipo es un problema si le hace daño de más a dos o más miembros del equipo.
+const MINIMO_PROBLEMA = 2;
+
+function filaDebilidad({ tipo, debiles, aguantan }, miembros) {
+  // Rojo cuando además casi nadie lo aguanta; si no, naranja
+  const gravedad = debiles >= 3 || aguantan === 0 ? "critico" : "aviso";
+
+  return `
+    <li class="debilidad ${gravedad}" style="--color-tipo:${coloresTipo[tipo]}">
+      ${iconoTipo(tipo)}
+      <span class="debilidad-tipo">${tiposEs[tipo]}</span>
+      <span class="debilidad-cuenta">${debiles} de ${miembros} débiles · ${aguantan} lo aguantan</span>
+      <span class="debilidad-barra"><i style="width:${(debiles / miembros) * 100}%"></i></span>
+    </li>`;
+}
+
+function pintarDebilidades() {
+  const equipo = estado.equipo.filter((p) => p.tipos && p.tipos.length);
+
+  if (equipo.length === 0) {
+    debilidadesEl.innerHTML = `<p class="debilidades-vacio">Añade Pokémon al equipo para ver sus puntos débiles.</p>`;
+    return;
+  }
+
+  const resumen = resumenEquipo(equipo.map((p) => p.tipos));
+
+  // De más grave a menos: primero los que más miembros tumban y, a igualdad, los que menos se aguantan
+  const problemas = resumen
+    .filter((r) => r.debiles >= MINIMO_PROBLEMA)
+    .sort((a, b) => b.debiles - a.debiles || a.aguantan - b.aguantan);
+
+  const sinAguante = resumen.filter((r) => r.aguantan === 0).map((r) => tiposEs[r.tipo]);
+
+  debilidadesEl.innerHTML = `
+    ${
+      problemas.length
+        ? `<ul class="lista-debilidades">${problemas.map((r) => filaDebilidad(r, equipo.length)).join("")}</ul>`
+        : `<p class="debilidades-bien">Ningún tipo le hace daño de más a dos o más miembros del equipo.</p>`
+    }
+    ${sinAguante.length ? `<p class="debilidades-sin-aguante"><strong>Nadie aguanta:</strong> ${sinAguante.join(" · ")}</p>` : ""}
+  `;
+}
+
+// Línea de debajo del título: la especie (si hay mote) y la forma. Va todo en una sola
+// línea, que se dibuja siempre aunque esté vacía, para que la tarjeta no cambie de alto.
+function detalleNombre(poke) {
+  const partes = [];
+  if (poke.mote) partes.push(escaparHTML(poke.es));
+  if (textoForma(poke)) partes.push(`(${textoForma(poke)})`);
+  return partes.join(" ");
+}
+
+// Hueco para un Pokémon que todavía no está: al pulsarlo se pone a escribir en el buscador
+function crearHueco() {
+  const hueco = document.createElement("button");
+  hueco.type = "button";
+  hueco.className = "tarjeta tarjeta-vacia";
+  hueco.title = "Añadir un Pokémon al equipo";
+  hueco.setAttribute("aria-label", "Añadir un Pokémon al equipo");
+  hueco.innerHTML = `<span class="mas">+</span>`;
+
+  hueco.addEventListener("click", () => {
+    campoBuscar.focus();
+    campoBuscar.select();
+  });
+
+  return hueco;
+}
+
+// ---------- Cambiar de sitio los Pokémon arrastrando su tarjeta ----------
+
+let tarjetaArrastrada = null;
+
+function activarArrastreTarjetas() {
+  resultado.addEventListener("dragstart", (e) => {
+    // Desde un campo o un botón no se arrastra: ahí se escribe y se pulsa
+    if (e.target.closest("input, textarea, button")) {
+      e.preventDefault();
+      return;
+    }
+
+    tarjetaArrastrada = e.target.closest(".tarjeta:not(.tarjeta-vacia)");
+    if (!tarjetaArrastrada) return;
+
+    ocultarTooltip();
+    tarjetaArrastrada.classList.add("arrastrando");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "");
+  });
+
+  resultado.addEventListener("dragover", (e) => {
+    if (!tarjetaArrastrada) return;
+    e.preventDefault();
+
+    // Los huecos vacíos no valen como destino: siempre van detrás de los Pokémon
+    const destino = e.target.closest(".tarjeta:not(.tarjeta-vacia)");
+    if (!destino || destino === tarjetaArrastrada) return;
+
+    // Con varias columnas cuenta la mitad izquierda/derecha; con una sola, la de arriba/abajo
+    const r = destino.getBoundingClientRect();
+    const columnas = getComputedStyle(resultado).gridTemplateColumns.split(" ").length;
+    const antes = columnas > 1 ? e.clientX < r.left + r.width / 2 : e.clientY < r.top + r.height / 2;
+
+    if (antes) destino.before(tarjetaArrastrada);
+    else destino.after(tarjetaArrastrada);
+  });
+
+  resultado.addEventListener("drop", (e) => e.preventDefault());
+
+  resultado.addEventListener("dragend", () => {
+    if (!tarjetaArrastrada) return;
+    tarjetaArrastrada.classList.remove("arrastrando");
+    tarjetaArrastrada = null;
+
+    // El equipo pasa a estar en el orden en que han quedado las tarjetas. Se cambia el
+    // contenido del array sin sustituirlo para no perder las referencias de las tarjetas.
+    const orden = [...resultado.querySelectorAll(".tarjeta:not(.tarjeta-vacia)")].map((t) => pokemonDe.get(t));
+    estado.equipo.splice(0, estado.equipo.length, ...orden.filter(Boolean));
+    guardarEquipo();
+  });
+}
+
 function crearTarjeta(poke) {
   const tarjeta = document.createElement("div");
   tarjeta.className = "tarjeta";
+  tarjeta.draggable = true;
   tarjetas.set(poke, tarjeta);
   pokemonDe.set(tarjeta, poke);
 
@@ -149,14 +282,15 @@ function crearTarjeta(poke) {
     )
     .join("");
 
-  const arte = imagenConRespaldo(urlsArte(poke), `class="arte" alt="${poke.es}"`);
+  // draggable="false": si no, al arrastrar desde el dibujo se lleva la imagen y no la tarjeta
+  const arte = imagenConRespaldo(urlsArte(poke), `class="arte" alt="${poke.es}" draggable="false"`);
 
   tarjeta.innerHTML = `
     <button class="btn-shiny ${poke.shiny ? "activo" : ""}" title="Shiny">${poke.shiny ? "★" : "☆"}</button>
     <div class="tarjeta-izq">
       ${arte}
-      <h2>${poke.es}</h2>
-      ${textoForma(poke) ? `<div class="forma-nombre">(${textoForma(poke)})</div>` : ""}
+      <h2>${escaparHTML(poke.mote || poke.es)}</h2>
+      <div class="forma-nombre">${detalleNombre(poke)}</div>
       <div class="chips">${chipsTipos}</div>
       <button class="quitar-pokemon">Quitar</button>
     </div>
@@ -328,6 +462,7 @@ function fichaStats(poke) {
   }
 
   const total = poke.stats.reduce((suma, v) => suma + v, 0);
+  const tipos = poke.tipos || [];
   // Cada stat: la barra se llena hasta 180 y es verde del todo a partir de 130.
   // Total: se llena hasta 720 y es verde del todo a partir de 600.
   return `
@@ -335,6 +470,38 @@ function fichaStats(poke) {
       <div class="ficha-titulo">${titulo}</div>
       ${poke.stats.map((v, i) => filaStat(NOMBRES_STATS[i], v, 180, 30, 130)).join("")}
       ${filaStat("Total", total, 720, 250, 600, "stat-total")}
+      ${bloqueTipos(tipos)}
+    </div>`;
+}
+
+// Debilidades, resistencias e inmunidades, para la ficha de la foto
+function bloqueTipos(tipos) {
+  if (tipos.length === 0) return "";
+
+  const { debiles, resisten, inmunes } = puntosDe(tipos);
+  const multiplicadores = multiplicadoresDe(tipos);
+
+  const fila = (titulo, lista, clase) =>
+    lista.length
+      ? `<div class="ficha-tipos-fila ${clase}">
+           <span class="ficha-tipos-titulo">${titulo}</span>
+           <span class="ficha-tipos-lista">
+             ${lista
+               .map(
+                 (t) => `<span class="marca-tipo" style="background:${coloresTipo[t]}" title="${tiposEs[t]}">
+                           ${iconoTipo(t)}<small>${textoMultiplicador(multiplicadores[t])}</small>
+                         </span>`
+               )
+               .join("")}
+           </span>
+         </div>`
+      : "";
+
+  return `
+    <div class="ficha-tipos">
+      ${fila("Débil a", debiles, "debil")}
+      ${fila("Resiste", resisten, "resiste")}
+      ${fila("Inmune a", inmunes, "inmune")}
     </div>`;
 }
 
@@ -426,10 +593,42 @@ function contenidoFicha(elemento) {
 
 // ---------- Arranque de la vista ----------
 
+// Los botones de la barra llevan solo icono; el texto se queda en el title
+function ponerIcono(id, nombre, texto) {
+  const boton = document.getElementById(id);
+  boton.innerHTML = icono(nombre);
+  boton.title = texto;
+  boton.setAttribute("aria-label", texto);
+}
+
 export function iniciarCrear() {
+  activarArrastreTarjetas();
+
+  ponerIcono("exportar-equipo", "copiar", "Exportar: copiar el equipo como paste");
+  ponerIcono("guardar", "guardar", "Guardar equipo");
+  ponerIcono("vaciar", "papelera", "Vaciar equipo");
+
   campoNombre.addEventListener("input", () => {
     estado.nombre = campoNombre.value;
     guardarActual();
+  });
+
+  document.getElementById("ver-debilidades").addEventListener("click", () => {
+    pintarDebilidades(); // siempre al día con el equipo que haya ahora mismo
+    dialogoDebilidades.showModal();
+  });
+
+  document.getElementById("debilidades-cerrar").addEventListener("click", () => {
+    dialogoDebilidades.close();
+  });
+
+  document.getElementById("exportar-equipo").addEventListener("click", async () => {
+    if (estado.equipo.length === 0) {
+      mostrarAviso("No hay nada que exportar.");
+      return;
+    }
+    const copiado = await copiarAlPortapapeles(pasteDelEquipo(estado.equipo));
+    mostrarAviso(copiado ? "Equipo copiado al portapapeles ✔" : "No he podido copiarlo.");
   });
 
   document.getElementById("guardar").addEventListener("click", () => {

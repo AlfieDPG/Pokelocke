@@ -20,10 +20,11 @@ function leerPrimeraLinea(linea) {
 
   texto = texto.replace(/\s*\((M|F)\)\s*$/, "");
 
-  const apodo = texto.match(/^.*\s\(([^()]+)\)$/);
-  const especie = apodo ? apodo[1] : texto;
+  const apodo = texto.match(/^(.*)\s\(([^()]+)\)$/);
+  const especie = apodo ? apodo[2] : texto;
+  const mote = apodo ? apodo[1].trim() : "";
 
-  return { especie: especie.trim(), objeto: objeto };
+  return { especie: especie.trim(), mote: mote, objeto: objeto };
 }
 
 // Se leen: especie, objeto, habilidad, ataques y Shiny.
@@ -67,6 +68,7 @@ function interpretarPaste(texto) {
 
     pokemon.push({
       especie: primera.especie,
+      mote: primera.mote,
       objeto: primera.objeto,
       habilidad: habilidad,
       shiny: shiny,
@@ -110,7 +112,14 @@ async function resolverPokemon(nombre) {
       if (!base) continue;
 
       const info = await obtenerVariedades(base.id);
-      const candidato = info.lista.find((v) => v.startsWith(slug));
+      // Showdown abrevia o se salta partes que PokeAPI sí pone:
+      // "Meowstic-F-Mega" es "meowstic-female-mega" y "Meowstic-Mega" es "meowstic-male-mega".
+      // Si no empieza igual, vale la variedad que contenga todos los trozos del nombre.
+      const GENEROS = { f: "female", m: "male" };
+      const trozos = slug.split("-").map((t) => GENEROS[t] || t);
+      const candidato =
+        info.lista.find((v) => v.startsWith(slug)) ||
+        info.lista.find((v) => trozos.every((t) => v.split("-").includes(t)));
       if (candidato) {
         const p = await pedirJSON(`${URL_API}pokemon/${candidato}`);
         return await pokemonDesdeAPI(p, base);
@@ -168,6 +177,7 @@ async function importarPaste(texto) {
       }
 
       resuelto.shiny = p.shiny;
+      resuelto.mote = p.mote || null;
 
       if (p.habilidad) {
         const h = buscarPorNombreIngles(datos.habilidades, p.habilidad);

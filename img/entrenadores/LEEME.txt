@@ -1,0 +1,10 @@
+Retratos de entrenadores que no están en Pokémon Showdown.
+
+Los demás se bajan de Showdown; aquí solo van los personajes propios de fangames.
+El nombre del archivo es lo que va detrás de "local:" en RETRATOS (js/levelcaps/index.js):
+
+  urano.png   -> "Urano": "local:urano"   (líder de Ciudad Verde en Pokémon Añil)
+
+PNG con fondo transparente. El resto de retratos son de 80x80, así que lo ideal es ese
+tamaño o un múltiplo exacto (160x160, 240x240) para que el pixel art no se vea borroso.
+Si el archivo no está, el combate se muestra sin foto y no se rompe nada.

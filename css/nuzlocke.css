@@ -92,10 +92,34 @@
 
 /* ---------- Rutas ---------- */
 
+/* Un color por apartado, con su rayita al lado del título (igual que en «Normas»).
+   El amarillo es el de por defecto: los juegos con apartados propios (las islas de
+   Alola, por ejemplo) no tienen color asignado y se quedan con ese. */
+.rutas-grupo {
+  --color-apartado: #f1c40f;
+}
+
+.rutas-grupo.rutas     { --color-apartado: #2ecc71; }
+.rutas-grupo.ciudades  { --color-apartado: #e67e22; }
+.rutas-grupo.postgame  { --color-apartado: #9b59b6; }
+.rutas-grupo.eventos   { --color-apartado: #3498db; }
+
 .rutas-grupo h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 1rem 0 0.45rem;
   font-size: 1.05rem;
-  color: #f1c40f;
+  color: var(--color-apartado);
+}
+
+.rutas-grupo h3::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-apartado);
+  opacity: 0.35;
 }
 
 .rutas-botones {
@@ -250,6 +274,15 @@
   cursor: pointer;
 }
 
+/* Retrato del entrenador (de momento solo Rojo Fuego / Verde Hoja) */
+.cap-retrato {
+  flex: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
 .cap-etiqueta {
   min-width: 7.5rem;
   font-size: 0.75rem;
@@ -283,11 +316,50 @@
   opacity: 0.45;
 }
 
-/* Título de una sección aparte dentro de la lista (p. ej. «Líderes de otras regiones») */
-.caps-seccion h3 {
+/* Separador de tramo dentro de la lista (Alto Mando, Campeón), con su rayita de color */
+.caps-tramo {
+  --color-tramo: #9b59b6;
+}
+
+.caps-tramo.campeon {
+  --color-tramo: #c0392b;
+}
+
+.caps-tramo h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0.85rem 0 0.1rem;
   font-size: 1.05rem;
-  color: #f1c40f;
+  color: var(--color-tramo);
+}
+
+.caps-tramo h3::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-tramo);
+  opacity: 0.35;
+}
+
+/* Título de una sección aparte dentro de la lista (p. ej. «Líderes de otras regiones») */
+.caps-seccion h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.85rem 0 0.1rem;
+  font-size: 1.05rem;
+  color: #3498db;
+}
+
+.caps-seccion h3::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  border-radius: 1px;
+  background: #3498db;
+  opacity: 0.35;
 }
 
 .cap.superado .cap-nombre {
@@ -296,18 +368,37 @@
 
 /* ---------- Normas ---------- */
 
+/* Sin max-width: las tarjetas ocupan todo el ancho del contenido */
 .normas {
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
-  max-width: 55rem;
+  gap: 1.5rem;
 }
 
 .normas-grupo h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0 0 0.6rem;
   font-size: 1.25rem;
-  color: #f1c40f;
+  color: var(--color-apartado);
 }
+
+/* Rayita del color del apartado a la derecha del título */
+.normas-grupo h2::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-apartado);
+  opacity: 0.35;
+}
+
+/* Un color por apartado */
+.normas-grupo.basicas    { --color-apartado: #c0392b; }
+.normas-grupo.clausulas  { --color-apartado: #3498db; }
+.normas-grupo.dificultad { --color-apartado: #f1c40f; }
+.normas-grupo.final      { --color-apartado: #9b59b6; }
 
 .normas-grupo ul {
   list-style: none;
@@ -320,7 +411,7 @@
 
 .normas-grupo li {
   padding: 0.6rem 0.85rem;
-  border-left: 0.3rem solid #c0392b;
+  border-left: 0.3rem solid var(--color-apartado);
   border-radius: 0.45rem;
   background: #2c2e3e;
 }

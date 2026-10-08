@@ -1,12 +1,33 @@
 import {
   estado, leerGuardados, escribirGuardados, reordenarGuardados, guardarActual, hayCambiosSinGuardar, reemplazarEquipo
 } from "./estado.js";
+import { leer, escribir } from "../comun/almacen.js";
+import { icono } from "../comun/iconos.js";
 import { copiaProfunda } from "../comun/utilidades.js";
 import { imagenConRespaldo, urlsPMD, urlSpriteHome } from "../comun/imagenes.js";
 import { textoForma } from "../comun/pokemon.js";
+import { pasteDelEquipo, copiarAlPortapapeles } from "./exportar.js";
 import { irA } from "../navegacion.js";
 
 const lista = document.getElementById("lista-equipos");
+
+// ---------- Tarjetas o lista ----------
+
+const CLAVE_VISTA = "poketeams-equipos-vista-v1";
+const boton = document.getElementById("cambiar-vista");
+
+function aplicarVista(enLista) {
+  lista.classList.toggle("modo-lista", enLista);
+  boton.textContent = enLista ? "Ver en tarjetas" : "Ver en lista";
+}
+
+boton.addEventListener("click", () => {
+  const enLista = !lista.classList.contains("modo-lista");
+  escribir(CLAVE_VISTA, enLista);
+  aplicarVista(enLista);
+});
+
+aplicarVista(leer(CLAVE_VISTA, false));
 
 function abrirEquipo(guardado) {
   if (hayCambiosSinGuardar()) {
@@ -31,6 +52,19 @@ function borrarEquipo(guardado) {
   }
 
   renderMisEquipos();
+}
+
+async function exportarEquipo(guardado, boton) {
+  const copiado = await copiarAlPortapapeles(pasteDelEquipo(guardado.pokemon));
+
+  boton.innerHTML = icono(copiado ? "visto" : "aspa");
+  boton.title = copiado ? "Copiado al portapapeles" : "No se pudo copiar";
+  boton.disabled = true;
+  setTimeout(() => {
+    boton.innerHTML = icono("copiar");
+    boton.title = "Copiar el equipo como paste";
+    boton.disabled = false;
+  }, 1500);
 }
 
 // ---------- Reordenar arrastrando las tarjetas ----------
@@ -68,7 +102,12 @@ lista.addEventListener("dragend", () => {
   arrastrada.classList.remove("arrastrando");
   arrastrada = null;
   reordenarGuardados([...lista.querySelectorAll(".equipo-guardado")].map((t) => t.dataset.id));
+
+  seAcabaDeArrastrar = true; // soltar la tarjeta no debe contar como clic para abrirla
+  setTimeout(() => (seAcabaDeArrastrar = false), 0);
 });
+
+let seAcabaDeArrastrar = false;
 
 export function renderMisEquipos() {
   const guardados = leerGuardados();
@@ -104,15 +143,24 @@ export function renderMisEquipos() {
           <span class="fecha">Guardado el ${fecha}</span>
         </div>
         <div class="equipo-botones">
-          <button class="abrir">Abrir</button>
-          <button class="borrar">Borrar</button>
+          <button class="exportar" title="Copiar el equipo como paste" aria-label="Exportar">${icono("copiar")}</button>
+          <button class="borrar" title="Borrar el equipo" aria-label="Borrar">${icono("papelera")}</button>
         </div>
       </div>
       <div class="equipo-miniaturas">${miniaturas}</div>
     `;
 
     tarjeta.querySelector("h3").textContent = guardado.nombre;
-    tarjeta.querySelector(".abrir").addEventListener("click", () => abrirEquipo(guardado));
+    tarjeta.title = "Pulsa para abrir este equipo";
+
+    // Se abre pulsando en la tarjeta, menos si el clic ha sido en uno de sus botones
+    tarjeta.addEventListener("click", (e) => {
+      if (seAcabaDeArrastrar || e.target.closest("button")) return;
+      abrirEquipo(guardado);
+    });
+
+    const botonExportar = tarjeta.querySelector(".exportar");
+    botonExportar.addEventListener("click", () => exportarEquipo(guardado, botonExportar));
     tarjeta.querySelector(".borrar").addEventListener("click", () => borrarEquipo(guardado));
 
     lista.appendChild(tarjeta);
