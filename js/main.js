@@ -4,7 +4,7 @@ import { iniciarSesionUI } from "./sesion.js";
 
 activarRespaldoImagenes();
 iniciarNavegacion();
-irA("crear");
+irA("versus");
 
 // La sesión se monta aparte: si falla, la web sigue funcionando con el navegador
 iniciarSesionUI().catch((error) => console.error(error));
