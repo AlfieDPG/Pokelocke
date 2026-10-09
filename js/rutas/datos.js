@@ -32,7 +32,7 @@ const ISLAS_ALOLA = {
   melemele: [
     "Ruta 1", "Ruta 1 (Afueras de Hauoli)", "Ruta 1 (Escuela de Entrenadores)",
     "Ciudad Hauoli (Paseo Marítimo)", "Ciudad Hauoli (Zona Comercial)", "Ruta 2", "Cementerio de Hauoli",
-    "Ruta 3", "Cueva Sotobosque", "Jardines de Melemele", "Bahía Kalae", "Mar de Melemele", "Gruta Unemar",
+    "Ruta 3", "Cueva Sotobosque", "Jardines de Melemele", "Bahía Kalae", "Cueva Costera", "Mar de Melemele", "Gruta Unemar",
     "Colina Dequilate", "Colina Dequilate (Caldera Remota)"
   ],
   akala: [
