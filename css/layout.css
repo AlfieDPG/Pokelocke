@@ -425,12 +425,6 @@ main {
 
 /* ---------- Varias cuentas ---------- */
 
-.perfil-cuentas {
-  margin-top: 1rem;
-  padding-top: 0.8rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-}
-
 .etiqueta-cuentas {
   display: block;
   margin-bottom: 0.45rem;
@@ -511,10 +505,502 @@ button.cuenta:hover {
   opacity: 0.6;
 }
 
-.perfil-anadir {
+/* ---------- Desplegable de tu nombre (abajo del panel, se abre hacia arriba) ---------- */
+
+.sesion {
+  position: relative;
+}
+
+.menu-cuentas {
+  position: absolute;
+  left: 0.6rem;
+  right: 0.6rem;
+  bottom: calc(100% - 0.4rem);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem;
+  border-radius: 0.6rem;
+  background: #2c2e3e;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+.menu-cuentas .cuenta {
+  font-size: 0.82rem;
+}
+
+.menu-mi-perfil,
+.menu-anadir {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-mi-perfil:hover,
+.menu-anadir:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.menu-mi-perfil {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.45rem 0.45rem 0 0;
+}
+
+.menu-cuentas .icono {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ---------- Perfil ---------- */
+
+#dialogo-perfil {
+  width: min(52rem, 94vw);
+}
+
+/* El de un amigo no lleva columna de amigos: más estrecho */
+#dialogo-perfil:has(.perfil-rejilla.solo) {
+  width: min(36rem, 94vw);
+}
+
+/* Tu perfil a la izquierda y tus amigos a la derecha; el de un amigo, solo */
+.perfil-rejilla {
+  display: grid;
+  grid-template-columns: 1fr 14rem;
+  gap: 1.2rem;
+}
+
+.perfil-rejilla.solo {
+  grid-template-columns: 1fr;
+}
+
+.perfil-cabeza {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.perfil-avatar {
+  position: relative;
+  flex: none;
+  width: 5.5rem;
+  height: 5.5rem;
+  padding: 0;
+  border: 3px solid #c0392b;
+  border-radius: 50%;
+  background: #252735;
+  color: #f2f2f2;
+  overflow: hidden;
+}
+
+button.perfil-avatar {
+  cursor: pointer;
+}
+
+.perfil-foto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  margin-top: 0.45rem;
-  padding: 0.5rem;
+  height: 100%;
+  object-fit: cover;
+  font-size: 2.2rem;
+  font-weight: bold;
+}
+
+/* El lápiz, encima de la foto al pasar el ratón */
+.perfil-avatar-lapiz {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+button.perfil-avatar:hover .perfil-avatar-lapiz {
+  opacity: 1;
+}
+
+.perfil-avatar-lapiz .icono {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.perfil-datos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.perfil-nombre-fila {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#dialogo-perfil .perfil-nombre {
+  margin: 0;
+  font-size: 1.6rem;
+  overflow-wrap: anywhere;
+}
+
+.perfil-editar-nombre {
+  display: flex;
+  padding: 0.35rem;
+  border: none;
+  border-radius: 0.4rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  cursor: pointer;
+}
+
+.perfil-editar-nombre:hover {
+  background: #4a4e68;
+}
+
+.perfil-editar-nombre .icono {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.perfil-nombre-form {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.perfil-nombre-form input {
+  min-width: 0;
+  font-size: 1.1rem;
+}
+
+.perfil-nombre-form button {
+  display: flex;
+  align-items: center;
+  padding: 0 0.6rem;
+  border: none;
+  border-radius: 0.45rem;
+  cursor: pointer;
+}
+
+.perfil-nombre-form .icono {
+  width: 1rem;
+  height: 1rem;
+}
+
+.perfil-cifras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.perfil-cifras strong {
+  font-size: 1.05rem;
+  color: #f1c40f;
+}
+
+.perfil-apartado {
+  margin-top: 1.2rem;
+}
+
+#dialogo-perfil h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.perfil-destacar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  padding: 0.3rem 0.65rem;
+  border: none;
+  border-radius: 0.4rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: bold;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.perfil-destacar:hover {
+  background: #c0392b;
+}
+
+.perfil-destacar .icono {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.perfil-equipos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.6rem;
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+.perfil-equipo {
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.6rem;
+  background: #252735;
+}
+
+.perfil-equipo header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.perfil-equipo strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.perfil-equipo-botones {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.perfil-equipo-botones button {
+  display: flex;
+  padding: 0.3rem;
+  border: none;
+  border-radius: 0.35rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  cursor: pointer;
+}
+
+.perfil-equipo-botones button:hover {
+  background: #4a4e68;
+}
+
+.perfil-equipo-botones .perfil-quitar-equipo:hover {
+  background: #c0392b;
+}
+
+.perfil-equipo-botones .icono {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+/* Las seis caras en fila */
+.perfil-equipo-caras {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.25rem;
+}
+
+.perfil-equipo-caras img {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 0.4rem;
+  background: #2c2e3e;
+  image-rendering: pixelated;
+}
+
+.perfil-vacio {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
+
+/* Amigos, a la derecha */
+.perfil-amigos {
+  padding-left: 1.2rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.perfil-amigo {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  margin-bottom: 0.3rem;
+  padding: 0.4rem 0.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-align: left;
+  cursor: pointer;
+}
+
+.perfil-amigo:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.perfil-amigo span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.perfil-amigo-foto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid #6a7bb0;
+  border-radius: 50%;
+  background: #252735;
+  object-fit: cover;
+  box-sizing: border-box;
+}
+
+/* Conectado: el mismo verde que en «Amigos» */
+.perfil-amigo.conectado .perfil-amigo-foto {
+  border-color: #2ecc71;
+}
+
+.perfil-amigo.conectado {
+  color: #2ecc71;
+}
+
+/* Borrar la cuenta, a la izquierda y discreto */
+#dialogo-perfil .perfil-borrar {
+  margin-right: auto;
+  background: transparent;
+  color: #e74c3c;
+}
+
+#dialogo-perfil .perfil-borrar:hover {
+  background: rgba(231, 76, 60, 0.12);
+}
+
+/* Ventana de destacar un equipo: tus equipos, uno por fila */
+#dialogo-escaparate {
+  width: min(30rem, 92vw);
+}
+
+.escaparate-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.escaparate-equipo {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.3rem 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: #252735;
+  color: #f2f2f2;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.escaparate-equipo:hover {
+  background: #32354a;
+}
+
+.escaparate-equipo .perfil-equipo-caras {
+  grid-column: 1;
+}
+
+.escaparate-equipo > .icono {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  width: 1.2rem;
+  height: 1.2rem;
+  color: #2ecc71;
+}
+
+.escaparate-equipo.destacado {
+  box-shadow: inset 0 0 0 1px rgba(46, 204, 113, 0.6);
+}
+
+/* Ventana de la foto: la muestra a la izquierda del buscador */
+#dialogo-avatar {
+  overflow: visible; /* que las sugerencias no se corten */
+}
+
+.avatar-fila {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.8rem;
+}
+
+.avatar-muestra {
+  flex: none;
+  width: 4rem;
+  height: 4rem;
+  overflow: hidden;
+  border: 3px solid #c0392b;
+  border-radius: 50%;
+  background: #252735;
+}
+
+.avatar-muestra img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+
+.avatar-campo {
+  position: relative;
+  flex: 1;
+}
+
+.avatar-campo .sugerencias {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: normal;
+}
+
+@media (max-width: 760px) {
+  .perfil-rejilla {
+    grid-template-columns: 1fr;
+  }
+
+  .perfil-amigos {
+    padding-left: 0;
+    border-left: none;
+  }
 }
 
 /* ---------- Sesión (abajo del panel lateral) ---------- */
@@ -619,24 +1105,6 @@ button.cuenta:hover {
 
 .dialogo-sesion .boton-rojo:hover {
   background: #e74c3c;
-}
-
-.perfil-borrar {
-  display: block;
-  margin-top: 0.8rem;
-  padding: 0;
-  border: none;
-  background: none;
-  color: #e74c3c;
-  font-family: inherit;
-  font-size: 0.8rem;
-  cursor: pointer;
-  opacity: 0.75;
-}
-
-.perfil-borrar:hover {
-  opacity: 1;
-  text-decoration: underline;
 }
 
 .sesion-legal {

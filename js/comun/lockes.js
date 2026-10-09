@@ -104,8 +104,8 @@ export function iniciarLockes() {
   alCambiarMiPerfil(ponerMiNombre);
 }
 
-// Cada locke guarda una copia del nombre de cada jugador. Si en alguno el mío no es mi mote
-// (me lo he cambiado, o se cambió cuando Firebase aún no dejaba tocarlo), lo pongo al día.
+// Cada locke guarda una copia del nombre y la foto de cada jugador. Si en alguno los míos no
+// son los de mi perfil (me he cambiado el mote o la foto), los pongo al día.
 // Se mira al llegar los lockes y al llegar mi perfil.
 const renombrando = new Set(); // ids de lockes en los que ya se está escribiendo
 
@@ -116,10 +116,12 @@ function ponerMiNombre() {
   if (!usuario || !perfil || !perfil.mote || !acceso) return;
 
   const { bd, fn } = acceso;
+  const foto = perfil.foto || "";
   for (const locke of todos) {
-    if ((locke.nombres || {})[usuario.uid] === perfil.mote || renombrando.has(locke.id)) continue;
+    const bien = (locke.nombres || {})[usuario.uid] === perfil.mote && ((locke.fotos || {})[usuario.uid] || "") === foto;
+    if (bien || renombrando.has(locke.id)) continue;
     renombrando.add(locke.id);
-    fn.updateDoc(fn.doc(bd, "lockes", locke.id), { [`nombres.${usuario.uid}`]: perfil.mote })
+    fn.updateDoc(fn.doc(bd, "lockes", locke.id), { [`nombres.${usuario.uid}`]: perfil.mote, [`fotos.${usuario.uid}`]: foto })
       .catch((error) => console.error("No se ha podido poner mi nombre en un locke", error))
       .finally(() => renombrando.delete(locke.id));
   }

@@ -218,6 +218,7 @@ function plantillaAcciones(ficha) {
 
   return `
     <div class="ficha-acciones">
+      <button class="accion-perfil" title="Ver perfil">${icono("persona")}</button>
       <button class="accion-comparar" title="Comparar conmigo">${icono("espadas")}</button>
       <button class="accion-quitar" title="Quitar de amigos">${icono("aspa")}</button>
     </div>`;
@@ -829,6 +830,7 @@ function activarFichas() {
       } else if (boton.classList.contains("accion-tipos")) abrirTipos();
       else if (boton.classList.contains("accion-palmares")) abrirPalmares();
       else if (boton.classList.contains("accion-comparar")) abrirComparacion(ficha.dataset.clave);
+      else if (boton.classList.contains("accion-perfil")) (await import("../perfil.js")).abrirPerfilDe(ficha.dataset.clave);
       else if (boton.classList.contains("accion-quitar")) await quitarAmigo(ficha);
     } catch (error) {
       console.error(error);

@@ -77,13 +77,14 @@ function apuntarCuenta(cuenta) {
   escribir(CLAVE_CUENTAS, estado);
 }
 
-// El nombre que sale en la lista (perfiles.js lo actualiza con el mote)
-export function recordarNombreDeCuenta(nombre) {
+// El nombre y la foto que salen en la lista (perfiles.js los pone al día con los del perfil)
+export function recordarNombreDeCuenta(nombre, foto) {
   if (!usuario) return;
   const estado = cuentas();
   const cuenta = estado.cuentas.find((cada) => cada.app === appActiva);
-  if (!cuenta || cuenta.nombre === nombre) return;
+  if (!cuenta || (cuenta.nombre === nombre && (foto === undefined || cuenta.foto === foto))) return;
   cuenta.nombre = nombre;
+  if (foto !== undefined) cuenta.foto = foto;
   escribir(CLAVE_CUENTAS, estado);
 }
 

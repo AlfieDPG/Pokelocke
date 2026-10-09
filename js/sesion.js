@@ -7,10 +7,12 @@
 //   · Nombre de usuario obligatorio: mientras la cuenta no tenga uno (las de Google al
 //     entrar por primera vez) sale una ventana que no se puede cerrar. Así nadie va por
 //     ahí con el nombre de Google y no puede haber dos «Alfonso».
-//   · Perfil (pulsando tu nombre): cambiar el nombre de usuario, cambiar de cuenta y
-//     borrarla.
+//   · Pulsando tu nombre, un desplegable: tu perfil (js/perfil.js), cambiar de cuenta y
+//     añadir otra.
+//   · Borrar la cuenta (el botón está en la ventana del perfil).
 
 import { escaparHTML } from "./comun/utilidades.js";
+import { icono } from "./comun/iconos.js";
 import {
   iniciarNube, alCambiarSesion, entrar, salir, hayNube, usuarioActual,
   entrarConUsuario, crearCuentaDeUsuario, nombreDeUsuario,
@@ -37,6 +39,7 @@ const dialogoCrear = document.querySelector("#dialogo-crear-cuenta");
 const dialogoMote = document.querySelector("#dialogo-mote");
 const dialogoPerfil = document.querySelector("#dialogo-perfil");
 const dialogoBorrar = document.querySelector("#dialogo-borrar-cuenta");
+const menuCuentas = cajon.querySelector(".menu-cuentas");
 
 // Mientras se crea una cuenta de usuario, su nombre se reserva justo después: que no salte
 // entretanto la ventana de «elige tu nombre»
@@ -44,21 +47,26 @@ let creandoCuenta = false;
 
 // ---------- Panel lateral ----------
 
+// Nombre y foto: los del perfil (mote y, si se ha puesto un Pokémon, su retrato) y, mientras
+// no llega, los de la cuenta
 function pintarNombre() {
   const usuario = usuarioActual();
   if (!usuario) return;
   const perfil = miPerfil();
   nombre.textContent =
     (perfil && perfil.nombre) || nombreDeUsuario(usuario) || usuario.displayName || usuario.email || "Tu cuenta";
+
+  const url = (perfil && perfil.foto) || usuario.photoURL || "";
+  foto.hidden = !url;
+  if (url && foto.getAttribute("src") !== url) foto.src = url;
 }
 
 function pintar(usuario) {
   datosUsuario.hidden = !usuario;
+  menuCuentas.hidden = true;
 
   if (usuario) {
     pintarNombre();
-    foto.hidden = !usuario.photoURL;
-    if (usuario.photoURL) foto.src = usuario.photoURL;
     boton.textContent = "Cerrar sesión";
     aviso.textContent = "";
     if (dialogoEntrar.open) dialogoEntrar.close();
@@ -248,34 +256,28 @@ function guardarMoteObligatorio() {
   });
 }
 
-// ---------- Perfil ----------
+// ---------- Desplegable de cuentas ----------
+//
+// Al pulsar tu nombre: «Mi perfil», las cuentas de este navegador (pulsando otra se cambia)
+// y «Añadir otra cuenta». Se cierra al pulsar fuera o con Escape.
 
-function pintarCuentasDelPerfil() {
-  dialogoPerfil.querySelector(".cuentas-lista").innerHTML = cuentasRecordadas().map(plantillaCuenta).join("");
+function abrirMenuCuentas() {
+  menuCuentas.querySelector(".menu-mi-perfil").innerHTML = `${icono("persona")} Mi perfil`;
+  menuCuentas.querySelector(".menu-anadir").innerHTML = `${icono("mas")} Añadir otra cuenta`;
+  menuCuentas.querySelector(".cuentas-lista").innerHTML = cuentasRecordadas().map(plantillaCuenta).join("");
+  menuCuentas.hidden = false;
 }
 
+function cerrarMenuCuentas() {
+  menuCuentas.hidden = true;
+}
+
+// El perfil se descarga la primera vez que se abre
 function abrirPerfil() {
-  const usuario = usuarioActual();
-  if (!usuario) return;
-  const perfil = miPerfil();
-  const deUsuario = nombreDeUsuario(usuario);
-
-  dialogoPerfil.querySelector(".perfil-cuenta").textContent = deUsuario
-    ? `Entras con el usuario «${deUsuario}». Si cambias tu nombre de usuario, para entrar sigues usando ese.`
-    : `Entras con Google (${usuario.email}).`;
-  dialogoPerfil.querySelector(".perfil-mote").value = (perfil && perfil.mote) || "";
-  dialogoPerfil.querySelector(".perfil-error").textContent = "";
-  pintarCuentasDelPerfil();
-  dialogoPerfil.showModal();
-}
-
-function guardarPerfil() {
-  return conBotonesApagados(dialogoPerfil, async (error) => {
-    error.textContent = "Comprobando...";
-    const motivo = await cambiarMote(dialogoPerfil.querySelector(".perfil-mote").value);
-    error.textContent = motivo;
-    if (!motivo) dialogoPerfil.close();
-  });
+  cerrarMenuCuentas();
+  import("./perfil.js")
+    .then((modulo) => modulo.abrirMiPerfil())
+    .catch((error) => console.error(error));
 }
 
 // ---------- Borrar la cuenta ----------
@@ -312,15 +314,6 @@ function borrarCuenta() {
 }
 
 // ---------- Arranque ----------
-
-function alPulsarEnter(campo, accion) {
-  campo.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      accion();
-    }
-  });
-}
 
 export async function iniciarSesionUI() {
   if (!hayNube()) return; // sin configurar: el cajón se queda escondido
@@ -372,15 +365,23 @@ export async function iniciarSesionUI() {
     salir().catch((error) => console.error(error))
   );
 
-  // Perfil
-  cajon.querySelector(".sesion-perfil").addEventListener("click", abrirPerfil);
-  dialogoPerfil.querySelector(".perfil-guardar").addEventListener("click", guardarPerfil);
-  alPulsarEnter(dialogoPerfil.querySelector(".perfil-mote"), guardarPerfil);
-  dialogoPerfil.querySelector(".perfil-cancelar").addEventListener("click", () => dialogoPerfil.close());
-  activarListaDeCuentas(dialogoPerfil.querySelector(".cuentas-lista"));
-  dialogoPerfil.querySelector(".perfil-anadir").addEventListener("click", (e) => {
+  // Desplegable de cuentas y perfil
+  cajon.querySelector(".sesion-perfil").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (menuCuentas.hidden) abrirMenuCuentas();
+    else cerrarMenuCuentas();
+  });
+  menuCuentas.querySelector(".menu-mi-perfil").addEventListener("click", abrirPerfil);
+  activarListaDeCuentas(menuCuentas.querySelector(".cuentas-lista"));
+  menuCuentas.querySelector(".menu-anadir").addEventListener("click", (e) => {
     e.currentTarget.disabled = true;
     anadirCuenta().catch((error) => console.error(error));
+  });
+  document.addEventListener("click", (e) => {
+    if (!menuCuentas.hidden && !menuCuentas.contains(e.target)) cerrarMenuCuentas();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") cerrarMenuCuentas();
   });
 
   // Borrar la cuenta

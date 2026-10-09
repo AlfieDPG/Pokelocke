@@ -7,7 +7,7 @@
 //
 // Colecciones (las reglas están en firestore.rules):
 //
-//   perfiles/{uid}   { nombre, foto, mote, tipos, ganados }
+//   perfiles/{uid}   { nombre, foto, mote, tipos, ganados, avatar, escaparate }
 //   motes/{mote}     { uid, mote }  (el id va en minúsculas: así no hay dos iguales)
 //   correos/{correo} { uid }        (solo cuentas de Google, para buscarlas por correo)
 //   amistades/{par}  { miembros: [uidA, uidB], estado, pidio, creado }
@@ -17,6 +17,9 @@
 //     saberlo entero: se mira correos/{ese correo} y, si existe, dice de quién es.
 //
 //   · mote:    nombre único elegido por la persona. Si lo tiene, «nombre» es el mote.
+//   · avatar:  número de Pokédex si ha elegido un Pokémon de foto. Entonces «foto» es su
+//              retrato y la de Google ya no la pisa.
+//   · escaparate: equipos que enseña en su perfil (copias, ver js/perfil.js).
 //
 //   · tipos:   los tipos de locke que usa esa persona, editables.
 //              [{ id, nombre, color }]
@@ -313,15 +316,15 @@ async function asegurarPerfil(usuario) {
   const deLaCuenta = datosDeLaCuenta(usuario);
 
   if (guardado.exists()) {
-    const { nombre, ...resto } = deLaCuenta;
-    const mote = guardado.data().mote;
+    const { mote, avatar } = guardado.data();
+    const cambios = { ...deLaCuenta };
     // Con mote, el nombre es el mote: si se quedó con el de Google (se pisaron al ponerse
-    // el mote justo al entrar), aquí se arregla. Y el correo se quita: los perfiles de
-    // antes lo llevaban dentro (ahora va en correos/)
-    await fn.updateDoc(referencia, {
-      ...(mote ? { ...resto, nombre: mote } : deLaCuenta),
-      correo: fn.deleteField()
-    });
+    // el mote justo al entrar), aquí se arregla
+    if (mote) cambios.nombre = mote;
+    // Con un Pokémon de foto, la de Google no la pisa
+    if (avatar) delete cambios.foto;
+    // Y el correo se quita: los perfiles de antes lo llevaban dentro (ahora va en correos/)
+    await fn.updateDoc(referencia, { ...cambios, correo: fn.deleteField() });
   } else {
     await fn.setDoc(
       referencia,
@@ -425,7 +428,7 @@ function escucharMiPerfil(usuario) {
       if (!documento.exists()) return;
       falloPerfil = "";
       mio = perfilLeido(usuario.uid, documento.data());
-      if (mio.mote) recordarNombreDeCuenta(mio.mote); // para la lista de cuentas
+      if (mio.mote) recordarNombreDeCuenta(mio.mote, mio.foto || ""); // para la lista de cuentas
       avisar();
     },
     (error) => {

@@ -49,8 +49,14 @@
       </nav>
 
       <div class="sesion" hidden>
+        <!-- Desplegable al pulsar tu nombre: tu perfil, tus cuentas y añadir otra -->
+        <div class="menu-cuentas" hidden>
+          <button class="menu-mi-perfil"></button>
+          <div class="cuentas-lista"></div>
+          <button class="menu-anadir"></button>
+        </div>
         <div class="sesion-usuario" hidden>
-          <button class="sesion-perfil" title="Tu perfil">
+          <button class="sesion-perfil" title="Tu cuenta">
             <img class="sesion-foto" alt="" referrerpolicy="no-referrer">
             <span class="sesion-nombre"></span>
           </button>
@@ -266,23 +272,42 @@
     </form>
   </dialog>
 
+  <!-- Perfil: el tuyo o el de un amigo (js/perfil.js) -->
   <dialog id="dialogo-perfil" class="dialogo-sesion">
-    <h2>Tu perfil</h2>
-    <p class="sesion-ayuda perfil-cuenta"></p>
-    <label>
-      <span>Nombre de usuario</span>
-      <input class="perfil-mote" type="text" maxlength="20" autocomplete="off">
-    </label>
-    <span class="sesion-error perfil-error"></span>
-    <div class="perfil-cuentas">
-      <span class="etiqueta-cuentas">Cuentas en este navegador</span>
-      <div class="cuentas-lista"></div>
-      <button class="boton-gris perfil-anadir">Añadir otra cuenta</button>
-    </div>
-    <button class="perfil-borrar">Borrar mi cuenta</button>
+    <div class="perfil-cuerpo"></div>
     <div class="dialogo-botones">
-      <button class="boton-gris perfil-cancelar">Cerrar</button>
-      <button class="boton-verde perfil-guardar">Guardar</button>
+      <button class="perfil-borrar boton-izquierda">Borrar mi cuenta</button>
+      <button class="boton-gris perfil-volver">Volver a mi perfil</button>
+      <button class="boton-gris perfil-cerrar">Cerrar</button>
+    </div>
+  </dialog>
+
+  <!-- Elegir un Pokémon como foto de perfil (js/perfil.js) -->
+  <dialog id="dialogo-avatar" class="dialogo-sesion">
+    <h2>Foto de perfil</h2>
+    <form class="avatar-formulario">
+      <div class="avatar-fila">
+        <span class="avatar-muestra"></span>
+        <label class="avatar-campo">
+          <span>Pokémon</span>
+          <input class="avatar-pokemon" type="text" autocomplete="off">
+        </label>
+      </div>
+      <span class="sesion-error avatar-error"></span>
+      <div class="dialogo-botones">
+        <button type="button" class="boton-gris boton-izquierda avatar-quitar">Quitar</button>
+        <button type="button" class="boton-gris avatar-cancelar">Cancelar</button>
+        <button type="submit" class="boton-verde avatar-ok">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Elegir qué equipo enseñar en el perfil (js/perfil.js) -->
+  <dialog id="dialogo-escaparate" class="dialogo-sesion">
+    <h2>Destacar un equipo</h2>
+    <div class="escaparate-lista"></div>
+    <div class="dialogo-botones">
+      <button class="boton-gris escaparate-cerrar">Cerrar</button>
     </div>
   </dialog>
 
