@@ -15,6 +15,7 @@
 //     nombres: {uid}, fotos: {uid}, creador,
 //     vidasIniciales, vidasIlimitadas, vidas: {uid:n}, marcador: {uid:n},
 //     normas: { id, nombre, conGenerales, lista },  // copia del conjunto elegido (normas.js)
+//     muertos: {uid: [muerto]},    // cementerio de cada uno (ver Cementerio, abajo)
 //     estado: "abierto"|"cerrado", ganador, fechaFin: "2025-06-01",
 //     contado: [uid], creado, actualizado }
 //
@@ -195,7 +196,7 @@ export async function crearLocke({
     porJugador.marcador[uid] = 0;
   }
 
-  await fn.addDoc(fn.collection(bd, "lockes"), {
+  const nuevo = await fn.addDoc(fn.collection(bd, "lockes"), {
     nombre,
     descripcion: descripcion || "",
     tipo,
@@ -218,6 +219,7 @@ export async function crearLocke({
     creado: Date.now(),
     actualizado: Date.now()
   });
+  await apuntarSuceso(nuevo.id, "creado");
 }
 
 // Solo tus propias vidas y victorias: las de los demás las cambia cada uno desde su cuenta
@@ -233,6 +235,7 @@ export async function cambiarNumero(id, uid, campo, cuanto) {
 
   const { fn, ref } = referencia(id);
   await fn.updateDoc(ref, { [`${campo}.${uid}`]: nuevo, actualizado: Date.now() });
+  await apuntarCambio(id, campo === "vidas" ? "vida" : "victoria", Math.sign(cuanto));
 }
 
 // Solo quien creó el locke elige ganador. Se apunta el día, que luego sale en la ficha.
@@ -248,7 +251,142 @@ export async function elegirGanador(id, uid) {
     fechaFin: hoyComoTexto(),
     actualizado: Date.now()
   });
+  await apuntarSuceso(id, "ganador", { ganador: uid });
   await apuntarLockesGanados();
+}
+
+// ---------- Cementerio ----------
+//
+// Los muertos de cada uno van en el propio locke, como sus vidas: muertos: { uid: [muerto] }.
+// Cada uno solo toca su lista (lo comprueban las reglas).
+//
+//   muerto: { id, especie (número de la Pokédex), nombre (de la especie), mote, causa, fecha }
+
+function nuevoIdMuerto() {
+  return `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+export function muertosDe(locke, uid) {
+  return ((locke && locke.muertos) || {})[uid] || [];
+}
+
+// quitarVida: además se resta una vida (lo normal al darle a «−» en las vidas). Y a la
+// actividad, como un solo suceso: «X ha perdido una vida: Charizard».
+export async function apuntarMuerto(id, muerto, quitarVida) {
+  const locke = lockePorId(id);
+  const usuario = usuarioActual();
+  if (!locke || !usuario) return;
+
+  const nuevo = {
+    id: nuevoIdMuerto(),
+    especie: muerto.especie,
+    nombre: muerto.nombre,
+    mote: muerto.mote || "",
+    causa: muerto.causa || "",
+    fecha: Date.now()
+  };
+  const cambios = {
+    [`muertos.${usuario.uid}`]: [...muertosDe(locke, usuario.uid), nuevo],
+    actualizado: Date.now()
+  };
+  const vidas = (locke.vidas || {})[usuario.uid] || 0;
+  const restaVida = quitarVida && !locke.vidasIlimitadas && vidas > 0;
+  if (restaVida) cambios[`vidas.${usuario.uid}`] = vidas - 1;
+
+  const { fn, ref } = referencia(id);
+  await fn.updateDoc(ref, cambios);
+
+  const { especie, nombre, mote, causa } = nuevo;
+  await apuntarSuceso(id, restaVida ? "vida" : "muerte", {
+    ...(restaVida ? { delta: -1 } : {}),
+    muerto: { especie, nombre, mote, causa }
+  });
+}
+
+// Por si se apuntó mal. No devuelve la vida: eso se hace con el «+».
+export async function borrarMuerto(id, idMuerto) {
+  const locke = lockePorId(id);
+  const usuario = usuarioActual();
+  if (!locke || !usuario) return;
+
+  const { fn, ref } = referencia(id);
+  await fn.updateDoc(ref, {
+    [`muertos.${usuario.uid}`]: muertosDe(locke, usuario.uid).filter((muerto) => muerto.id !== idMuerto),
+    actualizado: Date.now()
+  });
+}
+
+// ---------- Actividad ----------
+//
+// Lo que va pasando en un locke, para verlo en orden: lockes/{id}/actividad/{suceso}.
+// Cada uno apunta solo lo suyo. Los nombres no se copian: se leen de locke.nombres al pintar.
+//
+//   { uid, tipo, cuando (hora del servidor), delta?, muerto?, ganador? }
+//   tipo: "creado" | "entra" | "vida" | "victoria" | "muerte" | "ganador"
+//
+// Si apuntar falla (p. ej. faltan reglas por publicar), lo de verdad ya está hecho: solo se
+// avisa en la consola.
+
+const ultimoSuceso = new Map(); // id del locke -> { referencia, tipo, delta, cuando }
+
+export async function apuntarSuceso(idLocke, tipo, datos = {}) {
+  const usuario = usuarioActual();
+  const acceso = baseDeDatos();
+  if (!usuario || !acceso) return;
+  const { bd, fn } = acceso;
+
+  try {
+    const referencia = await fn.addDoc(fn.collection(bd, "lockes", idLocke, "actividad"), {
+      uid: usuario.uid,
+      tipo,
+      ...datos,
+      cuando: fn.serverTimestamp()
+    });
+    ultimoSuceso.set(idLocke, { referencia, tipo, delta: datos.delta || 0, muerto: Boolean(datos.muerto), cuando: Date.now() });
+  } catch (error) {
+    console.error("No se ha podido apuntar en la actividad", error);
+  }
+}
+
+// Un +1 o −1 de vidas o victorias. Si deshace lo último que hiciste hace nada (le diste sin
+// querer), en vez de apuntar otro se borra aquel: así la actividad no se llena de idas y vueltas.
+const PARA_DESHACER = 60 * 1000;
+
+async function apuntarCambio(idLocke, tipo, delta) {
+  const ultimo = ultimoSuceso.get(idLocke);
+  const deshace =
+    ultimo && ultimo.tipo === tipo && ultimo.delta === -delta && !ultimo.muerto &&
+    Date.now() - ultimo.cuando < PARA_DESHACER;
+
+  if (!deshace) {
+    await apuntarSuceso(idLocke, tipo, { delta });
+    return;
+  }
+
+  ultimoSuceso.delete(idLocke);
+  const { fn } = baseDeDatos();
+  await fn.deleteDoc(ultimo.referencia).catch((error) => console.error(error));
+}
+
+// Los últimos sucesos de un locke, en vivo, del más nuevo al más viejo. Devuelve la función
+// para dejar de escuchar (se escucha solo mientras está abierta la ventana).
+export function escucharActividad(idLocke, alLlegar, cuantos = 60) {
+  const { bd, fn } = baseDeDatos();
+  return fn.onSnapshot(
+    fn.query(fn.collection(bd, "lockes", idLocke, "actividad"), fn.orderBy("cuando", "desc"), fn.limit(cuantos)),
+    (instantanea) => {
+      alLlegar(
+        instantanea.docs.map((documento) => {
+          const datos = documento.data({ serverTimestamps: "estimate" });
+          return { id: documento.id, ...datos, cuando: datos.cuando ? datos.cuando.toMillis() : Date.now() };
+        })
+      );
+    },
+    (error) => {
+      console.error("No se ha podido leer la actividad", error);
+      alLlegar(null);
+    }
+  );
 }
 
 export function soyCreador(locke) {
@@ -284,8 +422,17 @@ export async function invitarALocke(id, perfiles, vidasDePartida) {
   await fn.updateDoc(ref, cambios);
 }
 
+// Firestore no borra solo lo que cuelga de un documento: la actividad se borra antes, a mano
+// (mientras el locke existe, que es lo que miran las reglas para dejar)
 export async function borrarLocke(id) {
   const { fn, ref } = referencia(id);
+  const { bd } = baseDeDatos();
+  try {
+    const sucesos = await fn.getDocs(fn.collection(bd, "lockes", id, "actividad"));
+    await Promise.all(sucesos.docs.map((suceso) => fn.deleteDoc(suceso.ref)));
+  } catch (error) {
+    console.error("No se ha podido borrar la actividad del locke", error);
+  }
   await fn.deleteDoc(ref);
 }
 
@@ -303,6 +450,7 @@ export async function aceptarLocke(id) {
   if (locke) cambios[`vidas.${usuario.uid}`] = locke.vidasIlimitadas ? 0 : locke.vidasIniciales || 0;
 
   await fn.updateDoc(ref, cambios);
+  await apuntarSuceso(id, "entra");
 }
 
 // Las vidas de partida solo se pueden cambiar mientras nadie más haya aceptado: después ya
@@ -364,6 +512,7 @@ export async function quitarDeLocke(id, uid) {
     [`estados.${uid}`]: fn.deleteField(),
     [`vidas.${uid}`]: fn.deleteField(),
     [`marcador.${uid}`]: fn.deleteField(),
+    [`muertos.${uid}`]: fn.deleteField(),
     actualizado: Date.now()
   });
 }
@@ -389,6 +538,7 @@ export async function salirDeTodosMisLockes() {
         [`marcador.${usuario.uid}`]: fn.deleteField(),
         [`nombres.${usuario.uid}`]: fn.deleteField(),
         [`fotos.${usuario.uid}`]: fn.deleteField(),
+        [`muertos.${usuario.uid}`]: fn.deleteField(),
         actualizado: Date.now()
       });
     })

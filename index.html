@@ -368,6 +368,52 @@
     </div>
   </dialog>
 
+  <!-- Cementerio de un locke: una columna por jugador (js/versus/cementerio.js) -->
+  <dialog id="dialogo-cementerio">
+    <h2 class="cementerio-titulo"></h2>
+    <div class="cementerio-cuerpo"></div>
+    <div class="dialogo-botones">
+      <button class="cementerio-cerrar">Cerrar</button>
+    </div>
+  </dialog>
+
+  <!-- Al perder una vida o apuntar un muerto en el cementerio (js/versus/cementerio.js) -->
+  <dialog id="dialogo-muerte" class="dialogo-sesion">
+    <h2 class="muerte-titulo">Perder una vida</h2>
+    <form class="muerte-formulario">
+      <label class="muerte-campo-pokemon">
+        <span>Pokémon</span>
+        <input class="muerte-pokemon" type="text" autocomplete="off">
+      </label>
+      <label>
+        <span>Mote</span>
+        <input class="muerte-mote" type="text" maxlength="24" autocomplete="off">
+      </label>
+      <label>
+        <span>Contra quién</span>
+        <input class="muerte-causa" type="text" maxlength="60" autocomplete="off">
+      </label>
+      <label class="casilla-sesion muerte-vida-campo">
+        <input class="muerte-vida" type="checkbox" checked>
+        <span>Quitar también una vida</span>
+      </label>
+      <span class="sesion-error muerte-error"></span>
+      <div class="dialogo-botones">
+        <button type="button" class="boton-gris boton-izquierda muerte-cancelar">Cancelar</button>
+        <button type="submit" class="boton-rojo muerte-ok">Quitar vida</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Lo que va pasando en un locke (js/versus/actividad.js) -->
+  <dialog id="dialogo-actividad">
+    <h2 class="actividad-titulo"></h2>
+    <div class="actividad-lista"></div>
+    <div class="dialogo-botones">
+      <button class="actividad-cerrar">Cerrar</button>
+    </div>
+  </dialog>
+
   <!-- Crear o renombrar un conjunto de normas (js/normas/index.js) -->
   <dialog id="dialogo-conjunto" class="dialogo-sesion">
     <h2 class="conjunto-titulo">Nuevo conjunto de normas</h2>

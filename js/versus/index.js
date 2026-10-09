@@ -20,6 +20,8 @@ import {
   plantillaCampoJuego, activarCamposJuego, leerCampoJuego, nombreJuego, juegoRegistrado
 } from "../comun/campo-juego.js";
 import { irA } from "../navegacion.js";
+import { iniciarCementerio, abrirCementerio, abrirMuerte, totalMuertos } from "./cementerio.js";
+import { iniciarActividad, abrirActividad } from "./actividad.js";
 import {
   ID_GENERALES, NOMBRE_GENERALES, conjuntos, copiaParaLocke, normasDeLocke, normasCompletas
 } from "../comun/normas.js";
@@ -114,12 +116,11 @@ function plantillaJugador(locke, uid) {
     </div>`;
 }
 
-// Juego del locke y atajos: a sus Rutas y sus Level caps si es un juego de la web, y a sus
-// normas si tiene
+// Juego del locke y atajos: a sus Rutas y sus Level caps si es un juego de la web, a sus
+// normas si tiene, a su cementerio y a su actividad
 function plantillaJuego(locke) {
   const nombre = nombreJuego(locke);
   const normas = normasCompletas(normasDeLocke(locke)).length;
-  if (!nombre && !normas) return "";
 
   const atajos = nombre && juegoRegistrado(locke.juego)
     ? `
@@ -132,6 +133,8 @@ function plantillaJuego(locke) {
       ${nombre ? `<span class="locke-juego-nombre">${icono("mando")} ${escaparHTML(nombre)}</span>` : ""}
       ${atajos}
       ${normas ? `<button class="locke-ir" data-ir="normas">${icono("libro")} Normas (${normas})</button>` : ""}
+      <button class="locke-ir" data-ir="cementerio">${icono("calavera")} Cementerio (${totalMuertos(locke)})</button>
+      <button class="locke-ir" data-ir="actividad">${icono("actividad")} Actividad</button>
     </div>`;
 }
 
@@ -508,6 +511,13 @@ export function iniciar() {
   dialogo = document.querySelector("#dialogo-nuevo-locke");
   dialogoElegir = document.querySelector("#dialogo-elegir-amigos");
 
+  const alFallar = (error) => {
+    console.error(error);
+    aviso.textContent = "No se ha podido guardar el cambio.";
+  };
+  iniciarCementerio(alFallar);
+  iniciarActividad();
+
   dialogoElegir.querySelector(".elegir-ok").addEventListener("click", anadirElegidos);
   dialogoElegir.querySelector(".elegir-cancelar").addEventListener("click", () => dialogoElegir.close());
 
@@ -604,6 +614,10 @@ export function iniciar() {
 
     if (boton.classList.contains("locke-ir") && boton.dataset.ir === "normas") {
       tarea = irANormas(id);
+    } else if (boton.classList.contains("locke-ir") && boton.dataset.ir === "cementerio") {
+      abrirCementerio(id);
+    } else if (boton.classList.contains("locke-ir") && boton.dataset.ir === "actividad") {
+      abrirActividad(id);
     } else if (boton.classList.contains("locke-ir")) {
       irAlJuego(boton.dataset.ir, boton.dataset.juego);
     } else if (boton.classList.contains("locke-editar")) {
@@ -617,6 +631,8 @@ export function iniciar() {
       }
     } else if (boton.classList.contains("mas")) {
       tarea = cambiarNumero(id, jugador.dataset.uid, boton.dataset.campo, 1);
+    } else if (boton.classList.contains("menos") && boton.dataset.campo === "vidas") {
+      abrirMuerte(id, true); // quién ha muerto (opcional) y quita la vida
     } else if (boton.classList.contains("menos")) {
       tarea = cambiarNumero(id, jugador.dataset.uid, boton.dataset.campo, -1);
     }

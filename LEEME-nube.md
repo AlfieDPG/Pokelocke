@@ -113,7 +113,8 @@ copia local volvería a plantear quién pisa a quién.
 | `correos/{correo}` | cualquiera con sesión que sepa el correo entero | solo su dueño (el correo de su Google) |
 | `presencia/{uid}` | cualquiera con sesión | solo su dueño (la hora la pone el servidor) |
 | `amistades/{par}` | los dos implicados | los dos implicados |
-| `lockes/{id}` | los que juegan ese locke | cada uno sus vidas, victorias y respuesta; el creador el resto |
+| `lockes/{id}` | los que juegan ese locke | cada uno sus vidas, victorias, muertos y respuesta; el creador el resto |
+| `lockes/{id}/actividad` | los que juegan ese locke | cada uno lo suyo; el creador lo borra al borrar el locke |
 
 Las tres están escuchadas en vivo (`onSnapshot`): si tu rival quita una vida desde su móvil,
 a ti te cambia en pantalla al momento, y en cuanto alguien te acepta como amigo te sale su

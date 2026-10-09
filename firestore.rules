@@ -135,7 +135,7 @@ service cloud.firestore {
     //
     // Todos los de dentro lo ven y pueden escribir en él, pero con límites:
     //
-    //   · vidas, marcador y estados son mapas {uid: valor}. Cada uno solo puede CAMBIAR o
+    //   · vidas, marcador, estados y muertos son mapas {uid: valor}. Cada uno solo puede CAMBIAR o
     //     QUITAR su propia entrada. Solo se pueden AÑADIR entradas de jugadores que entran
     //     en esta misma escritura (al invitar a alguien se le ponen sus vidas iniciales).
     //   · nombres y fotos: lo mismo; la propia se puede cambiar (al cambiarse el mote).
@@ -195,6 +195,14 @@ service cloud.firestore {
           && cambios(campo).addedKeys().difference(entran()).size() == 0;
       }
 
+      // Igual, pero la entrada propia puede no existir todavía (el cementerio: la lista de
+      // cada uno se crea con su primer muerto)
+      function soloLoMioPuedeEmpezar(campo) {
+        return cambios(campo).changedKeys().difference(soloYo()).size() == 0
+          && cambios(campo).removedKeys().difference(puedenSalir()).size() == 0
+          && cambios(campo).addedKeys().difference(entran().union(soloYo())).size() == 0;
+      }
+
       // Solo cambian los que entran ahora (alguien que rechazó y vuelve a ser invitado ya
       // tenía su nombre y su foto apuntados, y pueden haber cambiado) y el propio (al
       // cambiarse el mote)
@@ -238,6 +246,7 @@ service cloud.firestore {
         && soloLoMio('vidas')
         && soloLoMio('marcador')
         && soloLoMio('estados')
+        && soloLoMioPuedeEmpezar('muertos')
         && soloInvitados('nombres')
         && soloInvitados('fotos')
         && jugadoresBien()
@@ -245,6 +254,28 @@ service cloud.firestore {
         && cosasDelCreador();
 
       allow delete: if identificado() && yo() == antes().creador;
+    }
+
+    // ---------- Actividad de un locke ----------
+    //
+    // Lo que va pasando (vidas, victorias, muertos...). La ven los que juegan el locke. Cada
+    // uno apunta solo lo suyo, con la hora del servidor, y puede borrar lo suyo (al deshacer
+    // un clic sin querer). Quien creó el locke lo borra todo al borrar el locke.
+
+    match /lockes/{id}/actividad/{suceso} {
+      function locke() {
+        return get(/databases/$(database)/documents/lockes/$(id)).data;
+      }
+
+      allow read: if identificado() && request.auth.uid in locke().jugadores;
+      allow create: if identificado()
+        && request.auth.uid in locke().jugadores
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.cuando == request.time
+        && request.resource.data.tipo is string
+        && request.resource.data.keys().hasOnly(['uid', 'tipo', 'cuando', 'delta', 'muerto', 'ganador']);
+      allow delete: if identificado()
+        && (resource.data.uid == request.auth.uid || locke().creador == request.auth.uid);
     }
 
     // Todo lo demás, cerrado
