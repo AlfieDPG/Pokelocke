@@ -138,6 +138,7 @@
         </section>
 
         <section id="vista-normas" hidden>
+          <div class="selector-regiones normas-pestanas"></div>
           <div class="normas"></div>
         </section>
 
@@ -368,7 +369,27 @@
     </div>
   </dialog>
 
-  <!-- Crear o cambiar una de «Mis normas» (js/normas/index.js) -->
+  <!-- Crear o renombrar un conjunto de normas (js/normas/index.js) -->
+  <dialog id="dialogo-conjunto" class="dialogo-sesion">
+    <h2 class="conjunto-titulo">Nuevo conjunto de normas</h2>
+    <form class="conjunto-formulario">
+      <label>
+        <span>Nombre</span>
+        <input class="conjunto-nombre" type="text" maxlength="40" autocomplete="off" placeholder="Randomlocke del grupo">
+      </label>
+      <label class="casilla-sesion">
+        <input class="conjunto-generales" type="checkbox" checked>
+        <span>Incluye también las normas generales</span>
+      </label>
+      <span class="sesion-error conjunto-error"></span>
+      <div class="dialogo-botones">
+        <button type="button" class="boton-gris boton-izquierda conjunto-cancelar">Cancelar</button>
+        <button type="submit" class="boton-verde conjunto-ok">Crear</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Crear o cambiar una norma de un conjunto (js/normas/index.js) -->
   <dialog id="dialogo-norma" class="dialogo-sesion">
     <h2 class="norma-titulo">Nueva norma</h2>
     <form class="norma-formulario">

@@ -1,88 +1,60 @@
 // ---------- Normas ----------
 //
-// Dos listas:
-//   · Generales: las reglas básicas de cualquier Nuzlocke. Fijas, iguales para todos.
-//   · Mis normas: las de cada uno. Se crean, se cambian y se borran en «Normas», y se
-//     guardan como los equipos (en el navegador y, con sesión, en tu cuenta).
+//   · Normas generales: las básicas de cualquier Nuzlocke. Fijas, iguales para todos.
+//   · Conjuntos: cada uno puede crear los suyos (p. ej. «Randomlocke del grupo»), con un
+//     nombre, sus normas y una casilla para que lleven también las generales. Se guardan
+//     como los equipos (en el navegador y, con sesión, en tu cuenta).
 //
-// Al crear o editar un locke se eligen cuáles valen y se guarda una COPIA dentro del locke
-// (locke.normas), igual que el tipo: así cambiar luego una norma tuya no cambia las reglas
-// de un locke que ya se está jugando, y tus amigos las pueden leer aunque no las tengan.
+// Al crear o editar un locke se elige qué normas usa: las generales o uno de tus conjuntos.
+// Se guarda una COPIA dentro del locke (locke.normas), igual que el tipo: así cambiar luego
+// tu conjunto no cambia las reglas de un locke que ya se está jugando, y tus amigos las
+// pueden leer aunque no lo tengan.
 //
-// Al aceptar un locke (y si luego quien lo creó le añade más), las normas suyas que no
-// tengas se apuntan en las tuyas. Las que borres a mano no vuelven: se quedan en «quitadas».
+//   locke.normas: { id, nombre, conGenerales, lista: [{ id, nombre, texto }] }
+//                 (id "generales" y lista vacía: solo las generales)
 //
-//   localStorage «poketeams-normas-v1»: { normas: [{ id, nombre, texto }], quitadas: [id] }
-//   Sin nada guardado (antes de tocar nada), «Mis normas» son NORMAS_DE_PARTIDA.
+// Al aceptar un locke, si su conjunto no lo tienes, se apunta en los tuyos. Los que borres
+// a mano no vuelven: se quedan en «quitados».
+//
+//   localStorage «poketeams-normas-v2»:
+//     { conjuntos: [{ id, nombre, conGenerales, normas: [{ id, nombre, texto }] }], quitados: [id] }
 
 import { leer, escribir } from "./almacen.js";
 
-const CLAVE_NORMAS = "poketeams-normas-v1";
+const CLAVE_NORMAS = "poketeams-normas-v2";
+export const ID_GENERALES = "generales";
+export const NOMBRE_GENERALES = "Normas generales";
 
 export const NORMAS_GENERALES = [
   {
     id: "general-captura",
     nombre: "Una captura por zona",
-    texto: "Solo puedes intentar capturar el primer Pokémon salvaje que encuentres en cada ruta, ciudad o zona. Si se debilita o huye, pierdes la captura de esa zona."
+    texto: "Solo puedes capturar el primer Pokémon salvaje que encuentres en cada ruta, ciudad o zona. Si se debilita o huye, pierdes la captura de esa zona. Si es de una especie que ya tienes (duplicado), puedes saltártelo y probar con el siguiente."
   },
   {
     id: "general-muerto",
     nombre: "Debilitado = muerto",
-    texto: "Si un Pokémon se debilita, se considera muerto: no puedes volver a usarlo. Libéralo o déjalo para siempre en una caja «cementerio»."
+    texto: "Si un Pokémon se debilita, está muerto para siempre: no puedes volver a usarlo. Libéralo o déjalo en una caja «cementerio»."
   },
   {
     id: "general-motes",
     nombre: "Motes obligatorios",
-    texto: "Pon mote a todos tus Pokémon, para encariñarte con ellos."
+    texto: "Pon mote a todos tus Pokémon."
   },
   {
     id: "general-fin",
     nombre: "Fin de la partida",
-    texto: "Si se debilitan todos los Pokémon de tu equipo y no te quedan Pokémon que puedas usar, has perdido el Nuzlocke."
-  }
-];
-
-// Con las que empieza «Mis normas»: las que se usaban antes en la web. Se pueden borrar.
-const NORMAS_DE_PARTIDA = [
-  {
-    id: "propia-duplicados",
-    nombre: "Cláusula de duplicados",
-    texto: "Si el primer Pokémon de una zona es de una especie que ya tienes, puedes pasar al siguiente Pokémon o capturarlo igualmente. Si lo capturas, no podrás usar esa segunda versión hasta que se te muera la primera."
+    texto: "Pierdes cuando te quedas sin Pokémon que puedas usar, ni en el equipo ni en la caja, o cuando te quedas sin vidas."
   },
   {
-    id: "propia-variocolor",
-    nombre: "Cláusula variocolor",
-    texto: "Los Pokémon variocolor se pueden capturar siempre, aunque no sean el primero de la zona."
+    id: "general-variocolor",
+    nombre: "Variocolor",
+    texto: "Si te sale un Pokémon variocolor (shiny), puedes capturarlo aunque no sea el Pokémon de la ruta."
   },
   {
-    id: "propia-objetos",
-    nombre: "Cláusula de objetos",
-    texto: "No se puede repetir objeto en el equipo: dos Pokémon no pueden llevar el mismo objeto equipado."
-  },
-  {
-    id: "propia-no-cuentan",
-    nombre: "Pokémon que no cuentan como Pokémon de ruta",
-    texto: "Ditto, Smeargle, Shedinja y Unown no cuentan como el Pokémon de la ruta: si te sale uno, no gastas la captura de esa zona."
-  },
-  {
-    id: "propia-level-cap",
-    nombre: "Level cap",
-    texto: "Tus Pokémon no pueden superar el nivel del Pokémon más alto del siguiente combate importante (mira la sección «Level caps»)."
-  },
-  {
-    id: "propia-fijo",
-    nombre: "Estilo de combate fijo",
-    texto: "Juega con el estilo de combate «Fijo»: no puedes cambiar de Pokémon gratis cuando debilitas al del rival."
-  },
-  {
-    id: "propia-habilidades",
-    nombre: "Habilidades limitadas (Randomlocke)",
-    texto: "No puedes llevar en el equipo más de un Pokémon con las habilidades Amor Filial, Potencia o Energía Pura."
-  },
-  {
-    id: "propia-tiendas",
-    nombre: "Compras en tiendas especiales",
-    texto: "En las tiendas especiales solo puedes comprar una unidad de cada objeto, y nunca objetos que curen PS. Las bayas sí están permitidas."
+    id: "general-curas",
+    nombre: "Sin comprar curas",
+    texto: "No se pueden comprar objetos curativos."
   }
 ];
 
@@ -91,8 +63,8 @@ const oyentes = new Set();
 function guardado() {
   const valor = leer(CLAVE_NORMAS, null);
   return {
-    normas: valor && Array.isArray(valor.normas) ? valor.normas : NORMAS_DE_PARTIDA.slice(),
-    quitadas: (valor && valor.quitadas) || []
+    conjuntos: (valor && Array.isArray(valor.conjuntos) && valor.conjuntos) || [],
+    quitados: (valor && valor.quitados) || []
   };
 }
 
@@ -101,57 +73,132 @@ function guardar(estado) {
   for (const funcion of oyentes) funcion();
 }
 
-export function misNormas() {
-  return guardado().normas;
+function nuevoId(prefijo) {
+  return `${prefijo}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export function esGeneral(norma) {
-  return String(norma && norma.id).startsWith("general-");
-}
-
-// Avisa al cambiar «Mis normas» (también si llegan normas de un locke)
+// Avisa al cambiar tus conjuntos (también si llega uno de un locke)
 export function alCambiarNormas(funcion) {
   oyentes.add(funcion);
   return () => oyentes.delete(funcion);
 }
 
-export function nuevoIdNorma() {
-  return `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+// ---------- Leer ----------
+
+export function conjuntos() {
+  return guardado().conjuntos;
 }
 
-// Crea o, si ya existe ese id, cambia
-export function guardarNorma(norma) {
+export function conjuntoPorId(id) {
+  return conjuntos().find((conjunto) => conjunto.id === id) || null;
+}
+
+// Todas las normas de un conjunto (o de la copia de un locke): las suyas y, si las lleva,
+// las generales delante
+export function normasCompletas(conjunto) {
+  if (!conjunto) return [];
+  const propias = conjunto.lista || conjunto.normas || [];
+  return [...(conjunto.conGenerales ? NORMAS_GENERALES : []), ...propias];
+}
+
+// Las normas de un locke, o null si no tiene. Los lockes de la primera versión guardaban
+// una lista suelta de normas: se leen como un conjunto sin nombre.
+export function normasDeLocke(locke) {
+  const normas = locke && locke.normas;
+  if (!normas) return null;
+  if (Array.isArray(normas)) {
+    return normas.length ? { id: "", nombre: "Normas del locke", conGenerales: false, lista: normas } : null;
+  }
+  return normas;
+}
+
+// La copia que se guarda en un locke
+export function copiaParaLocke(id) {
+  if (id === ID_GENERALES) return { id: ID_GENERALES, nombre: NOMBRE_GENERALES, conGenerales: true, lista: [] };
+  const conjunto = conjuntoPorId(id);
+  if (!conjunto) return null;
+  return {
+    id: conjunto.id,
+    nombre: conjunto.nombre,
+    conGenerales: Boolean(conjunto.conGenerales),
+    lista: conjunto.normas.map(({ id: idNorma, nombre, texto }) => ({ id: idNorma, nombre, texto: texto || "" }))
+  };
+}
+
+// ---------- Conjuntos ----------
+
+export function nombreDeConjuntoLibre(nombre, salvoId = null) {
+  const clave = nombre.trim().toLowerCase();
+  if (clave === NOMBRE_GENERALES.toLowerCase()) return false;
+  return !conjuntos().some((conjunto) => conjunto.id !== salvoId && conjunto.nombre.trim().toLowerCase() === clave);
+}
+
+export function crearConjunto(nombre, conGenerales) {
   const estado = guardado();
-  const limpia = { id: norma.id || nuevoIdNorma(), nombre: norma.nombre.trim(), texto: norma.texto.trim() };
-  const posicion = estado.normas.findIndex((cada) => cada.id === limpia.id);
-  if (posicion >= 0) estado.normas[posicion] = limpia;
-  else estado.normas.push(limpia);
+  const conjunto = { id: nuevoId("c"), nombre: nombre.trim(), conGenerales: Boolean(conGenerales), normas: [] };
+  estado.conjuntos.push(conjunto);
+  guardar(estado);
+  return conjunto;
+}
+
+// cambios: { nombre?, conGenerales? }
+export function cambiarConjunto(id, cambios) {
+  const estado = guardado();
+  const conjunto = estado.conjuntos.find((cada) => cada.id === id);
+  if (!conjunto) return;
+  if (cambios.nombre !== undefined) conjunto.nombre = cambios.nombre.trim();
+  if (cambios.conGenerales !== undefined) conjunto.conGenerales = Boolean(cambios.conGenerales);
+  guardar(estado);
+}
+
+export function borrarConjunto(id) {
+  const estado = guardado();
+  estado.conjuntos = estado.conjuntos.filter((conjunto) => conjunto.id !== id);
+  if (!estado.quitados.includes(id)) estado.quitados.push(id);
+  guardar(estado);
+}
+
+// ---------- Normas de un conjunto ----------
+
+// Crea o, si ya existe ese id, cambia
+export function guardarNorma(idConjunto, norma) {
+  const estado = guardado();
+  const conjunto = estado.conjuntos.find((cada) => cada.id === idConjunto);
+  if (!conjunto) return null;
+
+  const limpia = { id: norma.id || nuevoId("n"), nombre: norma.nombre.trim(), texto: norma.texto.trim() };
+  const posicion = conjunto.normas.findIndex((cada) => cada.id === limpia.id);
+  if (posicion >= 0) conjunto.normas[posicion] = limpia;
+  else conjunto.normas.push(limpia);
   guardar(estado);
   return limpia;
 }
 
-export function quitarNorma(id) {
+export function quitarNorma(idConjunto, idNorma) {
   const estado = guardado();
-  estado.normas = estado.normas.filter((norma) => norma.id !== id);
-  if (!estado.quitadas.includes(id)) estado.quitadas.push(id);
+  const conjunto = estado.conjuntos.find((cada) => cada.id === idConjunto);
+  if (!conjunto) return;
+  conjunto.normas = conjunto.normas.filter((norma) => norma.id !== idNorma);
   guardar(estado);
 }
 
-// Las normas de un locke que no tengas: se apuntan en las tuyas. Ni las generales (ya las
-// tiene todo el mundo), ni las que ya tienes (por id o por nombre), ni las que borraste.
-export function recibirNormas(lista) {
+// ---------- Lo que llega de los lockes ----------
+
+// El conjunto de un locke que hayas aceptado: si no lo tienes (ni uno con el mismo nombre)
+// y no lo borraste tú, se apunta en los tuyos. Devuelve true si se ha apuntado.
+export function recibirConjunto(copia) {
+  if (!copia || !copia.id || copia.id === ID_GENERALES || !(copia.lista || []).length) return false;
+
   const estado = guardado();
-  const ids = new Set([...estado.normas.map((norma) => norma.id), ...estado.quitadas]);
-  const nombres = new Set(estado.normas.map((norma) => norma.nombre.trim().toLowerCase()));
+  if (estado.quitados.includes(copia.id) || estado.conjuntos.some((conjunto) => conjunto.id === copia.id)) return false;
+  if (!nombreDeConjuntoLibre(copia.nombre || "")) return false;
 
-  const nuevas = (lista || []).filter(
-    (norma) =>
-      norma && norma.id && norma.nombre && !esGeneral(norma) &&
-      !ids.has(norma.id) && !nombres.has(String(norma.nombre).trim().toLowerCase())
-  );
-  if (!nuevas.length) return 0;
-
-  estado.normas.push(...nuevas.map(({ id, nombre, texto }) => ({ id, nombre, texto: texto || "" })));
+  estado.conjuntos.push({
+    id: copia.id,
+    nombre: copia.nombre,
+    conGenerales: Boolean(copia.conGenerales),
+    normas: copia.lista.map(({ id, nombre, texto }) => ({ id, nombre, texto: texto || "" }))
+  });
   guardar(estado);
-  return nuevas.length;
+  return true;
 }

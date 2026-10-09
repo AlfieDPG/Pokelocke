@@ -14,7 +14,7 @@
 //     estados: {uid: "aceptado"|"pendiente"},
 //     nombres: {uid}, fotos: {uid}, creador,
 //     vidasIniciales, vidasIlimitadas, vidas: {uid:n}, marcador: {uid:n},
-//     normas: [{ id, nombre, texto }],   // copia de las elegidas (ver normas.js)
+//     normas: { id, nombre, conGenerales, lista },  // copia del conjunto elegido (normas.js)
 //     estado: "abierto"|"cerrado", ganador, fechaFin: "2025-06-01",
 //     contado: [uid], creado, actualizado }
 //
@@ -31,7 +31,7 @@
 
 import { usuarioActual, baseDeDatos, alCambiarSesion, cuandoEsteSincronizado } from "./nube.js";
 import { apuntarLockesGanados, miPerfil, alCambiarMiPerfil } from "./perfiles.js";
-import { recibirNormas } from "./normas.js";
+import { recibirConjunto, normasDeLocke } from "./normas.js";
 import { hoyComoTexto } from "./utilidades.js";
 
 let todos = [];
@@ -124,13 +124,12 @@ function ponerMiNombre() {
   }
 }
 
-// Las normas de los lockes que he aceptado y no tengo se apuntan en las mías (al aceptar uno,
-// o si quien lo creó le añade más). Después de juntar con la nube: ver cuandoEsteSincronizado.
+// El conjunto de normas de los lockes que he aceptado, si no lo tengo, se apunta en los míos
+// (al aceptar uno, o si quien lo creó le cambia el conjunto). Después de juntar con la nube:
+// ver cuandoEsteSincronizado.
 async function recibirNormasDeMisLockes() {
   await cuandoEsteSincronizado();
-  for (const locke of misLockes()) {
-    if (locke.normas && locke.normas.length) recibirNormas(locke.normas);
-  }
+  for (const locke of misLockes()) recibirConjunto(normasDeLocke(locke));
 }
 
 function escuchar(usuario) {
@@ -211,7 +210,7 @@ export async function crearLocke({
     vidasIlimitadas: Boolean(vidasIlimitadas),
     vidas: porJugador.vidas,
     marcador: porJugador.marcador,
-    normas: normas || [],
+    normas: normas || null,
     estado: "abierto",
     ganador: "",
     fechaFin: "",
@@ -329,7 +328,7 @@ export async function editarLocke(id, datos) {
     tipo: datos.tipo,
     juego: datos.juego || "",
     juegoOtro: datos.juegoOtro || "",
-    normas: datos.normas || [],
+    normas: datos.normas || null,
     actualizado: Date.now()
   };
 

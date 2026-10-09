@@ -312,6 +312,24 @@ main {
   letter-spacing: 0.04em;
 }
 
+/* Casilla con su texto al lado, no encima */
+.dialogo-sesion label.casilla-sesion {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  font-size: 0.9rem;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+.dialogo-sesion label.casilla-sesion input {
+  margin: 0;
+  accent-color: #c0392b;
+}
+
 .dialogo-sesion input {
   padding: 0.5rem 0.6rem;
   border: none;

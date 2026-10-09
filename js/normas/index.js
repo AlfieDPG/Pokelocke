@@ -1,30 +1,46 @@
-// Sección «Normas».
+// Sección «Normas», en pestañas (como las regiones de Rutas y Level caps):
 //
-//   · Normas generales: las básicas de cualquier Nuzlocke, fijas.
-//   · Mis normas: las tuyas. Se crean, se cambian y se borran aquí, y luego se eligen al
-//     crear o editar un locke (los datos están en js/comun/normas.js).
-//   · Arriba del todo, si se llega desde el botón «Normas» de un locke, las de ese locke.
+//   · Normas generales: las básicas de cualquier Nuzlocke, fijas. Es la que sale al entrar.
+//   · Una pestaña por cada conjunto tuyo: su nombre, sus normas (se crean, se cambian y se
+//     borran aquí) y una casilla para que lleve también las generales.
+//   · «Nuevo conjunto», al final.
+//   · Si se llega desde el botón «Normas» de un locke, una pestaña más al principio con las
+//     de ese locke.
+//
+// Los datos están en js/comun/normas.js.
 
 import { icono } from "../comun/iconos.js";
 import { escaparHTML } from "../comun/utilidades.js";
 import {
-  NORMAS_GENERALES, misNormas, guardarNorma, quitarNorma, alCambiarNormas
+  ID_GENERALES, NOMBRE_GENERALES, NORMAS_GENERALES, conjuntos, conjuntoPorId, normasCompletas,
+  normasDeLocke, nombreDeConjuntoLibre, crearConjunto, cambiarConjunto, borrarConjunto,
+  guardarNorma, quitarNorma, alCambiarNormas
 } from "../comun/normas.js";
 import { alCambiarLockes, lockePorId } from "../comun/lockes.js";
 
-let contenedor = null;
-let dialogo = null;
-let editando = null;   // id de la norma que se está cambiando, o null si es nueva
-let idLocke = null;    // locke cuyas normas se enseñan arriba
+const PESTANA_LOCKE = "__locke";
 
-// Para el botón «Normas» de cada locke (js/versus): se abre la sección con las suyas arriba
+let pestanas = null;
+let cuerpo = null;
+let dialogoNorma = null;
+let dialogoConjunto = null;
+
+let pestana = ID_GENERALES; // la abierta: ID_GENERALES, el id de un conjunto o PESTANA_LOCKE
+let idLocke = null;         // locke cuya pestaña sale al principio
+let editandoNorma = null;   // id de la norma que se está cambiando, o null si es nueva
+let editandoConjunto = null; // id del conjunto que se renombra, o null si es nuevo
+
+// Para el botón «Normas» de cada locke (js/versus): se abre la sección en su pestaña
 export function verNormasDeLocke(id) {
   idLocke = id;
+  pestana = PESTANA_LOCKE;
 }
 
 function colorSeguro(color) {
   return /^#[0-9a-f]{6}$/i.test(String(color || "")) ? color : "#3498db";
 }
+
+// ---------- Pintar ----------
 
 function plantillaNorma(norma, editable) {
   const acciones = editable
@@ -42,118 +58,238 @@ function plantillaNorma(norma, editable) {
     </li>`;
 }
 
-function plantillaDelLocke() {
-  const locke = idLocke ? lockePorId(idLocke) : null;
-  if (!locke) return "";
+function plantillaLista(normas, editable) {
+  return `<ul>${normas.map((norma) => plantillaNorma(norma, editable)).join("")}</ul>`;
+}
 
-  const normas = locke.normas || [];
+function lockeAbierto() {
+  return idLocke ? lockePorId(idLocke) : null;
+}
+
+function pintarPestanas() {
+  const locke = lockeAbierto();
+  const boton = (id, texto, clase = "") =>
+    `<button data-pestana="${escaparHTML(id)}" class="${clase} ${id === pestana ? "activa" : ""}">${texto}</button>`;
+
+  pestanas.innerHTML = [
+    locke
+      ? boton(PESTANA_LOCKE, `${icono("libro")} ${escaparHTML(locke.nombre)} <span class="pestana-cerrar" title="Cerrar">${icono("aspa")}</span>`, "pestana-locke")
+      : "",
+    boton(ID_GENERALES, NOMBRE_GENERALES),
+    ...conjuntos().map((conjunto) => boton(conjunto.id, escaparHTML(conjunto.nombre))),
+    `<button class="pestana-nueva" title="Crear un conjunto de normas">${icono("mas")} Nuevo conjunto</button>`
+  ].join("");
+}
+
+function cuerpoGenerales() {
+  return `
+    <p class="normas-explicacion">Las básicas de cualquier Nuzlocke. Las tiene todo el mundo y no se pueden cambiar.
+      Para jugar con otras, crea tu propio conjunto con «Nuevo conjunto».</p>
+    <section class="normas-grupo generales">
+      ${plantillaLista(NORMAS_GENERALES, false)}
+    </section>`;
+}
+
+function cuerpoConjunto(conjunto) {
+  return `
+    <div class="conjunto-barra">
+      <label class="conjunto-casilla">
+        <input type="checkbox" class="conjunto-con-generales" ${conjunto.conGenerales ? "checked" : ""}>
+        Incluye también las normas generales
+      </label>
+      <button class="conjunto-renombrar">${icono("lapiz")} Renombrar</button>
+      <button class="conjunto-borrar">${icono("papelera")} Borrar conjunto</button>
+    </div>
+
+    <section class="normas-grupo mias">
+      <h2>
+        Normas de «${escaparHTML(conjunto.nombre)}»
+        <button class="normas-anadir">${icono("mas")} Nueva norma</button>
+      </h2>
+      ${conjunto.normas.length
+        ? plantillaLista(conjunto.normas, true)
+        : `<p class="normas-vacio">Todavía no tiene normas. Añádelas con «Nueva norma».</p>`}
+    </section>
+
+    ${conjunto.conGenerales
+      ? `<section class="normas-grupo generales incluidas">
+          <h2>${NOMBRE_GENERALES}</h2>
+          ${plantillaLista(NORMAS_GENERALES, false)}
+        </section>`
+      : ""}`;
+}
+
+function cuerpoLocke(locke) {
+  const delLocke = normasDeLocke(locke);
+  const normas = normasCompletas(delLocke);
   const tipo = locke.tipo || {};
   return `
     <section class="normas-grupo del-locke" style="--color-apartado: ${colorSeguro(tipo.color)}">
-      <h2>
-        ${icono("libro")} Normas de «${escaparHTML(locke.nombre)}»
-        <button class="normas-cerrar-locke" title="Dejar de verlas">${icono("aspa")}</button>
-      </h2>
+      <h2>${icono("libro")} ${escaparHTML(locke.nombre)}${delLocke ? ` <small>· ${escaparHTML(delLocke.nombre)}</small>` : ""}</h2>
       ${normas.length
-        ? `<ul>${normas.map((norma) => plantillaNorma(norma, false)).join("")}</ul>`
-        : `<p class="normas-vacio">Este locke no tiene normas elegidas. Quien lo creó puede ponérselas con el lápiz del locke.</p>`}
+        ? plantillaLista(normas, false)
+        : `<p class="normas-vacio">Este locke no tiene normas. Quien lo creó puede ponérselas con el lápiz del locke.</p>`}
     </section>`;
 }
 
 function pintar() {
-  const mias = misNormas();
+  // Si la pestaña abierta ya no existe (conjunto borrado, locke borrado), a las generales
+  const locke = lockeAbierto();
+  if (!locke) idLocke = null;
+  if ((pestana === PESTANA_LOCKE && !locke) || (pestana !== PESTANA_LOCKE && pestana !== ID_GENERALES && !conjuntoPorId(pestana))) {
+    pestana = ID_GENERALES;
+  }
 
-  contenedor.innerHTML = `
-    ${plantillaDelLocke()}
-
-    <section class="normas-grupo generales">
-      <h2>Normas generales</h2>
-      <ul>${NORMAS_GENERALES.map((norma) => plantillaNorma(norma, false)).join("")}</ul>
-    </section>
-
-    <section class="normas-grupo mias">
-      <h2>
-        Mis normas
-        <button class="normas-anadir">${icono("mas")} Nueva norma</button>
-      </h2>
-      ${mias.length
-        ? `<ul>${mias.map((norma) => plantillaNorma(norma, true)).join("")}</ul>`
-        : `<p class="normas-vacio">Todavía no tienes normas propias. Crea las de tu grupo con «Nueva norma» y elígelas al crear un locke.</p>`}
-    </section>`;
+  pintarPestanas();
+  if (pestana === PESTANA_LOCKE) cuerpo.innerHTML = cuerpoLocke(locke);
+  else if (pestana === ID_GENERALES) cuerpo.innerHTML = cuerpoGenerales();
+  else cuerpo.innerHTML = cuerpoConjunto(conjuntoPorId(pestana));
 }
 
-// ---------- Ventana de crear / cambiar ----------
+// ---------- Ventana de conjunto (crear / renombrar) ----------
 
-function abrirDialogo(norma = null) {
-  editando = norma ? norma.id : null;
-  dialogo.querySelector(".norma-titulo").textContent = norma ? "Cambiar norma" : "Nueva norma";
-  dialogo.querySelector(".norma-nombre").value = norma ? norma.nombre : "";
-  dialogo.querySelector(".norma-texto").value = norma ? norma.texto : "";
-  dialogo.querySelector(".norma-error").textContent = "";
-  dialogo.showModal();
-  dialogo.querySelector(".norma-nombre").focus();
+function abrirConjunto(conjunto = null) {
+  editandoConjunto = conjunto ? conjunto.id : null;
+  dialogoConjunto.querySelector(".conjunto-titulo").textContent = conjunto ? "Renombrar conjunto" : "Nuevo conjunto de normas";
+  dialogoConjunto.querySelector(".conjunto-ok").textContent = conjunto ? "Guardar" : "Crear";
+  dialogoConjunto.querySelector(".conjunto-nombre").value = conjunto ? conjunto.nombre : "";
+  dialogoConjunto.querySelector(".conjunto-generales").checked = conjunto ? Boolean(conjunto.conGenerales) : true;
+  dialogoConjunto.querySelector(".conjunto-error").textContent = "";
+  dialogoConjunto.showModal();
+  dialogoConjunto.querySelector(".conjunto-nombre").focus();
 }
 
-function guardarDesdeElDialogo() {
-  const nombre = dialogo.querySelector(".norma-nombre").value.trim();
-  const texto = dialogo.querySelector(".norma-texto").value.trim();
-  const error = dialogo.querySelector(".norma-error");
+function guardarConjunto() {
+  const nombre = dialogoConjunto.querySelector(".conjunto-nombre").value.trim();
+  const conGenerales = dialogoConjunto.querySelector(".conjunto-generales").checked;
+  const error = dialogoConjunto.querySelector(".conjunto-error");
 
   if (!nombre) {
     error.textContent = "Ponle un nombre.";
     return;
   }
-  const repetida = misNormas().some(
-    (norma) => norma.id !== editando && norma.nombre.trim().toLowerCase() === nombre.toLowerCase()
-  );
-  if (repetida) {
-    error.textContent = "Ya tienes una norma con ese nombre.";
+  if (!nombreDeConjuntoLibre(nombre, editandoConjunto)) {
+    error.textContent = "Ya hay un conjunto con ese nombre.";
     return;
   }
 
-  guardarNorma({ id: editando, nombre, texto });
-  dialogo.close();
+  if (editandoConjunto) {
+    cambiarConjunto(editandoConjunto, { nombre, conGenerales });
+  } else {
+    pestana = crearConjunto(nombre, conGenerales).id; // y se abre
+    pintar();
+  }
+  dialogoConjunto.close();
+}
+
+// ---------- Ventana de norma (crear / cambiar) ----------
+
+function abrirNorma(norma = null) {
+  editandoNorma = norma ? norma.id : null;
+  dialogoNorma.querySelector(".norma-titulo").textContent = norma ? "Cambiar norma" : "Nueva norma";
+  dialogoNorma.querySelector(".norma-nombre").value = norma ? norma.nombre : "";
+  dialogoNorma.querySelector(".norma-texto").value = norma ? norma.texto : "";
+  dialogoNorma.querySelector(".norma-error").textContent = "";
+  dialogoNorma.showModal();
+  dialogoNorma.querySelector(".norma-nombre").focus();
+}
+
+function guardarDesdeLaNorma() {
+  const conjunto = conjuntoPorId(pestana);
+  const nombre = dialogoNorma.querySelector(".norma-nombre").value.trim();
+  const texto = dialogoNorma.querySelector(".norma-texto").value.trim();
+  const error = dialogoNorma.querySelector(".norma-error");
+  if (!conjunto) return;
+
+  if (!nombre) {
+    error.textContent = "Ponle un nombre.";
+    return;
+  }
+  const repetida = conjunto.normas.some(
+    (norma) => norma.id !== editandoNorma && norma.nombre.trim().toLowerCase() === nombre.toLowerCase()
+  );
+  if (repetida) {
+    error.textContent = "Este conjunto ya tiene una norma con ese nombre.";
+    return;
+  }
+
+  guardarNorma(conjunto.id, { id: editandoNorma, nombre, texto });
+  dialogoNorma.close();
 }
 
 // ---------- Arranque ----------
 
 export function iniciar() {
-  contenedor = document.querySelector("#vista-normas .normas");
-  dialogo = document.querySelector("#dialogo-norma");
+  const seccion = document.querySelector("#vista-normas");
+  pestanas = seccion.querySelector(".normas-pestanas");
+  cuerpo = seccion.querySelector(".normas");
+  dialogoNorma = document.querySelector("#dialogo-norma");
+  dialogoConjunto = document.querySelector("#dialogo-conjunto");
 
-  dialogo.querySelector(".norma-formulario").addEventListener("submit", (e) => {
+  dialogoNorma.querySelector(".norma-formulario").addEventListener("submit", (e) => {
     e.preventDefault();
-    guardarDesdeElDialogo();
+    guardarDesdeLaNorma();
   });
-  dialogo.querySelector(".norma-cancelar").addEventListener("click", () => dialogo.close());
+  dialogoNorma.querySelector(".norma-cancelar").addEventListener("click", () => dialogoNorma.close());
 
-  contenedor.addEventListener("click", (e) => {
+  dialogoConjunto.querySelector(".conjunto-formulario").addEventListener("submit", (e) => {
+    e.preventDefault();
+    guardarConjunto();
+  });
+  dialogoConjunto.querySelector(".conjunto-cancelar").addEventListener("click", () => dialogoConjunto.close());
+
+  pestanas.addEventListener("click", (e) => {
+    // La X de la pestaña del locke la cierra
+    if (e.target.closest(".pestana-cerrar")) {
+      idLocke = null;
+      if (pestana === PESTANA_LOCKE) pestana = ID_GENERALES;
+      pintar();
+      return;
+    }
     const boton = e.target.closest("button");
     if (!boton) return;
+    if (boton.classList.contains("pestana-nueva")) {
+      abrirConjunto();
+      return;
+    }
+    pestana = boton.dataset.pestana;
+    pintar();
+  });
+
+  cuerpo.addEventListener("change", (e) => {
+    if (e.target.classList.contains("conjunto-con-generales")) {
+      cambiarConjunto(pestana, { conGenerales: e.target.checked });
+    }
+  });
+
+  cuerpo.addEventListener("click", (e) => {
+    const boton = e.target.closest("button");
+    if (!boton) return;
+    const conjunto = conjuntoPorId(pestana);
 
     if (boton.classList.contains("normas-anadir")) {
-      abrirDialogo();
-    } else if (boton.classList.contains("normas-cerrar-locke")) {
-      idLocke = null;
-      pintar();
-    } else if (boton.classList.contains("norma-editar")) {
-      abrirDialogo(misNormas().find((norma) => norma.id === boton.dataset.id));
-    } else if (boton.classList.contains("norma-borrar")) {
-      const norma = misNormas().find((cada) => cada.id === boton.dataset.id);
-      if (norma && confirm(`¿Borrar «${norma.nombre}» de tus normas?\n\nLos lockes que ya la tienen la conservan.`)) {
-        quitarNorma(norma.id);
+      abrirNorma();
+    } else if (boton.classList.contains("conjunto-renombrar")) {
+      abrirConjunto(conjunto);
+    } else if (boton.classList.contains("conjunto-borrar")) {
+      if (conjunto && confirm(`¿Borrar el conjunto «${conjunto.nombre}» con todas sus normas?\n\nLos lockes que ya lo usan lo conservan.`)) {
+        borrarConjunto(conjunto.id);
       }
+    } else if (boton.classList.contains("norma-editar")) {
+      abrirNorma(conjunto && conjunto.normas.find((norma) => norma.id === boton.dataset.id));
+    } else if (boton.classList.contains("norma-borrar")) {
+      const norma = conjunto && conjunto.normas.find((cada) => cada.id === boton.dataset.id);
+      if (norma && confirm(`¿Borrar «${norma.nombre}» de «${conjunto.nombre}»?`)) quitarNorma(conjunto.id, norma.id);
     }
   });
 
   alCambiarNormas(pintar);
-  // Si el locke de arriba cambia (le cambian las normas, lo borran...), al día
+  // Si el locke de su pestaña cambia (le cambian las normas, lo borran...), al día
   alCambiarLockes(() => {
-    if (idLocke) pintar();
+    if (idLocke && cuerpo.isConnected) pintar();
   });
 }
 
 export function mostrar() {
   pintar();
-  if (idLocke) contenedor.scrollIntoView({ block: "start" });
 }

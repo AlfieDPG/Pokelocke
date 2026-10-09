@@ -20,7 +20,9 @@ import {
   plantillaCampoJuego, activarCamposJuego, leerCampoJuego, nombreJuego, juegoRegistrado
 } from "../comun/campo-juego.js";
 import { irA } from "../navegacion.js";
-import { NORMAS_GENERALES, misNormas } from "../comun/normas.js";
+import {
+  ID_GENERALES, NOMBRE_GENERALES, conjuntos, copiaParaLocke, normasDeLocke, normasCompletas
+} from "../comun/normas.js";
 import {
   tiposDe, miPerfilOProvisional, fallaElPerfil, amigosAceptados, perfilesDe, fallaLasAmistades
 } from "../comun/perfiles.js";
@@ -116,7 +118,7 @@ function plantillaJugador(locke, uid) {
 // normas si tiene
 function plantillaJuego(locke) {
   const nombre = nombreJuego(locke);
-  const normas = (locke.normas || []).length;
+  const normas = normasCompletas(normasDeLocke(locke)).length;
   if (!nombre && !normas) return "";
 
   const atajos = nombre && juegoRegistrado(locke.juego)
@@ -289,64 +291,54 @@ async function quitarDesdeElDialogo(uid) {
 
 // ---------- Normas ----------
 //
-// Las generales, las tuyas y, al editar, las del locke que ya no tengas (para no perderlas
-// al guardar). Al crear salen marcadas las generales; al editar, las que tiene el locke.
-// Solo quien lo creó las cambia; los demás ven las que hay.
+// Un desplegable: las generales, tus conjuntos y, al editar, el del locke si tú no lo tienes
+// (para no perderlo al guardar). Debajo, qué normas son. Solo quien lo creó lo cambia.
 
-function normasDisponibles(locke) {
-  const propias = [...NORMAS_GENERALES, ...misNormas()];
-  const ids = new Set(propias.map((norma) => norma.id));
-  const soloDelLocke = ((locke && locke.normas) || []).filter((norma) => !ids.has(norma.id));
-  return { propias, soloDelLocke };
-}
-
-function plantillaChipNorma(norma, marcada, apagada) {
-  return `
-    <label class="norma-chip" title="${escaparHTML(norma.texto || "")}">
-      <input type="checkbox" value="${escaparHTML(norma.id)}" ${marcada ? "checked" : ""} ${apagada ? "disabled" : ""}>
-      <span>${escaparHTML(norma.nombre)}</span>
-    </label>`;
-}
+const SIN_NORMAS = "";
+const LAS_DEL_LOCKE = "__locke";
 
 function pintarNormas(locke, creador) {
-  const { soloDelLocke } = normasDisponibles(locke);
-  // Un locke de antes de que hubiera normas no tiene ninguna: a quien lo creó se le proponen
-  // las generales, como al crear uno
-  const deEntrada = locke && (locke.normas || !creador) ? locke.normas || [] : NORMAS_GENERALES;
-  const marcadas = new Set(deEntrada.map((norma) => norma.id));
-  const chips = (lista) =>
-    lista
-      .filter((norma) => creador || marcadas.has(norma.id))
-      .map((norma) => plantillaChipNorma(norma, marcadas.has(norma.id), !creador))
-      .join("");
+  const delLocke = normasDeLocke(locke);
+  const mios = conjuntos();
+  const loTengo = delLocke && (delLocke.id === ID_GENERALES || mios.some((conjunto) => conjunto.id === delLocke.id));
 
-  const grupos = [
-    ["Generales", chips(NORMAS_GENERALES)],
-    ["Tuyas", chips(misNormas())],
-    ["Del locke", chips(soloDelLocke)]
-  ].filter(([, html]) => html);
+  let elegido = ID_GENERALES;
+  if (delLocke) elegido = loTengo ? delLocke.id : LAS_DEL_LOCKE;
+  // Un locke de antes de que hubiera normas: a quien lo creó se le proponen las generales
+  else if (locke && !creador) elegido = SIN_NORMAS;
 
-  campo(".locke-normas").innerHTML = grupos.length
-    ? grupos
-        .map(
-          ([titulo, html]) =>
-            `<div class="normas-elegir"><span class="normas-elegir-titulo">${titulo}</span><div class="normas-elegir-chips">${html}</div></div>`
-        )
-        .join("") +
-      (creador && !misNormas().length
-        ? `<p class="normas-elegir-ayuda">Puedes crear las normas de tu grupo en «Normas».</p>`
-        : "")
-    : `<p class="normas-elegir-ayuda">Este locke no tiene normas.</p>`;
+  const opcion = (valor, texto) =>
+    `<option value="${escaparHTML(valor)}" ${valor === elegido ? "selected" : ""}>${escaparHTML(texto)}</option>`;
+
+  campo(".locke-normas").innerHTML = `
+    <select class="locke-normas-elegir" ${creador ? "" : "disabled"}>
+      ${opcion(ID_GENERALES, NOMBRE_GENERALES)}
+      ${mios.map((conjunto) => opcion(conjunto.id, conjunto.nombre)).join("")}
+      ${delLocke && !loTengo ? opcion(LAS_DEL_LOCKE, `${delLocke.nombre} (la del locke)`) : ""}
+      ${opcion(SIN_NORMAS, "Sin normas")}
+    </select>
+    <p class="normas-elegir-ayuda"></p>`;
+
+  resumirNormas(locke);
 }
 
-// Las marcadas, como copia para guardar en el locke. Si una es tuya, con tu texto de ahora.
+// Debajo del desplegable, los nombres de las normas que lleva lo elegido
+function resumirNormas(locke) {
+  const normas = normasCompletas(normasElegidas(locke));
+  const mios = conjuntos();
+  campo(".locke-normas .normas-elegir-ayuda").textContent = normas.length
+    ? normas.map((norma) => norma.nombre).join(" · ")
+    : mios.length
+      ? "Este locke no tendrá normas."
+      : "Sin normas. Puedes crear las de tu grupo en «Normas».";
+}
+
+// Lo que se guarda en el locke: la copia del conjunto elegido (o null)
 function normasElegidas(locke) {
-  const { propias, soloDelLocke } = normasDisponibles(locke);
-  const porId = new Map([...soloDelLocke, ...propias].map((norma) => [norma.id, norma]));
-  return [...dialogo.querySelectorAll(".locke-normas input:checked")]
-    .map((casilla) => porId.get(casilla.value))
-    .filter(Boolean)
-    .map(({ id, nombre, texto }) => ({ id, nombre, texto: texto || "" }));
+  const valor = campo(".locke-normas-elegir").value;
+  if (valor === SIN_NORMAS) return null;
+  if (valor === LAS_DEL_LOCKE) return normasDeLocke(locke);
+  return copiaParaLocke(valor);
 }
 
 // Botón «Normas» de un locke: se abre la sección con las suyas arriba
@@ -557,6 +549,11 @@ export function iniciar() {
 
   dialogo.querySelector("#locke-cancelar").addEventListener("click", () => dialogo.close());
   activarCamposJuego(dialogo);
+
+  // Al cambiar de conjunto, debajo salen sus normas
+  dialogo.querySelector(".locke-normas").addEventListener("change", () => {
+    resumirNormas(editando ? lockePorId(editando) : null);
+  });
 
   // Con vidas ilimitadas el número no pinta nada
   dialogo.querySelector("#locke-infinitas").addEventListener("change", (e) => {

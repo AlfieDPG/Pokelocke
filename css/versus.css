@@ -734,60 +734,16 @@ button.locke-anadir .icono {
   gap: 0.4rem;
 }
 
-/* Título a la izquierda y sus normas en columna aparte: al saltar de línea no se meten debajo */
-.normas-elegir {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-
-.normas-elegir-titulo {
-  flex: none;
-  width: 4.6rem;
-  padding-top: 0.4rem;
-  font-size: 0.75rem;
-  opacity: 0.6;
-}
-
-.normas-elegir-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  min-width: 0;
-}
-
-.norma-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.6rem;
+.locke-normas-elegir {
+  align-self: flex-start;
+  min-width: 14rem;
+  max-width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: none;
   border-radius: 0.45rem;
-  background: #252735;
-  font-size: 0.82rem;
-  cursor: pointer;
-  user-select: none;
+  font-family: inherit;
+  font-size: 0.95rem;
 }
-
-.norma-chip:hover {
-  background: #32354a;
-}
-
-/* Marcada: como las etiquetas de integrantes, para que se vea de un vistazo */
-.norma-chip:has(input:checked) {
-  background: rgba(241, 196, 15, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(241, 196, 15, 0.4);
-}
-
-.norma-chip input {
-  margin: 0;
-  accent-color: #f1c40f;
-  cursor: pointer;
-}
-
-.norma-chip:has(input:disabled) {
-  cursor: default;
-}
-
 .normas-elegir-ayuda {
   margin: 0;
   font-size: 0.8rem;
