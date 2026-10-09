@@ -1,10 +1,13 @@
 import {
-  estado, leerGuardados, escribirGuardados, reordenarGuardados, guardarActual, hayCambiosSinGuardar, reemplazarEquipo
+  estado, leerGuardados, escribirGuardados, reordenarGuardados, guardarActual, hayCambiosSinGuardar, reemplazarEquipo,
+  guardarCara
 } from "./estado.js";
 import { leer, escribir } from "../comun/almacen.js";
 import { icono } from "../comun/iconos.js";
 import { copiaProfunda } from "../comun/utilidades.js";
-import { imagenConRespaldo, urlsPMD, urlSpriteHome } from "../comun/imagenes.js";
+import {
+  imagenConRespaldo, urlsPMD, urlSpriteHome, urlsPMDEmocion, EMOCIONES_PMD, precargarImagen
+} from "../comun/imagenes.js";
 import { textoForma } from "../comun/pokemon.js";
 import { pasteDelEquipo, copiarAlPortapapeles } from "./exportar.js";
 import { irA } from "../navegacion.js";
@@ -67,6 +70,61 @@ async function exportarEquipo(guardado, boton) {
   }, 1500);
 }
 
+// ---------- Caras de Mundo Misterioso ----------
+//
+// Cada Pokémon tiene en Mundo Misterioso varias caras (contento, enfadado, llorando...).
+// Pulsando en su miniatura se pasa a la siguiente que exista, y se queda guardada en el
+// equipo («cara»). Para saber cuáles tiene se miran todas a la vez en cuanto pasas el ratón
+// por encima: así al pulsar ya va al momento (y el service worker las guarda para siempre).
+// Algunos solo tienen una (Hariyama): entonces la miniatura se sacude y no cambia.
+
+const carasDisponibles = new Map(); // direcciones de su cara normal -> promesa de [{ emocion, url }]
+
+function caras(p) {
+  const clave = urlsPMD(p).join("|");
+  if (!carasDisponibles.has(clave)) {
+    carasDisponibles.set(
+      clave,
+      Promise.all(
+        EMOCIONES_PMD.map(async (emocion) => {
+          for (const url of urlsPMDEmocion(p, emocion)) {
+            if (await precargarImagen(url)) return { emocion, url };
+          }
+          return null;
+        })
+      ).then((lista) => lista.filter(Boolean))
+    );
+  }
+  return carasDisponibles.get(clave);
+}
+
+async function cambiarDeCara(img, p, idEquipo) {
+  if (!p || img.dataset.cambiando) return;
+  img.dataset.cambiando = "1";
+  img.classList.add("cambiando-cara");
+
+  try {
+    const lista = await caras(p);
+    if (lista.length > 1) {
+      const actual = lista.findIndex((cara) => cara.emocion === (img.dataset.emocion || "Normal"));
+      const siguiente = lista[(actual + 1) % lista.length];
+      img.removeAttribute("data-respaldo");
+      img.src = siguiente.url;
+      img.dataset.emocion = siguiente.emocion;
+      p.cara = siguiente.emocion;
+      guardarCara(idEquipo, Number(img.dataset.posicion), siguiente.emocion);
+    } else {
+      // Solo tiene una cara: se sacude para que se note que el clic ha llegado
+      img.classList.remove("sin-mas-caras");
+      void img.offsetWidth; // reinicia la animación si se pulsa varias veces seguidas
+      img.classList.add("sin-mas-caras");
+    }
+  } finally {
+    delete img.dataset.cambiando;
+    img.classList.remove("cambiando-cara");
+  }
+}
+
 // ---------- Reordenar arrastrando las tarjetas ----------
 
 let arrastrada = null;
@@ -122,14 +180,18 @@ export function renderMisEquipos() {
   for (const guardado of guardados) {
     const fecha = new Date(guardado.actualizado).toLocaleDateString("es-ES");
 
-    // Retrato de Mundo Misterioso; si no existe, render HOME; si no, el icono antiguo
+    // Retrato de Mundo Misterioso; si no existe, render HOME; si no, el icono antiguo.
+    // Pulsando en él va cambiando de cara (ver cambiarDeCara).
+    // Con la cara que se le eligiera; si esa no cargase, la normal y los respaldos de siempre
     const miniaturas = guardado.pokemon
-      .map((p) =>
-        imagenConRespaldo(
-          [...urlsPMD(p), urlSpriteHome(p), p.sprite, p.imagen],
-          `alt="${p.es}" title="${p.es}${textoForma(p) ? " (" + textoForma(p) + ")" : ""}" loading="lazy" decoding="async" draggable="false"`
-        )
-      )
+      .map((p, posicion) => {
+        const cara = p.cara && p.cara !== "Normal" ? p.cara : "";
+        return imagenConRespaldo(
+          [...(cara ? urlsPMDEmocion(p, cara) : []), ...urlsPMD(p), urlSpriteHome(p), p.sprite, p.imagen],
+          `alt="${p.es}" title="${p.es}${textoForma(p) ? " (" + textoForma(p) + ")" : ""} · pulsa para cambiarle la cara"
+           data-posicion="${posicion}" ${cara ? `data-emocion="${cara}"` : ""} loading="lazy" decoding="async" draggable="false"`
+        );
+      })
       .join("");
 
     const tarjeta = document.createElement("div");
@@ -153,10 +215,22 @@ export function renderMisEquipos() {
     tarjeta.querySelector("h3").textContent = guardado.nombre;
     tarjeta.title = "Pulsa para abrir este equipo";
 
-    // Se abre pulsando en la tarjeta, menos si el clic ha sido en uno de sus botones
+    // Se abre pulsando en la tarjeta, menos si el clic ha sido en uno de sus botones o en
+    // un Pokémon (que cambia de cara)
     tarjeta.addEventListener("click", (e) => {
       if (seAcabaDeArrastrar || e.target.closest("button")) return;
+      const miniatura = e.target.closest(".equipo-miniaturas img");
+      if (miniatura) {
+        cambiarDeCara(miniatura, guardado.pokemon[Number(miniatura.dataset.posicion)], guardado.id);
+        return;
+      }
       abrirEquipo(guardado);
+    });
+
+    // Al pasar el ratón por un Pokémon se miran ya sus caras: el clic irá al momento
+    tarjeta.addEventListener("mouseover", (e) => {
+      const miniatura = e.target.closest(".equipo-miniaturas img");
+      if (miniatura) caras(guardado.pokemon[Number(miniatura.dataset.posicion)]);
     });
 
     const botonExportar = tarjeta.querySelector(".exportar");

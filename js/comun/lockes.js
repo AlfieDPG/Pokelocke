@@ -29,7 +29,7 @@
 // dejarían ni leer la invitación. Quién ha aceptado está en «estados».
 
 import { usuarioActual, baseDeDatos, alCambiarSesion } from "./nube.js";
-import { apuntarLockesGanados } from "./perfiles.js";
+import { apuntarLockesGanados, miPerfil, alCambiarMiPerfil } from "./perfiles.js";
 import { hoyComoTexto } from "./utilidades.js";
 
 let todos = [];
@@ -97,6 +97,29 @@ export function iniciarLockes() {
 
     escuchar(usuario);
   });
+
+  alCambiarMiPerfil(ponerMiNombre);
+}
+
+// Cada locke guarda una copia del nombre de cada jugador. Si en alguno el mío no es mi mote
+// (me lo he cambiado, o se cambió cuando Firebase aún no dejaba tocarlo), lo pongo al día.
+// Se mira al llegar los lockes y al llegar mi perfil.
+const renombrando = new Set(); // ids de lockes en los que ya se está escribiendo
+
+function ponerMiNombre() {
+  const usuario = usuarioActual();
+  const perfil = miPerfil();
+  const acceso = baseDeDatos();
+  if (!usuario || !perfil || !perfil.mote || !acceso) return;
+
+  const { bd, fn } = acceso;
+  for (const locke of todos) {
+    if ((locke.nombres || {})[usuario.uid] === perfil.mote || renombrando.has(locke.id)) continue;
+    renombrando.add(locke.id);
+    fn.updateDoc(fn.doc(bd, "lockes", locke.id), { [`nombres.${usuario.uid}`]: perfil.mote })
+      .catch((error) => console.error("No se ha podido poner mi nombre en un locke", error))
+      .finally(() => renombrando.delete(locke.id));
+  }
 }
 
 function escuchar(usuario) {
@@ -118,6 +141,8 @@ function escuchar(usuario) {
           !(locke.contado || []).includes(usuario.uid)
       );
       if (sinApuntar) apuntarLockesGanados().catch((error) => console.error(error));
+
+      ponerMiNombre();
     },
     (error) => {
       console.error("No se han podido leer los lockes", error);
@@ -309,12 +334,14 @@ export async function editarLocke(id, datos) {
 
 // Rechazar es salirse: se quita el uid de «jugadores» y, en cuanto deja de estar, el
 // documento ya no aparece en tu consulta ni te deja leerlo (así lo dicen las reglas).
-// Echar a alguien que todavía no ha contestado. «quitado» va en la misma escritura para que
-// las reglas sepan a quién se quita y comprueben que seguía pendiente. Al salir de
-// «jugadores» deja de ver el locke, y con él su notificación.
+// Echar a alguien del locke: quien lo creó, a cualquiera menos a sí mismo; los demás, solo a
+// quien todavía no ha contestado. «quitado» va en la misma escritura para que las reglas
+// sepan a quién se quita y lo comprueben. Al salir de «jugadores» deja de ver el locke, y con
+// él su notificación.
 export async function quitarDeLocke(id, uid) {
   const locke = lockePorId(id);
-  if (!locke || estadoDe(locke, uid) !== "pendiente") return;
+  if (!locke || uid === locke.creador || locke.estado === "cerrado") return;
+  if (!soyCreador(locke) && estadoDe(locke, uid) !== "pendiente") return;
 
   const { fn, ref } = referencia(id);
   await fn.updateDoc(ref, {

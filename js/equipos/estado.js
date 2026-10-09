@@ -5,7 +5,6 @@ import { leer, escribir } from "../comun/almacen.js";
 const CLAVE_EQUIPO = "poketeams-equipo-v1";
 const CLAVE_GUARDADOS = "poketeams-equipos-v1";
 const CLAVE_ACTUAL = "poketeams-actual-v1";
-const CLAVE_ORDEN_MANUAL = "poketeams-equipos-orden-v1";
 
 export const MAX_EQUIPO = 6;
 
@@ -23,7 +22,6 @@ export function cargarEstado() {
   const actual = leer(CLAVE_ACTUAL, null);
   estado.nombre = (actual && actual.nombre) || "";
   estado.id = (actual && actual.id) || null;
-  ordenarPorFechaUnaVez();
 }
 
 export function guardarEquipo() {
@@ -58,12 +56,24 @@ export function reordenarGuardados(ids) {
   escribirGuardados(ids.map((id) => porId.get(id)).filter(Boolean));
 }
 
-// Antes «Mis equipos» se ordenaba siempre por fecha. Ahora manda el orden guardado:
-// la primera vez se guarda el orden por fecha que se veía, para que no cambie nada.
-function ordenarPorFechaUnaVez() {
-  if (leer(CLAVE_ORDEN_MANUAL, false)) return;
-  escribirGuardados(leerGuardados().sort((a, b) => b.actualizado - a.actualizado));
-  escribir(CLAVE_ORDEN_MANUAL, true);
+// La cara de Mundo Misterioso elegida en «Mis equipos» (mis-equipos.js). Al guardar el
+// equipo desde «Crear equipo» se conserva la que tuviera cada Pokémon.
+export function guardarCara(idEquipo, posicion, cara) {
+  const guardados = leerGuardados();
+  const equipo = guardados.find((g) => g.id === idEquipo);
+  if (!equipo || !equipo.pokemon[posicion]) return;
+  equipo.pokemon[posicion].cara = cara;
+  escribirGuardados(guardados);
+}
+
+function conLasCarasDe(pokemon, anteriores) {
+  return pokemon.map((p, i) => {
+    const antes = anteriores[i];
+    const mismo = antes && antes.id === p.id && antes.idForma === p.idForma;
+    const copia = { ...p };
+    if (mismo && antes.cara) copia.cara = antes.cara;
+    return copia;
+  });
 }
 
 function nombreParaGuardar() {
@@ -72,7 +82,8 @@ function nombreParaGuardar() {
 
 // Las stats, descripciones y datos de combate se descargan solos al pasar el ratón:
 // no cuentan como un cambio del usuario
-const DATOS_AUTOMATICOS = new Set(["stats", "descripcion", "fuente", "potencia", "precision", "categoria"]);
+// (la cara tampoco: se elige en «Mis equipos» y no cambia el equipo)
+const DATOS_AUTOMATICOS = new Set(["stats", "descripcion", "fuente", "potencia", "precision", "categoria", "cara"]);
 
 function sinStats(clave, valor) {
   return DATOS_AUTOMATICOS.has(clave) ? undefined : valor;
@@ -95,7 +106,7 @@ export function guardarEnMisEquipos() {
 
   if (existente) {
     existente.nombre = nombreParaGuardar();
-    existente.pokemon = copiaProfunda(estado.equipo);
+    existente.pokemon = conLasCarasDe(copiaProfunda(estado.equipo), existente.pokemon);
     existente.actualizado = Date.now();
   } else {
     estado.id = String(Date.now());

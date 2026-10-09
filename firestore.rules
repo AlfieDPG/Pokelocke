@@ -10,6 +10,8 @@ rules_version = '2';
 //   usuarios/{uid}/datos  -> privado: equipos, rutas, level caps. Solo su dueño.
 //   perfiles/{uid}        -> lo lee cualquiera identificado (hace falta para buscar por
 //                            correo y para ver el palmarés de un amigo). Lo escribe su dueño.
+//   motes/{mote}          -> qué cuenta tiene cada mote. Uno por persona, sin repetidos.
+//   presencia/{uid}       -> cuándo se vio a cada uno con la web abierta. Lo escribe su dueño.
 //   amistades/{par}       -> solo los dos implicados. El id es los dos uid ordenados.
 //   lockes/{id}           -> solo los que juegan ese locke. Cada uno toca SOLO sus vidas,
 //                            sus victorias y su respuesta a la invitación. Nombre, juego,
@@ -34,8 +36,61 @@ service cloud.firestore {
     // Nada privado: es la ficha que ven tus amigos.
 
     match /perfiles/{uid} {
+      // Si el perfil pasa a tener un mote, ese mote tiene que estar reservado a su nombre en
+      // motes/ al terminar la escritura (se hace todo en el mismo lote)
+      function moteBien() {
+        let mote = request.resource.data.get('mote', '');
+        return mote == ''
+          || (resource != null && resource.data.get('mote', '') == mote)
+          || getAfter(/databases/$(database)/documents/motes/$(mote.lower())).data.uid == uid;
+      }
+
       allow read: if identificado();
-      allow write: if identificado() && request.auth.uid == uid;
+      allow create, update: if identificado() && request.auth.uid == uid && moteBien();
+      allow delete: if identificado() && request.auth.uid == uid;
+    }
+
+    // ---------- Conectado ----------
+    //
+    // Cada uno apunta en el suyo la hora (la del servidor, no vale inventársela) y si está
+    // conectado. Lo puede leer cualquiera con sesión: solo dice cuándo se vio por última vez.
+
+    match /presencia/{uid} {
+      allow read: if identificado();
+      allow write: if identificado() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['visto', 'conectado'])
+        && request.resource.data.visto == request.time
+        && request.resource.data.conectado is bool;
+    }
+
+    // ---------- Motes ----------
+    //
+    // Un documento por mote, con el id en minúsculas: como Firestore no deja crear uno que
+    // ya existe, no puede haber dos personas con el mismo. Solo se puede tener uno: al crear
+    // o reescribir, tu perfil tiene que acabar apuntando a él; al borrarlo, ya no.
+    //
+    // Se puede mirar sin sesión: el formulario de crear cuenta comprueba si el usuario está libre.
+
+    match /motes/{clave} {
+      function miPerfilDespues() {
+        return getAfter(/databases/$(database)/documents/perfiles/$(request.auth.uid)).data;
+      }
+
+      allow get: if true;
+      allow create: if identificado()
+        && clave.matches('^[a-z0-9_.-]{3,20}$')
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.mote.lower() == clave
+        && miPerfilDespues().get('mote', '').lower() == clave;
+      // Solo para cambiar mayúsculas («pepe» -> «Pepe»): el dueño no cambia
+      allow update: if identificado()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.mote.lower() == clave
+        && miPerfilDespues().get('mote', '').lower() == clave;
+      allow delete: if identificado()
+        && resource.data.uid == request.auth.uid
+        && miPerfilDespues().get('mote', '').lower() != clave;
     }
 
     // ---------- Amistades ----------
@@ -59,9 +114,10 @@ service cloud.firestore {
     //   · vidas, marcador y estados son mapas {uid: valor}. Cada uno solo puede CAMBIAR o
     //     QUITAR su propia entrada. Solo se pueden AÑADIR entradas de jugadores que entran
     //     en esta misma escritura (al invitar a alguien se le ponen sus vidas iniciales).
-    //   · nombres y fotos: lo mismo, pero sin poder cambiar ni la propia.
+    //   · nombres y fotos: lo mismo; la propia se puede cambiar (al cambiarse el mote).
     //   · jugadores: se puede añadir gente (invitar), quitarse a uno mismo (rechazar) y echar
-//     a un invitado que aún no ha contestado (de uno en uno, nombrado en «quitado»).
+    //     a alguien de uno en uno, nombrado en «quitado»: a un invitado que aún no ha
+    //     contestado cualquiera de dentro; a cualquiera (menos a sí mismo) quien lo creó.
     //   · contado: cada uno solo se apunta a sí mismo (lo usa el ganador).
     //   · nombre, tipo, juego, ganador, cerrar...: solo quien lo creó.
     //   · borrarlo: solo quien lo creó.
@@ -93,15 +149,20 @@ service cloud.firestore {
       }
 
       // Quién puede salir con esta escritura: uno mismo y, si la escritura lo dice en
-      // «quitado», un invitado que todavía no había contestado (lo echa otro de dentro)
+      // «quitado», un invitado que todavía no había contestado (lo echa otro de dentro) o
+      // cualquiera menos el creador si quien lo echa es el creador
       function quitado() {
         return despues().get('quitado', '');
       }
 
+      function sePuedeEchar() {
+        return quitado() in antes().jugadores
+          && quitado() != antes().creador
+          && (antes().get('estados', {}).get(quitado(), '') == 'pendiente' || antes().creador == yo());
+      }
+
       function puedenSalir() {
-        return antes().get('estados', {}).get(quitado(), '') == 'pendiente'
-          ? soloYo().union([quitado()].toSet())
-          : soloYo();
+        return sePuedeEchar() ? soloYo().union([quitado()].toSet()) : soloYo();
       }
 
       function soloLoMio(campo) {
@@ -111,9 +172,10 @@ service cloud.firestore {
       }
 
       // Solo cambian los que entran ahora (alguien que rechazó y vuelve a ser invitado ya
-      // tenía su nombre y su foto apuntados, y pueden haber cambiado)
+      // tenía su nombre y su foto apuntados, y pueden haber cambiado) y el propio (al
+      // cambiarse el mote)
       function soloInvitados(campo) {
-        return cambios(campo).changedKeys().difference(entran()).size() == 0
+        return cambios(campo).changedKeys().difference(entran()).difference(soloYo()).size() == 0
           && cambios(campo).removedKeys().difference(soloYo()).size() == 0
           && cambios(campo).addedKeys().difference(entran()).size() == 0;
       }

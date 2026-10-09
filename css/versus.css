@@ -33,6 +33,33 @@
   gap: 0.85rem;
 }
 
+/* Detrás de los últimos 5: despliega (o vuelve a plegar) todos los demás */
+.versus-ver-mas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.75rem;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 0.7rem;
+  background: transparent;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.versus-ver-mas:hover {
+  border-color: rgba(241, 196, 15, 0.7);
+  background: rgba(241, 196, 15, 0.08);
+}
+
+.versus-ver-mas .icono {
+  width: 1rem;
+  height: 1rem;
+}
+
 /* ---------- Tarjeta de un locke ---------- */
 
 .locke {
@@ -162,14 +189,62 @@
   opacity: 0.6;
 }
 
-/* La X para echar a un invitado que no ha contestado */
+/* La X para echar a alguien (o no añadir a quien acabas de elegir) */
 .locke-dentro-uno {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
 }
 
-.locke-quitar {
+/* El «+» del final: una etiqueta más, con el estilo de los que están por añadir */
+button.locke-anadir {
+  justify-content: center;
+  min-width: 2.2rem;
+  border: none;
+  color: #f2f2f2;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button.locke-anadir:hover {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+button.locke-anadir .icono {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/* Lista de amigos en la ventana del «+»: uno por fila */
+#dialogo-elegir-amigos {
+  width: min(24rem, 92vw);
+}
+
+#dialogo-elegir-amigos .locke-amigos {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+#dialogo-elegir-amigos .elegir-ok {
+  background: #27ae60;
+  color: #fff;
+}
+
+#dialogo-elegir-amigos .elegir-ok:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#dialogo-elegir-amigos .elegir-cancelar {
+  background: #3a3d52;
+  color: #f2f2f2;
+}
+
+.locke-quitar,
+.locke-desmarcar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -183,12 +258,14 @@
   cursor: pointer;
 }
 
-.locke-quitar:hover:not(:disabled) {
+.locke-quitar:hover:not(:disabled),
+.locke-desmarcar:hover {
   background: #c0392b;
   color: #fff;
 }
 
-.locke-quitar .icono {
+.locke-quitar .icono,
+.locke-desmarcar .icono {
   width: 0.8rem;
   height: 0.8rem;
 }
@@ -275,6 +352,7 @@
 }
 
 .locke-jugador {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -442,19 +520,22 @@
   color: #e74c3c;
 }
 
+/* Corona en la esquina de cada jugador (solo la ve quien creó el locke): lo cierra con ese
+   jugador como ganador */
 .locke-ganador {
+  position: absolute;
+  top: 0.45rem;
+  left: 0.45rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.2rem;
-  padding: 0.4rem 0.8rem;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
   border: none;
   border-radius: 0.45rem;
   background: #3a3d52;
-  color: #f2f2f2;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: bold;
+  color: #f1c40f;
   cursor: pointer;
 }
 

@@ -1,10 +1,10 @@
 import { activarRespaldoImagenes } from "./comun/imagenes.js";
-import { iniciarNavegacion, irA } from "./navegacion.js";
+import { iniciarNavegacion, irA, vistaInicial } from "./navegacion.js";
 import { iniciarSesionUI } from "./sesion.js";
 
 activarRespaldoImagenes();
 iniciarNavegacion();
-irA("versus");
+irA(vistaInicial()); // la que hubiera al recargar, o Versus si se entra de nuevas
 
 // La sesión se monta aparte: si falla, la web sigue funcionando con el navegador
 iniciarSesionUI().catch((error) => console.error(error));

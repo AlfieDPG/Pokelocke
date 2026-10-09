@@ -154,6 +154,40 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(241, 196, 15, 0.35);
 }
 
+/* Amigo con la web abierta ahora mismo: el fondo de la tuya, borde verde y un punto verde
+   que late en la esquina */
+.ficha-jugador.conectado {
+  background: #32354a;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 0 0 2px rgba(46, 204, 113, 0.75);
+}
+
+.ficha-jugador .punto-conectado {
+  display: none;
+}
+
+.ficha-jugador.conectado .punto-conectado {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  display: block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: #2ecc71;
+  animation: latido 1.6s ease-in-out infinite;
+}
+
+@keyframes latido {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6); }
+  50%      { opacity: 0.45; box-shadow: 0 0 0 0.35rem rgba(46, 204, 113, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ficha-jugador.conectado .punto-conectado {
+    animation: none;
+  }
+}
+
 /* Al pulsar en la ficha se esconde la lista y queda solo la foto, el nombre y el recuento */
 .ficha-jugador.plegada .lockes-ganados {
   display: none;
@@ -196,6 +230,11 @@
   background: #c0392b;
 }
 
+.ficha-acciones .accion-comparar:hover {
+  background: #f1c40f;
+  color: #2b2d3a;
+}
+
 .ficha-acciones .icono {
   width: 0.95rem;
   height: 0.95rem;
@@ -221,12 +260,14 @@
 
 /* ---------- Foto y nombre ---------- */
 
+/* Borde de la foto y nombre: azul pizarra, oscuro pero legible sobre la ficha; en la tuya, dorado como
+   el borde de tu ficha; si el amigo está conectado, el borde verde como el de su ficha */
 .jugador-foto {
   position: relative;
   width: 8.5rem;
   height: 8.5rem;
   border-radius: 50%;
-  border: 0.25rem solid #c0392b;
+  border: 0.25rem solid #6a7bb0;
   background: #1e1f2b;
   overflow: hidden;
 }
@@ -255,8 +296,24 @@
 .jugador-nombre {
   margin: 0.7rem 0 0;
   font-size: 1.35rem;
-  color: #e74c3c;
+  color: #6a7bb0;
   text-align: center;
+}
+
+.ficha-jugador.mia .jugador-foto {
+  border-color: #f1c40f;
+}
+
+.ficha-jugador.conectado .jugador-foto {
+  border-color: #2ecc71;
+}
+
+.ficha-jugador.conectado .jugador-nombre {
+  color: #2ecc71;
+}
+
+.ficha-jugador.mia .jugador-nombre {
+  color: #f1c40f;
 }
 
 .jugador-etiqueta {
@@ -332,14 +389,53 @@
   cursor: pointer;
 }
 
+/* Más claro que el fondo de cualquier ficha (la tuya y las de amigos conectados son
+   #32354a): si no, al pasar el ratón el locke se fundía con la ficha */
 .locke-ganado:hover,
 .locke-ganado.abierto {
-  background: #32354a;
+  background: #41455e;
 }
 
 .locke-nombre {
   font-weight: bold;
   font-size: 0.93rem;
+}
+
+/* ---------- Listas que enseñan los 5 últimos (fichas y cara a cara) ---------- */
+
+.lista-plegable:not(.todos) > .extra {
+  display: none;
+}
+
+.ver-todos-fila {
+  list-style: none;
+}
+
+.ver-todos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.4rem 0.7rem;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.ver-todos:hover {
+  border-color: rgba(241, 196, 15, 0.7);
+  background: rgba(241, 196, 15, 0.08);
+}
+
+.ver-todos .icono {
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 /* ---------- Recuadro flotante con los datos de un locke ---------- */
@@ -477,35 +573,194 @@
   opacity: 0.85;
 }
 
-/* ---------- Diálogos de tipos y de palmarés ---------- */
+/* ---------- Cara a cara ---------- */
 
-/* Atajo para traerse los lockes de antes de que hubiera cuentas */
-.palmares-legado {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem;
-  margin-bottom: 0.7rem;
-  font-size: 0.85rem;
-  opacity: 0.85;
+#dialogo-comparar {
+  width: min(36rem, 94vw);
 }
 
-.palmares-traer {
-  padding: 0.35rem 0.7rem;
-  border: none;
+.cara-a-cara {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.luchador {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1.1rem 0.7rem 0.9rem;
+  border-radius: 0.7rem;
+  background: #252735;
+  transition: opacity 0.2s;
+}
+
+.luchador .jugador-foto {
+  width: 6.5rem;
+  height: 6.5rem;
+}
+
+.luchador .jugador-foto::before {
+  font-size: 2.6rem;
+}
+
+.luchador.mio .jugador-foto {
+  border-color: #f1c40f;
+}
+
+.luchador-nombre {
+  margin-top: 0.35rem;
+  font-size: 1.15rem;
+  font-weight: bold;
+  color: #6a7bb0;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.luchador.mio .luchador-nombre {
+  color: #f1c40f;
+}
+
+.luchador-victorias {
+  font-size: 2.6rem;
+  font-weight: bold;
+  line-height: 1.1;
+}
+
+.luchador-etiqueta {
+  font-size: 0.72rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+
+/* El que va ganando: resaltado, con corona y el número en verde */
+.luchador.gana {
+  background: #32354a;
+  box-shadow: 0 0 0 2px #2ecc71, 0 0 18px rgba(46, 204, 113, 0.35);
+}
+
+.luchador.gana .luchador-victorias {
+  color: #2ecc71;
+}
+
+.luchador.pierde {
+  opacity: 0.6;
+}
+
+.luchador-corona {
+  position: absolute;
+  top: -0.85rem;
+  left: 50%;
+  translate: -50% 0;
+  display: inline-flex;
+  padding: 0.25rem;
+  border-radius: 50%;
+  background: #2c2e3e;
+  color: #f1c40f;
+}
+
+.luchador-corona .icono {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.comparar-vs {
+  font-size: 1.6rem;
+  font-weight: 900;
+  font-style: italic;
+  color: #e74c3c;
+}
+
+.comparar-resumen,
+.comparar-empate {
+  margin: 0.9rem 0 0;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.comparar-empate {
+  margin-top: 0.3rem;
+  font-weight: bold;
+  color: #f1c40f;
+}
+
+/* Lista de los lockes jugados juntos, del más reciente al más antiguo */
+.comparar-lista {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 40vh;
+  margin: 1rem 0 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.comparar-locke {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.45rem 0.7rem;
+  border-left: 0.3rem solid var(--color-locke, #3498db);
   border-radius: 0.45rem;
-  background: #3a3d52;
-  color: #f2f2f2;
-  font-family: inherit;
+  background: #252735;
+}
+
+.comparar-locke-nombre {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-weight: bold;
+  font-size: 0.92rem;
+}
+
+.comparar-fecha {
+  font-size: 0.75rem;
+  font-weight: normal;
+  opacity: 0.6;
+}
+
+.comparar-resultado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: none;
   font-size: 0.82rem;
   font-weight: bold;
-  cursor: pointer;
+  opacity: 0.75;
 }
 
-.palmares-traer:hover {
-  background: #f1c40f;
-  color: #2b2d3a;
+.comparar-resultado .icono {
+  width: 0.95rem;
+  height: 0.95rem;
 }
+
+.comparar-resultado.mia {
+  color: #f1c40f;
+  opacity: 1;
+}
+
+.comparar-resultado.suya {
+  color: #6a7bb0;
+  opacity: 1;
+}
+
+.comparar-resultado.marcha {
+  font-style: italic;
+}
+
+#dialogo-comparar .comparar-cerrar {
+  background: #3a3d52;
+  color: #f2f2f2;
+}
+
+/* ---------- Diálogos de tipos y de palmarés ---------- */
 
 .tipos-lista,
 .palmares-lista {
@@ -659,12 +914,10 @@
   height: 0.9rem;
 }
 
-.participante-anadir {
-  display: inline-flex;
-  align-items: center;
+/* Desplegable con tus amigos para meterlos como participantes (o «Otra persona») */
+.participante-elegir {
   align-self: flex-start;
-  gap: 0.3rem;
-  padding: 0.35rem 0.7rem;
+  padding: 0.35rem 0.6rem;
   border: none;
   border-radius: 0.4rem;
   background: #3a3d52;
@@ -675,13 +928,32 @@
   cursor: pointer;
 }
 
-.participante-anadir:hover {
+.participante-elegir:hover {
   background: #4a4e68;
 }
 
-.participante-anadir .icono {
-  width: 0.85rem;
-  height: 0.85rem;
+/* Casilla «Vidas ilimitadas» */
+.palmares-casilla {
+  display: flex;
+  align-items: center;
+  align-self: flex-end;
+  gap: 0.4rem;
+  padding-bottom: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Con vidas ilimitadas no hay vidas que apuntar: se esconden y sale ∞ */
+.palmares-detalles.ilimitadas .participante-vidas,
+.palmares-detalles.ilimitadas .con-vidas {
+  display: none;
+}
+
+.palmares-detalles.ilimitadas .participante-corazon::after {
+  content: "∞";
+  margin-left: 0.2rem;
+  font-weight: bold;
 }
 
 .fila-tipo input[type="color"] {

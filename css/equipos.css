@@ -707,6 +707,34 @@
   padding: 0.2rem;
   box-sizing: border-box;
   image-rendering: pixelated;
+  cursor: pointer;
+  transition: transform 0.12s, background-color 0.12s, box-shadow 0.12s;
+}
+
+/* Al pasar por encima se resalta: pulsando cambia de cara (js/equipos/mis-equipos.js) */
+.equipo-miniaturas img:hover {
+  position: relative;
+  z-index: 1;
+  transform: scale(1.12);
+  background: rgba(241, 196, 15, 0.18);
+  box-shadow: 0 0 0 2px rgba(241, 196, 15, 0.7), 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+/* Pokémon con una sola cara: se sacude al pulsarlo */
+.equipo-miniaturas img.sin-mas-caras {
+  animation: sacudida 0.35s ease-in-out;
+}
+
+@keyframes sacudida {
+  0%, 100% { translate: 0; }
+  25% { translate: -0.2rem 0; }
+  75% { translate: 0.2rem 0; }
+}
+
+/* Mientras mira qué caras tiene (solo la primera vez, un momento) */
+.equipo-miniaturas img.cambiando-cara {
+  opacity: 0.6;
+  cursor: progress;
 }
 
 /* ---------- Diálogos (importar paste y elegir forma) ---------- */
@@ -1014,22 +1042,22 @@
 .ficha-tipos-lista {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.2rem;
+  gap: 0.3rem;
 }
 
 .marca-tipo {
   display: inline-flex;
   align-items: center;
-  gap: 0.15rem;
-  padding: 0.1rem 0.3rem;
-  border-radius: 0.3rem;
-  font-size: 0.7rem;
+  gap: 0.25rem;
+  padding: 0.16rem 0.4rem;
+  border-radius: 0.35rem;
+  font-size: 0.82rem;
   font-weight: bold;
   color: #fff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .marca-tipo .icono-tipo {
-  width: 0.65rem;
-  height: 0.65rem;
+  width: 0.82rem;
+  height: 0.82rem;
 }

@@ -48,12 +48,29 @@ function cargarSeccion(nombre) {
   return iniciadas.get(nombre);
 }
 
+// La vista abierta va en la dirección (#rutas, #pokedex...): al recargar se vuelve a ella.
+// Sin nada (entrar de nuevas) se empieza en Versus.
+const VISTA_DE_ENTRADA = "versus";
+
+export function vistaInicial() {
+  const pedida = decodeURIComponent(location.hash.slice(1));
+  return VISTAS[pedida] ? pedida : VISTA_DE_ENTRADA;
+}
+
 export async function irA(vista) {
+  if (!VISTAS[vista]) vista = VISTA_DE_ENTRADA;
+  // replaceState y no location.hash: así no se llena el historial de «atrás»
+  if (location.hash !== `#${vista}`) history.replaceState(null, "", `#${vista}`);
+
   for (const seccion of document.querySelectorAll("main > section")) {
     seccion.hidden = seccion.id !== `vista-${vista}`;
   }
   for (const boton of document.querySelectorAll(".menu-lateral [data-vista]")) {
-    boton.classList.toggle("activa", boton.dataset.vista === vista);
+    const activa = boton.dataset.vista === vista;
+    boton.classList.toggle("activa", activa);
+    // Si se recarga en «Crear equipo», que se vea marcado aunque Equipos empiece plegado
+    const grupo = boton.closest("details");
+    if (activa && grupo) grupo.open = true;
   }
 
   try {

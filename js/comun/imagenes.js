@@ -68,6 +68,19 @@ export function urlsPMD(p) {
   return lista;
 }
 
+// Caras que tiene Mundo Misterioso además de la normal. No todos los Pokémon las tienen
+// todas (muchas formas solo tienen tres o cuatro): las que faltan dan 404 y se saltan.
+// Fuera las «Special», que son poses raras de cada uno, y las «^» (las mismas, giradas).
+export const EMOCIONES_PMD = [
+  "Normal", "Happy", "Joyous", "Inspired", "Surprised", "Determined", "Angry", "Shouting",
+  "Worried", "Sad", "Crying", "Teary-Eyed", "Pain", "Dizzy", "Sigh", "Stunned"
+];
+
+// Las mismas direcciones que urlsPMD, pero con otra cara
+export function urlsPMDEmocion(p, emocion) {
+  return urlsPMD(p).map((url) => url.replace(/Normal\.png$/, `${emocion}.png`));
+}
+
 // Iconos de objetos, de mejor a peor:
 //   1) Icono HD de Escarlata/Púrpura (Serebii): "Heavy-Duty Boots" -> heavy-dutyboots.png,
 //      "King's Rock" -> king'srock.png (minúsculas, sin espacios ni acentos; guiones y apóstrofos se quedan)

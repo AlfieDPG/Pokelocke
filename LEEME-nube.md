@@ -18,6 +18,10 @@ Son unos diez minutos. Todo es gratis y sin tarjeta.
 2. Pestaña **Sign-in method** → **Google** → activar → elige un correo de contacto → **Guardar**.
 3. Pestaña **Settings → Authorized domains → Add domain**: añade `alfiedpg.github.io`.
    `localhost` ya viene puesto, así que para probar en tu ordenador no hay que tocar nada.
+4. Para las cuentas con usuario y contraseña (sin Google): **Sign-in method → Agregar
+   proveedor nuevo → Correo electrónico/contraseña** → activar solo la primera opción →
+   **Guardar**. Por dentro, el usuario «Pepe» es el correo inventado `pepe@pokely.invalid`
+   (ver `js/comun/nube.js`); por eso esas cuentas no pueden recuperar la contraseña.
 
 ## 3. Crear la base de datos
 
@@ -81,6 +85,8 @@ una copia. Por eso la web funciona igual sin conexión y sin haber iniciado sesi
 - Al iniciar sesión se compara fecha a fecha. Para cada cosa gana la más reciente, venga del
   navegador o de la nube. Si la nube traía algo más nuevo, la página se recarga sola.
 - A partir de ahí, cada cambio se sube un segundo después.
+- Al **cerrar sesión** se borra todo eso de este navegador (antes se sube lo pendiente): queda
+  solo en tu cuenta y vuelve al entrar.
 - **Si tocas lo mismo en dos sitios a la vez, gana el último que guarde.** No hay mezcla fina:
   si cambias un equipo en el móvil y otro en el PC sin recargar, uno pisa al otro. Esto solo
   pasa con **tu misma cuenta** abierta en dos aparatos; entre cuentas distintas no hay
@@ -99,6 +105,8 @@ copia local volvería a plantear quién pisa a quién.
 | Colección | Quién la ve | Quién la escribe |
 | --- | --- | --- |
 | `perfiles/{uid}` | cualquiera con sesión | solo su dueño |
+| `motes/{mote}` | cualquiera (para ver si está libre) | solo su dueño; uno por persona |
+| `presencia/{uid}` | cualquiera con sesión | solo su dueño (la hora la pone el servidor) |
 | `amistades/{par}` | los dos implicados | los dos implicados |
 | `lockes/{id}` | los que juegan ese locke | cada uno sus vidas, victorias y respuesta; el creador el resto |
 
@@ -110,7 +118,7 @@ ficha sin recargar.
 
 Nadie entra en tu lista ni en un locke tuyo sin querer:
 
-- **Amigos.** Metes su correo de Google → le llega una solicitud → cuando la acepta, os
+- **Amigos.** Metes su mote o su correo de Google → le llega una solicitud → cuando la acepta, os
   salís el uno en la lista del otro. Hasta entonces en «Amigos» solo estás tú.
 - **Lockes.** Quien lo crea elige a los invitados, y puede no invitar a nadie: un locke
   para ti solo vale igual. Los invitados salen como «Sin contestar» hasta que entran, y el

@@ -26,6 +26,9 @@ const campoNombre = document.getElementById("nombre-equipo");
 const contadorEl = document.getElementById("contador");
 const avisoEl = document.getElementById("aviso");
 
+// Lo que hay que dejar el ratón encima de la habilidad o el objeto para ver su ficha
+const RETRASO_FICHAS = 1000;
+
 // Mensaje en lugar de las tarjetas (cargando, error...)
 export function mostrarMensaje(texto) {
   resultado.innerHTML = `<p>${texto}</p>`;
@@ -712,7 +715,14 @@ export function iniciarCrear() {
     renderCrear();
   });
 
-  activarTooltips(resultado, ".arte, .ataque[data-indice], .ataque.habilidad, .ataque.objeto", contenidoFicha);
+  // Habilidad y objeto: la ficha sale tras un segundo con el ratón encima (si no, moverse por
+  // la página era un no parar de fichas). La del Pokémon y las de los ataques, al momento.
+  activarTooltips(
+    resultado,
+    ".arte, .ataque[data-indice], .ataque.habilidad, .ataque.objeto",
+    contenidoFicha,
+    (elemento) => (elemento.matches(".habilidad, .objeto") ? RETRASO_FICHAS : 0)
+  );
 
   const buscadorPokemon = activarAutocompletado(campoBuscar, datos.pokemon, agregarPokemon);
   document.getElementById("buscar").addEventListener("click", () => buscadorPokemon.elegirPrimera());

@@ -45,18 +45,47 @@ function colocar(elemento) {
 
 // Activa fichas dentro de un contenedor: para cada elemento que coincida con «selector»,
 // contenido(elemento) devuelve el HTML de la ficha. Un solo oyente para todo el contenedor.
-export function activarTooltips(contenedor, selector, contenido) {
-  contenedor.addEventListener("mouseover", (e) => {
-    const elemento = e.target.closest(selector);
-    if (!elemento || elemento === elementoActual) return;
+//
+// retraso(elemento), opcional: milisegundos que hay que dejar el ratón encima antes de que
+// salga. Así, al pasar el ratón de largo por encima de varias cosas no saltan fichas.
+export function activarTooltips(contenedor, selector, contenido, retraso = () => 0) {
+  let esperando = null;  // elemento cuya ficha está a punto de salir
+  let temporizador = null;
+
+  const cancelarEspera = () => {
+    clearTimeout(temporizador);
+    esperando = null;
+  };
+
+  const mostrar = (elemento) => {
     const html = contenido(elemento);
     if (html) mostrarTooltip(elemento, html);
+  };
+
+  contenedor.addEventListener("mouseover", (e) => {
+    const elemento = e.target.closest(selector);
+    if (!elemento || elemento === elementoActual || elemento === esperando) return;
+
+    cancelarEspera();
+    const espera = retraso(elemento);
+    if (!espera) {
+      mostrar(elemento);
+      return;
+    }
+
+    // Si había otra ficha abierta, se quita ya: la nueva sale cuando toque
+    if (elementoActual) ocultarTooltip();
+    esperando = elemento;
+    temporizador = setTimeout(() => {
+      if (esperando === elemento && elemento.isConnected) mostrar(elemento);
+      esperando = null;
+    }, espera);
   });
 
   contenedor.addEventListener("mouseout", (e) => {
-    if (!elementoActual) return;
-    // Solo se oculta al salir del elemento de verdad (no al pasar a uno de sus hijos)
-    if (!elementoActual.contains(e.relatedTarget)) ocultarTooltip();
+    // Solo cuenta salir del elemento de verdad (no pasar a uno de sus hijos)
+    if (esperando && !esperando.contains(e.relatedTarget)) cancelarEspera();
+    if (elementoActual && !elementoActual.contains(e.relatedTarget)) ocultarTooltip();
   });
 }
 

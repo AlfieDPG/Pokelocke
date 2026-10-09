@@ -36,8 +36,12 @@ let dialogo = null;
 let botonNuevo = null;
 
 const VIDAS_POR_DEFECTO = 10;
+const MOSTRAR_DE_ENTRADA = 5; // lockes que se ven sin pulsar «Ver todos»
+let verTodos = false;
 
 let invitables = []; // perfiles que salen para invitar, para copiar su nombre y su foto
+let elegidos = [];   // los que se van a meter al guardar (perfiles)
+let dialogoElegir = null;
 let editando = null; // id del locke que se está editando, o null si se está creando uno
 
 function colorSeguro(color) {
@@ -103,7 +107,7 @@ function plantillaJugador(locke, uid) {
 
       ${plantillaCifras(locke, uid, esMio && !cerrado)}
 
-      ${puedeGanar ? `<button class="locke-ganador">${icono("corona")} Ganó</button>` : ""}
+      ${puedeGanar ? `<button class="locke-ganador" title="Ha ganado ${nombre}: cerrar el locke" aria-label="Ha ganado ${nombre}">${icono("corona")}</button>` : ""}
     </div>`;
 }
 
@@ -180,15 +184,19 @@ function pintar() {
     aviso.textContent = "";
   }
 
-  // Primero los que están en marcha, y dentro de cada grupo el más nuevo arriba
-  const ordenados = [...mios].sort((uno, otro) => {
-    if ((uno.estado === "cerrado") !== (otro.estado === "cerrado")) {
-      return uno.estado === "cerrado" ? 1 : -1;
-    }
-    return (otro.creado || 0) - (uno.creado || 0);
-  });
+  // Del más nuevo al más antiguo. Solo los MOSTRAR_DE_ENTRADA últimos; el resto detrás de
+  // un botón que los despliega todos.
+  const ordenados = [...mios].sort((uno, otro) => (otro.creado || 0) - (uno.creado || 0));
+  const quedan = ordenados.length - MOSTRAR_DE_ENTRADA;
+  const visibles = verTodos || quedan <= 0 ? ordenados : ordenados.slice(0, MOSTRAR_DE_ENTRADA);
 
-  lista.innerHTML = ordenados.map(plantillaLocke).join("");
+  lista.innerHTML =
+    visibles.map(plantillaLocke).join("") +
+    (quedan > 0
+      ? `<button class="versus-ver-mas">${icono(verTodos ? "menos" : "mas")} ${
+          verTodos ? "Ver solo los últimos" : `Ver todos (${quedan} más)`
+        }</button>`
+      : "");
 }
 
 // ---------- Ventana de crear / editar ----------
@@ -201,76 +209,113 @@ function campo(selector) {
   return elemento;
 }
 
-// Quién está ya dentro (solo al editar), como etiquetas. A quien no ha contestado se le
-// puede echar con la X (y con eso le desaparece la notificación).
-function plantillaDentro(locke) {
-  const cerrado = locke.estado === "cerrado";
-  return locke.jugadores
-    .map((uid) => {
-      const nombre = escaparHTML((locke.nombres || {})[uid] || "Jugador");
-      const pendiente = estadoDe(locke, uid) === "pendiente";
-      const quitar = pendiente && !cerrado
-        ? `<button class="locke-quitar" data-uid="${escaparHTML(uid)}" title="Quitar del locke">${icono("aspa")}</button>`
-        : "";
-      return `<span class="locke-dentro-uno ${pendiente ? "pendiente" : ""}">${nombre}${pendiente ? " <small>(sin contestar)</small>" : ""}${quitar}</span>`;
-    })
-    .join("");
+// ---------- Integrantes ----------
+//
+// Todos como etiquetas en una fila: los que ya están, los que vas a meter (con el estilo de
+// «sin contestar») y al final una etiqueta «+» que abre la lista de tus amigos.
+//
+// Con la X: quien creó el locke puede echar a cualquiera; los demás, solo a quien todavía
+// no ha contestado (y con eso le desaparece la notificación).
+
+function botonQuitar(clase, uid, titulo) {
+  return `<button class="${clase}" data-uid="${escaparHTML(uid)}" title="${titulo}">${icono("aspa")}</button>`;
 }
 
-// Integrantes: los que ya están (al editar) y los amigos que se pueden meter
-async function pintarIntegrantes(locke) {
-  const dentro = campo(".locke-dentro");
-  dentro.hidden = !locke;
-  dentro.innerHTML = locke ? plantillaDentro(locke) : "";
+function plantillaIntegrantes(locke) {
+  const cerrado = Boolean(locke && locke.estado === "cerrado");
+  let html = "";
 
-  const caja = campo(".locke-amigos");
-  if (locke && locke.estado === "cerrado") {
-    invitables = [];
-    caja.innerHTML = "";
-    return;
+  if (locke) {
+    const creador = soyCreador(locke);
+    html += locke.jugadores
+      .map((uid) => {
+        const nombre = escaparHTML((locke.nombres || {})[uid] || "Jugador");
+        const pendiente = estadoDe(locke, uid) === "pendiente";
+        const sePuedeQuitar = !cerrado && uid !== locke.creador && (creador || pendiente);
+        const quitar = sePuedeQuitar
+          ? botonQuitar("locke-quitar", uid, pendiente ? "Quitar del locke" : "Expulsar del locke")
+          : "";
+        return `<span class="locke-dentro-uno ${pendiente ? "pendiente" : ""}">${nombre}${pendiente ? " <small>(sin contestar)</small>" : ""}${quitar}</span>`;
+      })
+      .join("");
+  } else {
+    const mio = miPerfilOProvisional();
+    html += `<span class="locke-dentro-uno">${escaparHTML((mio && mio.nombre) || "Tú")} <small>(tú)</small></span>`;
   }
 
-  // Los que ya estaban marcados siguen marcados al repintar
-  const marcados = new Set([...caja.querySelectorAll("input:checked")].map((casilla) => casilla.value));
-
-  const yaDentro = new Set(locke ? locke.jugadores : []);
-  const aceptados = amigosAceptados();
-  const fuera = aceptados.filter((amistad) => !yaDentro.has(amistad.otro));
-
-  if (!fuera.length) {
-    invitables = [];
-    // Si ya están todos dentro, no se dice nada
-    caja.innerHTML = aceptados.length
-      ? ""
-      : `<p class="locke-sin-amigos">${
-          locke
-            ? "Todavía no tienes amigos. Agrégalos en «Amigos» y espera a que te acepten."
-            : "Todavía no tienes amigos. Puedes crear el locke solo para ti y meter gente más adelante."
-        }</p>`;
-    return;
-  }
-
-  if (!caja.querySelector(".locke-amigo")) caja.innerHTML = `<p class="locke-sin-amigos">Cargando...</p>`;
-
-  const perfiles = await perfilesDe(fuera.map((amistad) => amistad.otro));
-  invitables = [...perfiles.values()];
-
-  caja.innerHTML = invitables
+  html += elegidos
     .map(
-      (perfil) => `
-        <label class="locke-amigo">
-          <input type="checkbox" value="${escaparHTML(perfil.uid)}" ${marcados.has(perfil.uid) ? "checked" : ""}>
-          <span>${escaparHTML(perfil.nombre)}</span>
-        </label>`
+      (perfil) =>
+        `<span class="locke-dentro-uno pendiente">${escaparHTML(perfil.nombre)} <small>(por añadir)</small>${botonQuitar("locke-desmarcar", perfil.uid, "No añadir")}</span>`
     )
     .join("");
+
+  if (!cerrado) {
+    html += `<button class="locke-dentro-uno pendiente locke-anadir" title="Añadir gente">${icono("mas")}</button>`;
+  }
+  return html;
+}
+
+function pintarIntegrantes(locke) {
+  campo(".locke-dentro").innerHTML = plantillaIntegrantes(locke);
+}
+
+// Amigos que se pueden meter: los que no están ya dentro. Se piden al abrir la ventana.
+async function cargarInvitables(locke) {
+  const yaDentro = new Set(locke ? locke.jugadores : []);
+  const fuera = amigosAceptados().filter((amistad) => !yaDentro.has(amistad.otro));
+  invitables = fuera.length ? [...(await perfilesDe(fuera.map((amistad) => amistad.otro))).values()] : [];
 }
 
 async function quitarDesdeElDialogo(uid) {
   const locke = editando ? lockePorId(editando) : null;
   if (!locke) return;
+
+  // A quien ya juega se le pregunta: pierde sus vidas y victorias en este locke
+  if (estadoDe(locke, uid) !== "pendiente") {
+    const nombre = (locke.nombres || {})[uid] || "este jugador";
+    if (!confirm(`¿Expulsar a ${nombre} de «${locke.nombre}»? Perderá sus vidas y victorias en este locke.`)) return;
+  }
+
   await quitarDeLocke(locke.id, uid);
-  await pintarIntegrantes(lockePorId(locke.id));
+  const actualizado = lockePorId(locke.id);
+  pintarIntegrantes(actualizado);
+  await cargarInvitables(actualizado); // el expulsado vuelve a poder invitarse
+}
+
+// ---------- Ventana para elegir amigos ----------
+
+function abrirElegirAmigos() {
+  const yaElegidos = new Set(elegidos.map((perfil) => perfil.uid));
+  const libres = invitables.filter((perfil) => !yaElegidos.has(perfil.uid));
+  const cuerpo = dialogoElegir.querySelector(".elegir-lista");
+
+  cuerpo.innerHTML = libres.length
+    ? libres
+        .sort((uno, otro) => uno.nombre.localeCompare(otro.nombre, "es"))
+        .map(
+          (perfil) => `
+            <label class="locke-amigo">
+              <input type="checkbox" value="${escaparHTML(perfil.uid)}">
+              <span>${escaparHTML(perfil.nombre)}</span>
+            </label>`
+        )
+        .join("")
+    : `<p class="locke-sin-amigos">${
+        amigosAceptados().length
+          ? "Ya están todos tus amigos."
+          : "Todavía no tienes amigos. Agrégalos en «Amigos» y espera a que te acepten."
+      }</p>`;
+
+  dialogoElegir.querySelector(".elegir-ok").disabled = !libres.length;
+  dialogoElegir.showModal();
+}
+
+function anadirElegidos() {
+  const marcados = new Set([...dialogoElegir.querySelectorAll("input:checked")].map((casilla) => casilla.value));
+  elegidos.push(...invitables.filter((perfil) => marcados.has(perfil.uid)));
+  dialogoElegir.close();
+  pintarIntegrantes(editando ? lockePorId(editando) : null);
 }
 
 // locke: el que se edita; sin él, uno nuevo
@@ -329,10 +374,11 @@ async function abrirDialogo(locke = null) {
   campo("#locke-vidas").disabled = !vidasLibres || campo("#locke-infinitas").checked;
   campo(".campo-vidas").title = vidasLibres ? "" : "Ya hay gente jugando: sus vidas solo las cambia cada uno.";
 
-  // Ventana recién abierta: nada marcado
-  campo(".locke-amigos").innerHTML = "";
+  // Ventana recién abierta: nadie elegido todavía
+  elegidos = [];
+  pintarIntegrantes(locke);
   if (!locke) campo("#locke-nombre").focus();
-  await pintarIntegrantes(locke);
+  if (!cerrado) await cargarInvitables(locke);
 }
 
 async function guardar() {
@@ -357,8 +403,7 @@ async function guardar() {
     return;
   }
 
-  const elegidos = [...dialogo.querySelectorAll(".locke-amigos input:checked")].map((casilla) => casilla.value);
-  const nuevos = invitables.filter((perfil) => elegidos.includes(perfil.uid));
+  const nuevos = elegidos.slice();
 
   if (!locke) {
     const nombres = { [usuario.uid]: mio.nombre };
@@ -416,6 +461,10 @@ export function iniciar() {
   aviso = seccion.querySelector(".versus-aviso");
   botonNuevo = seccion.querySelector("#nuevo-locke");
   dialogo = document.querySelector("#dialogo-nuevo-locke");
+  dialogoElegir = document.querySelector("#dialogo-elegir-amigos");
+
+  dialogoElegir.querySelector(".elegir-ok").addEventListener("click", anadirElegidos);
+  dialogoElegir.querySelector(".elegir-cancelar").addEventListener("click", () => dialogoElegir.close());
 
   const abrir = (locke) => {
     abrirDialogo(locke).catch((error) => {
@@ -463,6 +512,22 @@ export function iniciar() {
   });
 
   dialogo.querySelector(".locke-dentro").addEventListener("click", (e) => {
+    // «+»: la lista de amigos para elegir
+    if (e.target.closest(".locke-anadir")) {
+      e.preventDefault();
+      abrirElegirAmigos();
+      return;
+    }
+
+    // X de alguien que aún no se ha guardado: solo se quita de la lista
+    const desmarcar = e.target.closest(".locke-desmarcar");
+    if (desmarcar) {
+      e.preventDefault();
+      elegidos = elegidos.filter((perfil) => perfil.uid !== desmarcar.dataset.uid);
+      pintarIntegrantes(editando ? lockePorId(editando) : null);
+      return;
+    }
+
     const boton = e.target.closest(".locke-quitar");
     if (!boton) return;
     e.preventDefault();
@@ -475,6 +540,12 @@ export function iniciar() {
   });
 
   lista.addEventListener("click", (e) => {
+    if (e.target.closest(".versus-ver-mas")) {
+      verTodos = !verTodos;
+      pintar();
+      return;
+    }
+
     const tarjeta = e.target.closest(".locke");
     const boton = e.target.closest("button");
     if (!tarjeta || !boton) return;
@@ -511,7 +582,16 @@ export function iniciar() {
     }
   });
 
-  alCambiarLockes(pintar);
+  alCambiarLockes(() => {
+    pintar();
+    // Con la ventana de editar abierta, los integrantes también al día (alguien acepta,
+    // alguien sale...)
+    const locke = dialogo.open && editando ? lockePorId(editando) : null;
+    if (locke) {
+      pintarIntegrantes(locke);
+      cargarInvitables(locke).catch((error) => console.error(error));
+    }
+  });
 }
 
 export function mostrar() {

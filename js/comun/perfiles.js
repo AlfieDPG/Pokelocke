@@ -7,17 +7,19 @@
 //
 // Colecciones (las reglas están en firestore.rules):
 //
-//   perfiles/{uid}   { nombre, foto, correo, tipos, ganados, legado }
+//   perfiles/{uid}   { nombre, foto, correo, mote, tipos, ganados }
+//   motes/{mote}     { uid, mote }  (el id va en minúsculas: así no hay dos iguales)
 //   amistades/{par}  { miembros: [uidA, uidB], estado, pidio, creado }
+//
+//   · mote:    nombre único elegido por la persona. Si lo tiene, «nombre» es el mote.
 //
 //   · tipos:   los tipos de locke que usa esa persona, editables.
 //              [{ id, nombre, color }]
 //   · ganados: su palmarés entero. Cada entrada se queda con una COPIA del tipo, no con
 //              una referencia, para que renombrar un tipo no reescriba la historia.
 //              [{ id, nombre, tipo: { id, nombre, color }, nota }]
-//   · legado:  qué ficha de las de antes (js/comun/legado.js) es esta persona, o "".
 
-import { usuarioActual, baseDeDatos, alCambiarSesion } from "./nube.js";
+import { usuarioActual, baseDeDatos, alCambiarSesion, nombreDeUsuario, recordarNombreDeCuenta } from "./nube.js";
 
 // Con lo que empieza una cuenta nueva: solo el locke normal. Cada uno puede renombrarlo,
 // cambiarle el color o añadir los suyos (Megalocke, Bebelocke... son inventos de cada grupo).
@@ -28,9 +30,18 @@ export const TIPOS_POR_DEFECTO = [
   { id: "locke", nombre: "Locke", color: "#3498db" }
 ];
 
-const PERFIL_VACIO = { nombre: "Jugador", foto: "", correo: "", tipos: [], ganados: [], legado: "" };
+const PERFIL_VACIO = { nombre: "Jugador", foto: "", correo: "", tipos: [], ganados: [] };
+
+// Un perfil tal como lo enseña la web. Si tiene mote, su nombre ES el mote, ponga lo que
+// ponga en «nombre» (que puede haberse quedado con el de Google: ver asegurarPerfil).
+function perfilLeido(uid, datos) {
+  const perfil = { uid, ...PERFIL_VACIO, ...(datos || {}) };
+  if (perfil.mote) perfil.nombre = perfil.mote;
+  return perfil;
+}
 
 let mio = null;              // mi perfil, siempre al día (hay un onSnapshot encima)
+let perfilAsegurado = Promise.resolve(); // lo que hace asegurarPerfil al entrar
 let dejarDeEscuchar = null;
 let falloPerfil = "";        // por qué no ha cargado, para poder decirlo en pantalla
 const oyentes = new Set();
@@ -40,6 +51,12 @@ let listaAmistades = [];
 let dejarDeEscucharAmistades = null;
 let errorAmistades = "";
 const oyentesAmistades = new Set();
+
+// Los perfiles de la gente con la que tengo amistad (o solicitud), también en vivo: si un
+// amigo gana un locke o se cambia el mote, su ficha cambia sin recargar.
+const perfilesAmigos = new Map();   // uid -> perfil
+const escuchasAmigos = new Map();   // uid -> función para dejar de escuchar
+const oyentesPerfilesAmigos = new Set();
 
 // ---------- Avisos ----------
 
@@ -59,14 +76,7 @@ export function miPerfilOProvisional() {
   const usuario = usuarioActual();
   if (!usuario) return null;
 
-  return {
-    uid: usuario.uid,
-    ...PERFIL_VACIO,
-    nombre: usuario.displayName || (usuario.email || "").split("@")[0] || "Jugador",
-    foto: usuario.photoURL || "",
-    correo: (usuario.email || "").toLowerCase(),
-    tipos: TIPOS_POR_DEFECTO
-  };
+  return { uid: usuario.uid, ...PERFIL_VACIO, ...datosDeLaCuenta(usuario), tipos: TIPOS_POR_DEFECTO };
 }
 
 function explicar(error, queCosa) {
@@ -128,6 +138,64 @@ function avisarAmistades() {
   for (const funcion of oyentesAmistades) funcion(listaAmistades);
 }
 
+// ---------- Perfiles de los amigos, en vivo ----------
+
+// uid -> perfil de los que ya han llegado (los que faltan, aún no)
+export function perfilesDeAmigos() {
+  return perfilesAmigos;
+}
+
+export function alCambiarPerfilesAmigos(funcion) {
+  oyentesPerfilesAmigos.add(funcion);
+  funcion(perfilesAmigos);
+  return () => oyentesPerfilesAmigos.delete(funcion);
+}
+
+function avisarPerfilesAmigos() {
+  for (const funcion of oyentesPerfilesAmigos) funcion(perfilesAmigos);
+}
+
+// Se escucha a quien haya entrado en la lista de amistades y se deja de escuchar a quien
+// haya salido
+function escucharPerfilesAmigos() {
+  const acceso = baseDeDatos();
+  const quedan = new Set(listaAmistades.map((amistad) => amistad.otro));
+
+  for (const [uid, dejar] of escuchasAmigos) {
+    if (quedan.has(uid)) continue;
+    dejar();
+    escuchasAmigos.delete(uid);
+    perfilesAmigos.delete(uid);
+  }
+
+  if (!acceso) return;
+  const { bd, fn } = acceso;
+
+  for (const uid of quedan) {
+    if (escuchasAmigos.has(uid)) continue;
+    escuchasAmigos.set(
+      uid,
+      fn.onSnapshot(
+        fn.doc(bd, "perfiles", uid),
+        (documento) => {
+          perfilesAmigos.set(uid, perfilLeido(uid, documento.data()));
+          avisarPerfilesAmigos();
+        },
+        (error) => console.error("No se ha podido leer el perfil de un amigo", error)
+      )
+    );
+  }
+
+  avisarPerfilesAmigos();
+}
+
+function dejarDeEscucharPerfilesAmigos() {
+  for (const dejar of escuchasAmigos.values()) dejar();
+  escuchasAmigos.clear();
+  perfilesAmigos.clear();
+  avisarPerfilesAmigos();
+}
+
 // ---------- Utilidades ----------
 
 // El id del documento de amistad: los dos uid ordenados. Da igual quién lo cree.
@@ -174,6 +242,7 @@ export function iniciarPerfiles() {
       dejarDeEscucharAmistades();
       dejarDeEscucharAmistades = null;
     }
+    dejarDeEscucharPerfilesAmigos();
 
     listaAmistades = [];
     errorAmistades = "";
@@ -192,7 +261,8 @@ export function iniciarPerfiles() {
     escucharMiPerfil(usuario);
 
     try {
-      await asegurarPerfil(usuario);
+      perfilAsegurado = asegurarPerfil(usuario);
+      await perfilAsegurado;
     } catch (error) {
       console.error("No se ha podido preparar el perfil", error);
       falloPerfil = explicar(error, "tu perfil");
@@ -208,29 +278,113 @@ export function iniciarPerfiles() {
   });
 }
 
-// Crea el perfil la primera vez. Después solo refresca nombre, foto y correo, que los
-// manda Google y pueden haber cambiado.
-async function asegurarPerfil(usuario) {
-  const { bd, fn } = baseDeDatos();
-  const referencia = fn.doc(bd, "perfiles", usuario.uid);
-  const guardado = await fn.getDoc(referencia);
+// Nombre, foto y correo según cómo se haya entrado. Las cuentas de usuario y contraseña
+// no tienen foto ni correo de verdad (el suyo es inventado, ver nube.js), así que no se
+// guarda: si no, se podría buscar a alguien por ese correo falso.
+function datosDeLaCuenta(usuario) {
+  const deUsuario = nombreDeUsuario(usuario);
+  if (deUsuario) return { nombre: deUsuario, foto: "", correo: "" };
 
-  const deGoogle = {
+  return {
     nombre: usuario.displayName || (usuario.email || "").split("@")[0] || "Jugador",
     foto: usuario.photoURL || "",
     correo: (usuario.email || "").toLowerCase()
   };
+}
+
+// Crea el perfil la primera vez. Después solo refresca foto y correo, que los manda Google
+// y pueden haber cambiado, y el nombre si no se ha puesto mote (con mote, el nombre es él).
+//
+// merge y no setDoc a secas: al crear una cuenta de usuario, crearCuenta reserva el mote a
+// la vez, y si esto llegase después lo borraría.
+async function asegurarPerfil(usuario) {
+  const { bd, fn } = baseDeDatos();
+  const referencia = fn.doc(bd, "perfiles", usuario.uid);
+  const guardado = await fn.getDoc(referencia);
+  const deLaCuenta = datosDeLaCuenta(usuario);
 
   if (guardado.exists()) {
-    await fn.updateDoc(referencia, deGoogle);
+    const { nombre, ...resto } = deLaCuenta;
+    const mote = guardado.data().mote;
+    // Con mote, el nombre es el mote: si se quedó con el de Google (se pisaron al ponerse
+    // el mote justo al entrar), aquí se arregla
+    await fn.updateDoc(referencia, mote ? { ...resto, nombre: mote } : deLaCuenta);
     return;
   }
 
-  await fn.setDoc(referencia, {
-    ...PERFIL_VACIO,
-    ...deGoogle,
-    tipos: TIPOS_POR_DEFECTO
-  });
+  await fn.setDoc(
+    referencia,
+    { ...PERFIL_VACIO, ...deLaCuenta, tipos: TIPOS_POR_DEFECTO },
+    { merge: true }
+  );
+}
+
+// ---------- Mote ----------
+//
+// Nombre único con el que te ven los demás y con el que te pueden buscar. Para que no haya
+// dos iguales, cada mote ocupa un documento motes/{mote en minúsculas} con el uid de su
+// dueño: Firestore no deja crear uno que ya existe (las reglas lo comprueban).
+//
+// Se cambia todo de golpe (lote): se reserva el nuevo, se apunta en el perfil (también como
+// nombre) y se suelta el viejo. Si el nuevo está cogido, no cambia nada.
+
+export const FORMATO_MOTE = /^[A-Za-z0-9_.-]{3,20}$/;
+export const EXPLICACION_MOTE = "De 3 a 20 letras sin acentos, números, punto, guion o guion bajo.";
+
+export function claveMote(mote) {
+  return String(mote || "").trim().toLowerCase();
+}
+
+// uid del dueño de ese mote, o null si está libre. Se puede mirar sin sesión (lo usa el
+// formulario de crear cuenta).
+export async function dueñoDelMote(mote) {
+  const acceso = baseDeDatos();
+  if (!acceso || !FORMATO_MOTE.test(mote)) return null;
+  const { bd, fn } = acceso;
+  const documento = await fn.getDoc(fn.doc(bd, "motes", claveMote(mote)));
+  return documento.exists() ? documento.data().uid : null;
+}
+
+// Devuelve "" si ha ido bien o el motivo por el que no
+export async function cambiarMote(nuevo) {
+  const usuario = usuarioActual();
+  const acceso = baseDeDatos();
+  if (!usuario || !acceso) return "Inicia sesión primero.";
+
+  nuevo = String(nuevo || "").trim();
+  if (!FORMATO_MOTE.test(nuevo)) return EXPLICACION_MOTE;
+
+  // Si asegurarPerfil aún está escribiendo el nombre de Google, se espera a que acabe:
+  // si no, podría llegar después y pisar el mote recién puesto
+  await perfilAsegurado.catch(() => {});
+
+  const { bd, fn } = acceso;
+  const referencia = fn.doc(bd, "perfiles", usuario.uid);
+  const actual = ((await fn.getDoc(referencia)).data() || {}).mote || "";
+  if (actual === nuevo) return "";
+
+  const dueño = await dueñoDelMote(nuevo);
+  if (dueño && dueño !== usuario.uid) return `«${nuevo}» ya lo tiene otra persona.`;
+
+  const lote = fn.writeBatch(bd);
+  // Si solo cambian mayúsculas («pepe» -> «Pepe») el documento es el mismo y solo se reescribe
+  lote.set(fn.doc(bd, "motes", claveMote(nuevo)), { uid: usuario.uid, mote: nuevo });
+  if (actual && claveMote(actual) !== claveMote(nuevo)) lote.delete(fn.doc(bd, "motes", claveMote(actual)));
+  lote.set(referencia, { mote: nuevo, nombre: nuevo }, { merge: true });
+
+  try {
+    await lote.commit();
+  } catch (error) {
+    console.error(error);
+    // Lo normal: alguien lo ha cogido justo entre la comprobación y el guardado
+    return error && error.code === "permission-denied"
+      ? `No se ha podido guardar «${nuevo}». Puede que ya esté cogido.`
+      : "No se ha podido guardar. Inténtalo otra vez.";
+  }
+
+  // En los lockes en los que estoy, el nombre nuevo lo pone lockes.js (ponerMiNombre) en
+  // cuanto llega el perfil con el mote
+  return "";
 }
 
 function escucharMiPerfil(usuario) {
@@ -243,7 +397,8 @@ function escucharMiPerfil(usuario) {
       // lo crea. Mientras, se queda en null (y se tira del provisional, con sus tipos).
       if (!documento.exists()) return;
       falloPerfil = "";
-      mio = { uid: usuario.uid, ...PERFIL_VACIO, ...documento.data() };
+      mio = perfilLeido(usuario.uid, documento.data());
+      if (mio.mote) recordarNombreDeCuenta(mio.mote); // para la lista de cuentas
       avisar();
     },
     (error) => {
@@ -269,6 +424,7 @@ function escucharAmistades(usuario) {
           otro: datos.miembros.find((uid) => uid !== usuario.uid) || usuario.uid
         };
       });
+      escucharPerfilesAmigos();
       avisarAmistades();
     },
     (error) => {
@@ -301,8 +457,10 @@ export async function perfilesDe(uids) {
   const { bd, fn } = acceso;
   const perfiles = await Promise.all(
     uids.map(async (uid) => {
+      // Los de los amigos ya están aquí, al día: no hace falta ir al servidor
+      if (perfilesAmigos.has(uid)) return perfilesAmigos.get(uid);
       const documento = await fn.getDoc(fn.doc(bd, "perfiles", uid));
-      return { uid, ...PERFIL_VACIO, ...(documento.data() || {}) };
+      return perfilLeido(uid, documento.data());
     })
   );
 
@@ -310,18 +468,27 @@ export async function perfilesDe(uids) {
   return mapa;
 }
 
-export async function buscarPorCorreo(correo) {
+// Por correo (si lleva @) o por mote
+export async function buscarAmigo(texto) {
   const acceso = baseDeDatos();
-  if (!acceso) return null;
+  texto = String(texto || "").trim();
+  if (!acceso || !texto) return null;
 
   const { bd, fn } = acceso;
+
+  if (!texto.includes("@")) {
+    const uid = await dueñoDelMote(texto);
+    if (!uid) return null;
+    return (await perfilesDe([uid])).get(uid) || null;
+  }
+
   const encontrados = await fn.getDocs(
-    fn.query(fn.collection(bd, "perfiles"), fn.where("correo", "==", correo.trim().toLowerCase()))
+    fn.query(fn.collection(bd, "perfiles"), fn.where("correo", "==", texto.toLowerCase()))
   );
 
   if (encontrados.empty) return null;
   const documento = encontrados.docs[0];
-  return { uid: documento.id, ...PERFIL_VACIO, ...documento.data() };
+  return perfilLeido(documento.id, documento.data());
 }
 
 // ---------- Amistades ----------
@@ -375,6 +542,7 @@ function resumenDeLocke(id, locke) {
     juego: locke.juego || "",
     juegoOtro: locke.juegoOtro || "",
     fechaFin: locke.fechaFin || "",
+    vidasIlimitadas: Boolean(locke.vidasIlimitadas),
     ganador: nombres[locke.ganador] || "",
     participantes
   };
