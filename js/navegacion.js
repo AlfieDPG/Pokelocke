@@ -83,9 +83,9 @@ export async function irA(vista) {
 
 // Un solo oyente para todos los botones del menú
 export function iniciarNavegacion() {
-  // Versus va destacado, con su icono delante
-  for (const boton of document.querySelectorAll(".menu-lateral .boton-destacado")) {
-    boton.insertAdjacentHTML("afterbegin", icono("espadas"));
+  // Cada botón del menú, con su icono delante (el que diga su data-icono)
+  for (const boton of document.querySelectorAll(".menu-lateral [data-icono]")) {
+    boton.insertAdjacentHTML("afterbegin", icono(boton.dataset.icono));
   }
 
   document.querySelector(".menu-lateral").addEventListener("click", (e) => {

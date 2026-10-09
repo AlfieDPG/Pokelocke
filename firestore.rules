@@ -8,9 +8,11 @@ rules_version = '2';
 //
 // Resumen:
 //   usuarios/{uid}/datos  -> privado: equipos, rutas, level caps. Solo su dueño.
-//   perfiles/{uid}        -> lo lee cualquiera identificado (hace falta para buscar por
-//                            correo y para ver el palmarés de un amigo). Lo escribe su dueño.
+//   perfiles/{uid}        -> lo lee cualquiera identificado, de uno en uno (hace falta para
+//                            ver el palmarés de un amigo). Lo escribe su dueño. Sin correo.
 //   motes/{mote}          -> qué cuenta tiene cada mote. Uno por persona, sin repetidos.
+//   correos/{correo}      -> de quién es cada correo de Google. Solo se puede mirar uno
+//                            sabiéndolo entero: no se puede sacar la lista.
 //   presencia/{uid}       -> cuándo se vio a cada uno con la web abierta. Lo escribe su dueño.
 //   amistades/{par}       -> solo los dos implicados. El id es los dos uid ordenados.
 //   lockes/{id}           -> solo los que juegan ese locke. Cada uno toca SOLO sus vidas,
@@ -32,8 +34,11 @@ service cloud.firestore {
 
     // ---------- Perfil público ----------
     //
-    // Lleva nombre, foto, correo, los tipos de locke que usa esa persona y su palmarés.
-    // Nada privado: es la ficha que ven tus amigos.
+    // Lleva nombre, foto, los tipos de locke que usa esa persona y su palmarés. Nada
+    // privado: es la ficha que ven tus amigos. El correo no puede ir aquí (antes iba).
+    //
+    // «get» y no «read»: se lee el de alguien sabiendo su uid, pero no se puede pedir la
+    // colección entera.
 
     match /perfiles/{uid} {
       // Si el perfil pasa a tener un mote, ese mote tiene que estar reservado a su nombre en
@@ -45,9 +50,25 @@ service cloud.firestore {
           || getAfter(/databases/$(database)/documents/motes/$(mote.lower())).data.uid == uid;
       }
 
-      allow read: if identificado();
-      allow create, update: if identificado() && request.auth.uid == uid && moteBien();
+      allow get: if identificado();
+      allow create, update: if identificado() && request.auth.uid == uid && moteBien()
+        && !request.resource.data.keys().hasAny(['correo']);
       allow delete: if identificado() && request.auth.uid == uid;
+    }
+
+    // ---------- Correos ----------
+    //
+    // Para buscar a alguien de Google por su correo. Cada uno apunta solo el suyo (el que
+    // dice Google, no uno inventado).
+
+    match /correos/{correo} {
+      allow get: if identificado();
+      allow create, update: if identificado()
+        && request.auth.token.email != null
+        && request.auth.token.email.lower() == correo
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if identificado() && resource.data.uid == request.auth.uid;
     }
 
     // ---------- Conectado ----------
@@ -57,10 +78,11 @@ service cloud.firestore {
 
     match /presencia/{uid} {
       allow read: if identificado();
-      allow write: if identificado() && request.auth.uid == uid
+      allow create, update: if identificado() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['visto', 'conectado'])
         && request.resource.data.visto == request.time
         && request.resource.data.conectado is bool;
+      allow delete: if identificado() && request.auth.uid == uid;
     }
 
     // ---------- Motes ----------
@@ -72,8 +94,10 @@ service cloud.firestore {
     // Se puede mirar sin sesión: el formulario de crear cuenta comprueba si el usuario está libre.
 
     match /motes/{clave} {
+      // Si el perfil se borra en la misma escritura (al borrar la cuenta), como uno vacío
       function miPerfilDespues() {
-        return getAfter(/databases/$(database)/documents/perfiles/$(request.auth.uid)).data;
+        let perfil = getAfter(/databases/$(database)/documents/perfiles/$(request.auth.uid));
+        return perfil == null ? {} : perfil.data;
       }
 
       allow get: if true;
@@ -119,7 +143,7 @@ service cloud.firestore {
     //     a alguien de uno en uno, nombrado en «quitado»: a un invitado que aún no ha
     //     contestado cualquiera de dentro; a cualquiera (menos a sí mismo) quien lo creó.
     //   · contado: cada uno solo se apunta a sí mismo (lo usa el ganador).
-    //   · nombre, tipo, juego, ganador, cerrar...: solo quien lo creó.
+    //   · nombre, tipo, juego, normas, ganador, cerrar...: solo quien lo creó.
     //   · borrarlo: solo quien lo creó.
 
     match /lockes/{id} {
@@ -198,7 +222,7 @@ service cloud.firestore {
         return antes().creador == yo()
           || !despues().diff(antes()).affectedKeys().hasAny([
             'nombre', 'descripcion', 'tipo', 'juego', 'juegoOtro', 'estado', 'ganador',
-            'fechaFin', 'creador', 'vidasIniciales', 'vidasIlimitadas', 'creado'
+            'fechaFin', 'creador', 'vidasIniciales', 'vidasIlimitadas', 'creado', 'normas'
           ]);
       }
 

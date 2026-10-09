@@ -1,23 +1,27 @@
 // ---------- Quién tiene la web abierta ----------
 //
-// Mientras tienes la web abierta, cada minuto se apunta la hora en presencia/{tu uid}. Un
+// Mientras tienes la web a la vista, cada CADA se apunta la hora en presencia/{tu uid}. Un
 // amigo sale como conectado si su última marca es de hace menos de LIMITE. Al cerrar la
 // pestaña se avisa de que te vas (si al navegador le da tiempo; si no, a los pocos minutos
 // deja de salir conectado igual).
 //
 // Sin Realtime Database a propósito: con Firestore basta y no hay que activar nada más en
-// la consola. Gasta una escritura por minuto y persona conectada, lejos del límite gratis.
+// la consola. Cada marca es una escritura, y el plan gratis da 20.000 al día para todo:
+// por eso solo se apunta cada 3 minutos y no con la pestaña escondida (una pestaña
+// olvidada abierta todo el día gastaría casi 500).
 //
 //   presencia/{uid}  { visto: hora del servidor, conectado: true | false }
 
 import { usuarioActual, baseDeDatos, alCambiarSesion } from "./nube.js";
 import { alCambiarAmistades, amigosAceptados } from "./perfiles.js";
 
-const CADA = 60 * 1000;          // cada cuánto se apunta la hora
-const LIMITE = 3 * 60 * 1000;    // sin marca desde hace más de esto: ya no está
+const CADA = 3 * 60 * 1000;      // cada cuánto se apunta la hora
+const LIMITE = 7 * 60 * 1000;    // sin marca desde hace más de esto: ya no está
 
 let temporizador = null;
 let latido = null;
+let borrando = false;            // borrando la cuenta: ya no se apunta nada (ni al irse)
+let ultimaMarca = 0;             // cuándo se apuntó «conectado» por última vez
 
 const presencias = new Map();    // uid -> { visto (ms), conectado }
 const escuchas = new Map();      // uid -> función para dejar de escuchar
@@ -44,8 +48,9 @@ function avisar() {
 function apuntar(conectado) {
   const usuario = usuarioActual();
   const acceso = baseDeDatos();
-  if (!usuario || !acceso) return;
+  if (!usuario || !acceso || borrando) return;
   const { bd, fn } = acceso;
+  ultimaMarca = conectado ? Date.now() : 0;
   fn.setDoc(fn.doc(bd, "presencia", usuario.uid), { visto: fn.serverTimestamp(), conectado })
     .catch((error) => console.error("No se ha podido apuntar la conexión", error));
 }
@@ -53,12 +58,23 @@ function apuntar(conectado) {
 function empezarAApuntar() {
   clearInterval(temporizador);
   apuntar(true);
-  temporizador = setInterval(() => apuntar(true), CADA);
+  temporizador = setInterval(() => {
+    if (document.visibilityState === "visible") apuntar(true);
+  }, CADA);
 }
 
 function dejarDeApuntar() {
   clearInterval(temporizador);
   temporizador = null;
+}
+
+// Al borrar la cuenta: se deja de apuntar y se borra la marca
+export async function borrarMiPresencia() {
+  borrando = true;
+  dejarDeApuntar();
+  const usuario = usuarioActual();
+  const { bd, fn } = baseDeDatos();
+  await fn.deleteDoc(fn.doc(bd, "presencia", usuario.uid));
 }
 
 // ---------- Lo de mis amigos ----------
@@ -120,10 +136,12 @@ export function iniciarPresencia() {
 
   alCambiarAmistades(() => escucharAmigos());
 
-  // Al volver a la pestaña se apunta enseguida (el navegador frena los temporizadores de
-  // las pestañas de fondo) y al cerrarla se avisa de que te vas
+  // Al volver a la pestaña se apunta enseguida si la última marca ya es vieja (escondida no
+  // se apunta) y al cerrarla se avisa de que te vas
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && temporizador) apuntar(true);
+    if (document.visibilityState === "visible" && temporizador && Date.now() - ultimaMarca > CADA) {
+      apuntar(true);
+    }
   });
   window.addEventListener("pagehide", () => apuntar(false));
 

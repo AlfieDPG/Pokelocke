@@ -7,9 +7,14 @@
 //
 // Colecciones (las reglas están en firestore.rules):
 //
-//   perfiles/{uid}   { nombre, foto, correo, mote, tipos, ganados }
+//   perfiles/{uid}   { nombre, foto, mote, tipos, ganados }
 //   motes/{mote}     { uid, mote }  (el id va en minúsculas: así no hay dos iguales)
+//   correos/{correo} { uid }        (solo cuentas de Google, para buscarlas por correo)
 //   amistades/{par}  { miembros: [uidA, uidB], estado, pidio, creado }
+//
+//   · El correo NO va en el perfil: los perfiles los puede leer cualquiera con sesión, y
+//     así nadie puede sacar la lista de correos. Para encontrar a alguien por correo hay que
+//     saberlo entero: se mira correos/{ese correo} y, si existe, dice de quién es.
 //
 //   · mote:    nombre único elegido por la persona. Si lo tiene, «nombre» es el mote.
 //
@@ -30,7 +35,7 @@ export const TIPOS_POR_DEFECTO = [
   { id: "locke", nombre: "Locke", color: "#3498db" }
 ];
 
-const PERFIL_VACIO = { nombre: "Jugador", foto: "", correo: "", tipos: [], ganados: [] };
+const PERFIL_VACIO = { nombre: "Jugador", foto: "", tipos: [], ganados: [] };
 
 // Un perfil tal como lo enseña la web. Si tiene mote, su nombre ES el mote, ponga lo que
 // ponga en «nombre» (que puede haberse quedado con el de Google: ver asegurarPerfil).
@@ -278,22 +283,26 @@ export function iniciarPerfiles() {
   });
 }
 
-// Nombre, foto y correo según cómo se haya entrado. Las cuentas de usuario y contraseña
-// no tienen foto ni correo de verdad (el suyo es inventado, ver nube.js), así que no se
-// guarda: si no, se podría buscar a alguien por ese correo falso.
+// Nombre y foto según cómo se haya entrado. Las cuentas de usuario y contraseña no tienen
+// foto.
 function datosDeLaCuenta(usuario) {
   const deUsuario = nombreDeUsuario(usuario);
-  if (deUsuario) return { nombre: deUsuario, foto: "", correo: "" };
+  if (deUsuario) return { nombre: deUsuario, foto: "" };
 
   return {
     nombre: usuario.displayName || (usuario.email || "").split("@")[0] || "Jugador",
-    foto: usuario.photoURL || "",
-    correo: (usuario.email || "").toLowerCase()
+    foto: usuario.photoURL || ""
   };
 }
 
-// Crea el perfil la primera vez. Después solo refresca foto y correo, que los manda Google
-// y pueden haber cambiado, y el nombre si no se ha puesto mote (con mote, el nombre es él).
+// El correo con el que te pueden buscar: el de Google. Las cuentas de usuario y contraseña
+// no tienen (el suyo es inventado, ver nube.js): si no, se las podría buscar por él.
+function correoParaBuscar(usuario) {
+  return nombreDeUsuario(usuario) ? "" : (usuario.email || "").toLowerCase();
+}
+
+// Crea el perfil la primera vez. Después solo refresca la foto, que la manda Google y
+// puede haber cambiado, y el nombre si no se ha puesto mote (con mote, el nombre es él).
 //
 // merge y no setDoc a secas: al crear una cuenta de usuario, crearCuenta reserva el mote a
 // la vez, y si esto llegase después lo borraría.
@@ -307,16 +316,34 @@ async function asegurarPerfil(usuario) {
     const { nombre, ...resto } = deLaCuenta;
     const mote = guardado.data().mote;
     // Con mote, el nombre es el mote: si se quedó con el de Google (se pisaron al ponerse
-    // el mote justo al entrar), aquí se arregla
-    await fn.updateDoc(referencia, mote ? { ...resto, nombre: mote } : deLaCuenta);
-    return;
+    // el mote justo al entrar), aquí se arregla. Y el correo se quita: los perfiles de
+    // antes lo llevaban dentro (ahora va en correos/)
+    await fn.updateDoc(referencia, {
+      ...(mote ? { ...resto, nombre: mote } : deLaCuenta),
+      correo: fn.deleteField()
+    });
+  } else {
+    await fn.setDoc(
+      referencia,
+      { ...PERFIL_VACIO, ...deLaCuenta, tipos: TIPOS_POR_DEFECTO },
+      { merge: true }
+    );
   }
 
-  await fn.setDoc(
-    referencia,
-    { ...PERFIL_VACIO, ...deLaCuenta, tipos: TIPOS_POR_DEFECTO },
-    { merge: true }
-  );
+  await apuntarCorreo(usuario);
+}
+
+// Aparte y sin que un fallo pare lo demás: sin esto solo se deja de poder buscarte por
+// correo (por mote se sigue pudiendo)
+async function apuntarCorreo(usuario) {
+  const correo = correoParaBuscar(usuario);
+  if (!correo) return;
+  const { bd, fn } = baseDeDatos();
+  try {
+    await fn.setDoc(fn.doc(bd, "correos", correo), { uid: usuario.uid });
+  } catch (error) {
+    console.error("No se ha podido apuntar el correo para que te encuentren", error);
+  }
 }
 
 // ---------- Mote ----------
@@ -468,27 +495,47 @@ export async function perfilesDe(uids) {
   return mapa;
 }
 
-// Por correo (si lleva @) o por mote
+// Por correo (si lleva @, tiene que ser exacto) o por mote
 export async function buscarAmigo(texto) {
   const acceso = baseDeDatos();
   texto = String(texto || "").trim();
   if (!acceso || !texto) return null;
 
   const { bd, fn } = acceso;
+  let uid = null;
 
-  if (!texto.includes("@")) {
-    const uid = await dueñoDelMote(texto);
-    if (!uid) return null;
-    return (await perfilesDe([uid])).get(uid) || null;
+  if (texto.includes("@")) {
+    const documento = await fn.getDoc(fn.doc(bd, "correos", texto.toLowerCase()));
+    uid = documento.exists() ? documento.data().uid : null;
+  } else {
+    uid = await dueñoDelMote(texto);
   }
 
-  const encontrados = await fn.getDocs(
-    fn.query(fn.collection(bd, "perfiles"), fn.where("correo", "==", texto.toLowerCase()))
-  );
+  if (!uid) return null;
+  return (await perfilesDe([uid])).get(uid) || null;
+}
 
-  if (encontrados.empty) return null;
-  const documento = encontrados.docs[0];
-  return perfilLeido(documento.id, documento.data());
+// ---------- Borrar la cuenta ----------
+
+// Perfil, mote y correo de un golpe (las reglas de motes miran que el perfil ya no lo tenga)
+export async function borrarMiPerfil() {
+  const usuario = usuarioActual();
+  const { bd, fn } = baseDeDatos();
+  const referencia = fn.doc(bd, "perfiles", usuario.uid);
+  const mote = ((await fn.getDoc(referencia)).data() || {}).mote || "";
+  const correo = correoParaBuscar(usuario);
+  // Solo si es suyo: puede no estar (no llegó a apuntarse) y entonces las reglas no dejan
+  const correoMio = correo && ((await fn.getDoc(fn.doc(bd, "correos", correo))).data() || {}).uid === usuario.uid;
+
+  const lote = fn.writeBatch(bd);
+  if (mote) lote.delete(fn.doc(bd, "motes", claveMote(mote)));
+  if (correoMio) lote.delete(fn.doc(bd, "correos", correo));
+  lote.delete(referencia);
+  await lote.commit();
+}
+
+export async function borrarMisAmistades() {
+  await Promise.all(listaAmistades.map((amistad) => borrarAmistad(amistad.id)));
 }
 
 // ---------- Amistades ----------

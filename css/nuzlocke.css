@@ -394,11 +394,122 @@
   opacity: 0.35;
 }
 
-/* Un color por apartado */
-.normas-grupo.basicas    { --color-apartado: #c0392b; }
-.normas-grupo.clausulas  { --color-apartado: #3498db; }
-.normas-grupo.dificultad { --color-apartado: #f1c40f; }
-.normas-grupo.final      { --color-apartado: #9b59b6; }
+/* Un color por apartado (el del locke lo pone su tipo, en línea) */
+.normas-grupo.generales { --color-apartado: #c0392b; }
+.normas-grupo.mias      { --color-apartado: #3498db; }
+
+.normas-grupo h2 .icono {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+/* Botones del título (nueva norma, cerrar las del locke): detrás de la rayita */
+.normas-grupo h2 button {
+  order: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.7rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #2c2e3e;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.normas-grupo h2 button:hover {
+  background: var(--color-apartado);
+  color: #1e1f2b;
+}
+
+.normas-grupo h2 button .icono {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.normas-grupo h2::after {
+  order: 1;
+}
+
+.normas-vacio {
+  margin: 0;
+  font-size: 0.92rem;
+  opacity: 0.7;
+}
+
+/* Las de un locke, destacadas: fondo del color de su tipo */
+.normas-grupo.del-locke {
+  padding: 0.85rem;
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--color-apartado) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-apartado) 45%, transparent);
+}
+
+/* Cambiar / borrar una de las mías: a la derecha, al pasar el ratón */
+.normas-grupo li {
+  position: relative;
+}
+
+.norma-acciones {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.3rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.normas-grupo li:hover .norma-acciones,
+.norma-acciones:focus-within {
+  opacity: 1;
+}
+
+.norma-acciones button {
+  display: flex;
+  padding: 0.35rem;
+  border: none;
+  border-radius: 0.4rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  cursor: pointer;
+}
+
+.norma-acciones button:hover {
+  background: #4a4e68;
+}
+
+.norma-acciones .norma-borrar:hover {
+  background: #c0392b;
+}
+
+.norma-acciones .icono {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+/* En el móvil no hay «pasar el ratón»: siempre a la vista */
+@media (hover: none) {
+  .norma-acciones {
+    opacity: 1;
+  }
+}
+
+/* Que el texto no se meta debajo de los botones */
+.normas-grupo.mias li {
+  padding-right: 5rem;
+}
+
+#dialogo-norma textarea {
+  font-family: inherit;
+  font-size: 0.95rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: normal;
+}
 
 .normas-grupo ul {
   list-style: none;

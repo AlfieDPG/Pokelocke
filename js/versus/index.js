@@ -20,6 +20,7 @@ import {
   plantillaCampoJuego, activarCamposJuego, leerCampoJuego, nombreJuego, juegoRegistrado
 } from "../comun/campo-juego.js";
 import { irA } from "../navegacion.js";
+import { NORMAS_GENERALES, misNormas } from "../comun/normas.js";
 import {
   tiposDe, miPerfilOProvisional, fallaElPerfil, amigosAceptados, perfilesDe, fallaLasAmistades
 } from "../comun/perfiles.js";
@@ -111,12 +112,14 @@ function plantillaJugador(locke, uid) {
     </div>`;
 }
 
-// Juego del locke y, si es uno de la web, atajos a sus Rutas y sus Level caps
+// Juego del locke y atajos: a sus Rutas y sus Level caps si es un juego de la web, y a sus
+// normas si tiene
 function plantillaJuego(locke) {
   const nombre = nombreJuego(locke);
-  if (!nombre) return "";
+  const normas = (locke.normas || []).length;
+  if (!nombre && !normas) return "";
 
-  const atajos = juegoRegistrado(locke.juego)
+  const atajos = nombre && juegoRegistrado(locke.juego)
     ? `
       <button class="locke-ir" data-ir="rutas" data-juego="${escaparHTML(locke.juego)}">${icono("mapa")} Rutas</button>
       <button class="locke-ir" data-ir="levelcaps" data-juego="${escaparHTML(locke.juego)}">${icono("escudo")} Level caps</button>`
@@ -124,8 +127,9 @@ function plantillaJuego(locke) {
 
   return `
     <div class="locke-juego">
-      <span class="locke-juego-nombre">${icono("mando")} ${escaparHTML(nombre)}</span>
+      ${nombre ? `<span class="locke-juego-nombre">${icono("mando")} ${escaparHTML(nombre)}</span>` : ""}
       ${atajos}
+      ${normas ? `<button class="locke-ir" data-ir="normas">${icono("libro")} Normas (${normas})</button>` : ""}
     </div>`;
 }
 
@@ -283,6 +287,75 @@ async function quitarDesdeElDialogo(uid) {
   await cargarInvitables(actualizado); // el expulsado vuelve a poder invitarse
 }
 
+// ---------- Normas ----------
+//
+// Las generales, las tuyas y, al editar, las del locke que ya no tengas (para no perderlas
+// al guardar). Al crear salen marcadas las generales; al editar, las que tiene el locke.
+// Solo quien lo creó las cambia; los demás ven las que hay.
+
+function normasDisponibles(locke) {
+  const propias = [...NORMAS_GENERALES, ...misNormas()];
+  const ids = new Set(propias.map((norma) => norma.id));
+  const soloDelLocke = ((locke && locke.normas) || []).filter((norma) => !ids.has(norma.id));
+  return { propias, soloDelLocke };
+}
+
+function plantillaChipNorma(norma, marcada, apagada) {
+  return `
+    <label class="norma-chip" title="${escaparHTML(norma.texto || "")}">
+      <input type="checkbox" value="${escaparHTML(norma.id)}" ${marcada ? "checked" : ""} ${apagada ? "disabled" : ""}>
+      <span>${escaparHTML(norma.nombre)}</span>
+    </label>`;
+}
+
+function pintarNormas(locke, creador) {
+  const { soloDelLocke } = normasDisponibles(locke);
+  // Un locke de antes de que hubiera normas no tiene ninguna: a quien lo creó se le proponen
+  // las generales, como al crear uno
+  const deEntrada = locke && (locke.normas || !creador) ? locke.normas || [] : NORMAS_GENERALES;
+  const marcadas = new Set(deEntrada.map((norma) => norma.id));
+  const chips = (lista) =>
+    lista
+      .filter((norma) => creador || marcadas.has(norma.id))
+      .map((norma) => plantillaChipNorma(norma, marcadas.has(norma.id), !creador))
+      .join("");
+
+  const grupos = [
+    ["Generales", chips(NORMAS_GENERALES)],
+    ["Tuyas", chips(misNormas())],
+    ["Del locke", chips(soloDelLocke)]
+  ].filter(([, html]) => html);
+
+  campo(".locke-normas").innerHTML = grupos.length
+    ? grupos
+        .map(
+          ([titulo, html]) =>
+            `<div class="normas-elegir"><span class="normas-elegir-titulo">${titulo}</span><div class="normas-elegir-chips">${html}</div></div>`
+        )
+        .join("") +
+      (creador && !misNormas().length
+        ? `<p class="normas-elegir-ayuda">Puedes crear las normas de tu grupo en «Normas».</p>`
+        : "")
+    : `<p class="normas-elegir-ayuda">Este locke no tiene normas.</p>`;
+}
+
+// Las marcadas, como copia para guardar en el locke. Si una es tuya, con tu texto de ahora.
+function normasElegidas(locke) {
+  const { propias, soloDelLocke } = normasDisponibles(locke);
+  const porId = new Map([...soloDelLocke, ...propias].map((norma) => [norma.id, norma]));
+  return [...dialogo.querySelectorAll(".locke-normas input:checked")]
+    .map((casilla) => porId.get(casilla.value))
+    .filter(Boolean)
+    .map(({ id, nombre, texto }) => ({ id, nombre, texto: texto || "" }));
+}
+
+// Botón «Normas» de un locke: se abre la sección con las suyas arriba
+async function irANormas(id) {
+  const modulo = await import("../normas/index.js");
+  modulo.verNormasDeLocke(id);
+  irA("normas");
+}
+
 // ---------- Ventana para elegir amigos ----------
 
 function abrirElegirAmigos() {
@@ -377,6 +450,7 @@ async function abrirDialogo(locke = null) {
   // Ventana recién abierta: nadie elegido todavía
   elegidos = [];
   pintarIntegrantes(locke);
+  pintarNormas(locke, creador);
   if (!locke) campo("#locke-nombre").focus();
   if (!cerrado) await cargarInvitables(locke);
 }
@@ -395,6 +469,7 @@ async function guardar() {
   const tipos = tiposDe(mio).concat(locke && locke.tipo ? [locke.tipo] : []);
   const tipo = tipos.find((cada) => cada.id === idTipo) || tipos[0];
   const { juego, juegoOtro } = leerCampoJuego(dialogo.querySelector(".campo-juego"));
+  const normas = normasElegidas(locke);
 
   // Lo único imprescindible es el nombre: un locke para ti solo también vale
   if (!nombre) {
@@ -414,7 +489,7 @@ async function guardar() {
     }
 
     await crearLocke({
-      nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas,
+      nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas, normas,
       invitados: nuevos.map((perfil) => perfil.uid), nombres, fotos
     });
   } else {
@@ -422,7 +497,7 @@ async function guardar() {
     const vidasNuevas = soyCreador(locke) && sePuedenCambiarVidas(locke) ? (vidasIlimitadas ? 0 : vidas) : undefined;
 
     if (soyCreador(locke)) {
-      await editarLocke(locke.id, { nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas });
+      await editarLocke(locke.id, { nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas, normas });
     }
     // Invitar va aparte: lo puede hacer cualquiera de dentro, no solo el creador
     if (nuevos.length) await invitarALocke(locke.id, nuevos, vidasNuevas);
@@ -557,7 +632,9 @@ export function iniciar() {
 
     let tarea = null;
 
-    if (boton.classList.contains("locke-ir")) {
+    if (boton.classList.contains("locke-ir") && boton.dataset.ir === "normas") {
+      tarea = irANormas(id);
+    } else if (boton.classList.contains("locke-ir")) {
       irAlJuego(boton.dataset.ir, boton.dataset.juego);
     } else if (boton.classList.contains("locke-editar")) {
       abrir(locke);

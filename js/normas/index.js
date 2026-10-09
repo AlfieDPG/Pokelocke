@@ -1,60 +1,159 @@
-// Sección «Normas»: reglas del Nuzlocke, agrupadas por apartados.
-// Para añadir o cambiar una norma basta con editar APARTADOS. La clase de cada apartado
-// (basicas, clausulas, dificultad, final) es la que le da su color en css/nuzlocke.css.
+// Sección «Normas».
+//
+//   · Normas generales: las básicas de cualquier Nuzlocke, fijas.
+//   · Mis normas: las tuyas. Se crean, se cambian y se borran aquí, y luego se eligen al
+//     crear o editar un locke (los datos están en js/comun/normas.js).
+//   · Arriba del todo, si se llega desde el botón «Normas» de un locke, las de ese locke.
 
-const APARTADOS = [
-  {
-    clase: "basicas",
-    titulo: "Reglas básicas",
-    normas: [
-      ["Una captura por zona", "Solo puedes intentar capturar el primer Pokémon salvaje que encuentres en cada ruta, ciudad o zona. Si se debilita o huye, pierdes la captura de esa zona."],
-      ["Debilitado = muerto", "Si un Pokémon se debilita, se considera muerto: no puedes volver a usarlo. Libéralo o déjalo para siempre en una caja «cementerio»."],
-      ["Motes obligatorios", "Pon mote a todos tus Pokémon."]
-    ]
-  },
-  {
-    clase: "clausulas",
-    titulo: "Cláusulas",
-    normas: [
-      ["Cláusula de duplicados", "Si el primer Pokémon de una zona es de una especie que ya tienes, puedes pasar al siguiente Pokémon o capturarlo igualmente. Si lo capturas, no podrás usar esa segunda versión hasta que se te muera la primera."],
-      ["Cláusula variocolor", "Los Pokémon variocolor se pueden capturar siempre, aunque no sean el primero de la zona."],
-      ["Cláusula de objetos", "No se puede repetir objeto en el equipo: dos Pokémon no pueden llevar el mismo objeto equipado."],
-      ["Pokémon que no cuentan como Pokémon de ruta", "Ditto, Smeargle, Shedinja y Unown no cuentan como el Pokémon de la ruta: si te sale uno, no gastas la captura de esa zona."]
-    ]
-  },
-  {
-    clase: "dificultad",
-    titulo: "Restricciones de dificultad",
-    normas: [
-      ["Level cap", "Tus Pokémon no pueden superar el nivel del Pokémon más alto del siguiente combate importante (mira la sección «Level caps»)."],
-      ["Estilo de combate fijo", "Juega con el estilo de combate «Fijo»: no puedes cambiar de Pokémon gratis cuando debilitas al del rival."],
-      ["Habilidades limitadas (Randomlocke)", "No puedes llevar en el equipo más de un Pokémon con las habilidades Amor Filial, Potencia o Energía Pura."],
-      ["Compras en tiendas especiales", "En las tiendas especiales solo puedes comprar una unidad de cada objeto, y nunca objetos que curen PS. Las bayas sí están permitidas: son lo único que puede curarte que se puede comprar."]
-    ]
-  },
-  {
-    clase: "final",
-    titulo: "Fin de la partida",
-    normas: [
-      ["Fin de la partida", "Has perdido el Nuzlocke si se debilitan todos los Pokémon de tu equipo y no te quedan Pokémon en el PC, o si se te han acabado las vidas."]
-    ]
-  }
-];
+import { icono } from "../comun/iconos.js";
+import { escaparHTML } from "../comun/utilidades.js";
+import {
+  NORMAS_GENERALES, misNormas, guardarNorma, quitarNorma, alCambiarNormas
+} from "../comun/normas.js";
+import { alCambiarLockes, lockePorId } from "../comun/lockes.js";
 
-function plantillaApartado({ clase, titulo, normas }) {
+let contenedor = null;
+let dialogo = null;
+let editando = null;   // id de la norma que se está cambiando, o null si es nueva
+let idLocke = null;    // locke cuyas normas se enseñan arriba
+
+// Para el botón «Normas» de cada locke (js/versus): se abre la sección con las suyas arriba
+export function verNormasDeLocke(id) {
+  idLocke = id;
+}
+
+function colorSeguro(color) {
+  return /^#[0-9a-f]{6}$/i.test(String(color || "")) ? color : "#3498db";
+}
+
+function plantillaNorma(norma, editable) {
+  const acciones = editable
+    ? `
+      <div class="norma-acciones">
+        <button class="norma-editar" data-id="${escaparHTML(norma.id)}" title="Cambiar">${icono("lapiz")}</button>
+        <button class="norma-borrar" data-id="${escaparHTML(norma.id)}" title="Borrar">${icono("papelera")}</button>
+      </div>`
+    : "";
   return `
-    <section class="normas-grupo ${clase}">
-      <h2>${titulo}</h2>
-      <ul>
-        ${normas.map(([nombre, texto]) => `<li><strong>${nombre}</strong><p>${texto}</p></li>`).join("")}
-      </ul>
+    <li>
+      <strong>${escaparHTML(norma.nombre)}</strong>
+      ${norma.texto ? `<p>${escaparHTML(norma.texto)}</p>` : ""}
+      ${acciones}
+    </li>`;
+}
+
+function plantillaDelLocke() {
+  const locke = idLocke ? lockePorId(idLocke) : null;
+  if (!locke) return "";
+
+  const normas = locke.normas || [];
+  const tipo = locke.tipo || {};
+  return `
+    <section class="normas-grupo del-locke" style="--color-apartado: ${colorSeguro(tipo.color)}">
+      <h2>
+        ${icono("libro")} Normas de «${escaparHTML(locke.nombre)}»
+        <button class="normas-cerrar-locke" title="Dejar de verlas">${icono("aspa")}</button>
+      </h2>
+      ${normas.length
+        ? `<ul>${normas.map((norma) => plantillaNorma(norma, false)).join("")}</ul>`
+        : `<p class="normas-vacio">Este locke no tiene normas elegidas. Quien lo creó puede ponérselas con el lápiz del locke.</p>`}
     </section>`;
 }
 
+function pintar() {
+  const mias = misNormas();
+
+  contenedor.innerHTML = `
+    ${plantillaDelLocke()}
+
+    <section class="normas-grupo generales">
+      <h2>Normas generales</h2>
+      <ul>${NORMAS_GENERALES.map((norma) => plantillaNorma(norma, false)).join("")}</ul>
+    </section>
+
+    <section class="normas-grupo mias">
+      <h2>
+        Mis normas
+        <button class="normas-anadir">${icono("mas")} Nueva norma</button>
+      </h2>
+      ${mias.length
+        ? `<ul>${mias.map((norma) => plantillaNorma(norma, true)).join("")}</ul>`
+        : `<p class="normas-vacio">Todavía no tienes normas propias. Crea las de tu grupo con «Nueva norma» y elígelas al crear un locke.</p>`}
+    </section>`;
+}
+
+// ---------- Ventana de crear / cambiar ----------
+
+function abrirDialogo(norma = null) {
+  editando = norma ? norma.id : null;
+  dialogo.querySelector(".norma-titulo").textContent = norma ? "Cambiar norma" : "Nueva norma";
+  dialogo.querySelector(".norma-nombre").value = norma ? norma.nombre : "";
+  dialogo.querySelector(".norma-texto").value = norma ? norma.texto : "";
+  dialogo.querySelector(".norma-error").textContent = "";
+  dialogo.showModal();
+  dialogo.querySelector(".norma-nombre").focus();
+}
+
+function guardarDesdeElDialogo() {
+  const nombre = dialogo.querySelector(".norma-nombre").value.trim();
+  const texto = dialogo.querySelector(".norma-texto").value.trim();
+  const error = dialogo.querySelector(".norma-error");
+
+  if (!nombre) {
+    error.textContent = "Ponle un nombre.";
+    return;
+  }
+  const repetida = misNormas().some(
+    (norma) => norma.id !== editando && norma.nombre.trim().toLowerCase() === nombre.toLowerCase()
+  );
+  if (repetida) {
+    error.textContent = "Ya tienes una norma con ese nombre.";
+    return;
+  }
+
+  guardarNorma({ id: editando, nombre, texto });
+  dialogo.close();
+}
+
+// ---------- Arranque ----------
+
 export function iniciar() {
-  document.querySelector("#vista-normas .normas").innerHTML = APARTADOS.map(plantillaApartado).join("");
+  contenedor = document.querySelector("#vista-normas .normas");
+  dialogo = document.querySelector("#dialogo-norma");
+
+  dialogo.querySelector(".norma-formulario").addEventListener("submit", (e) => {
+    e.preventDefault();
+    guardarDesdeElDialogo();
+  });
+  dialogo.querySelector(".norma-cancelar").addEventListener("click", () => dialogo.close());
+
+  contenedor.addEventListener("click", (e) => {
+    const boton = e.target.closest("button");
+    if (!boton) return;
+
+    if (boton.classList.contains("normas-anadir")) {
+      abrirDialogo();
+    } else if (boton.classList.contains("normas-cerrar-locke")) {
+      idLocke = null;
+      pintar();
+    } else if (boton.classList.contains("norma-editar")) {
+      abrirDialogo(misNormas().find((norma) => norma.id === boton.dataset.id));
+    } else if (boton.classList.contains("norma-borrar")) {
+      const norma = misNormas().find((cada) => cada.id === boton.dataset.id);
+      if (norma && confirm(`¿Borrar «${norma.nombre}» de tus normas?\n\nLos lockes que ya la tienen la conservan.`)) {
+        quitarNorma(norma.id);
+      }
+    }
+  });
+
+  alCambiarNormas(pintar);
+  // Si el locke de arriba cambia (le cambian las normas, lo borran...), al día
+  alCambiarLockes(() => {
+    if (idLocke) pintar();
+  });
 }
 
 export function mostrar() {
-  // contenido fijo: no hay nada que actualizar
+  pintar();
+  if (idLocke) contenedor.scrollIntoView({ block: "start" });
 }

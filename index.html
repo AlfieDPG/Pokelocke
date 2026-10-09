@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pokely</title>
+  <title>LockeDex</title>
+  <meta name="description" content="Web de fans para jugar Nuzlockes con amigos: equipos, rutas, level caps, Pokédex y marcador de lockes.">
   <link rel="icon" type="image/png" sizes="32x32" href="img/pokeball-32.png">
   <link rel="icon" type="image/png" sizes="512x512" href="img/pokeball-512.png">
   <link rel="apple-touch-icon" href="img/pokeball-180.png">
@@ -28,22 +29,23 @@
 <body>
   <div class="app">
     <aside class="barra-lateral">
-      <h1 class="logo">Pokely</h1>
+      <h1 class="logo"><img src="img/pokeball-180.png" alt="">LockeDex</h1>
       <nav class="menu-lateral">
-        <button data-vista="versus" class="boton-destacado">Versus</button>
+        <!-- data-icono: el icono que se le pone delante (js/navegacion.js) -->
+        <button data-vista="versus" data-icono="espadas" class="boton-destacado">Versus</button>
         <details class="grupo-menu">
-          <summary>Equipos</summary>
+          <summary class="boton-seccion" data-icono="pokeball">Equipos</summary>
           <div class="submenu">
-            <button data-vista="crear">Crear equipo</button>
-            <button data-vista="equipos">Mis equipos</button>
-            <button id="boton-importar">Importar paste</button>
+            <button data-vista="crear" data-icono="mas">Crear equipo</button>
+            <button data-vista="equipos" data-icono="lista">Mis equipos</button>
+            <button id="boton-importar" data-icono="importar">Importar paste</button>
           </div>
         </details>
-        <button data-vista="rutas">Rutas</button>
-        <button data-vista="levelcaps">Level caps</button>
-        <button data-vista="pokedex">Pokédex</button>
-        <button data-vista="normas">Normas</button>
-        <button data-vista="amigos">Amigos</button>
+        <button data-vista="rutas" data-icono="mapa" class="boton-seccion">Rutas</button>
+        <button data-vista="levelcaps" data-icono="escudo" class="boton-seccion">Level caps</button>
+        <button data-vista="pokedex" data-icono="pokedex" class="boton-seccion">Pokédex</button>
+        <button data-vista="normas" data-icono="libro" class="boton-seccion">Normas</button>
+        <button data-vista="amigos" data-icono="amigos" class="boton-seccion">Amigos</button>
       </nav>
 
       <div class="sesion" hidden>
@@ -57,6 +59,8 @@
         <button class="sesion-boton"></button>
         <span class="sesion-aviso"></span>
       </div>
+
+      <a class="enlace-legal" href="legal.html" target="_blank" rel="noopener">Créditos y privacidad</a>
     </aside>
 
     <div class="contenido">
@@ -217,6 +221,7 @@
       </svg>
       Entrar con Google
     </button>
+    <p class="sesion-legal">Al entrar aceptas la <a href="legal.html#privacidad" target="_blank" rel="noopener">política de privacidad</a>.</p>
   </dialog>
 
   <dialog id="dialogo-crear-cuenta" class="dialogo-sesion">
@@ -240,6 +245,7 @@
         <button type="submit" class="boton-verde crear-ok">Crear cuenta</button>
       </div>
     </form>
+    <p class="sesion-legal">Al crear una cuenta aceptas la <a href="legal.html#privacidad" target="_blank" rel="noopener">política de privacidad</a>.</p>
   </dialog>
 
   <!-- Sale sola mientras la cuenta no tenga nombre de usuario, y no se puede cerrar -->
@@ -272,10 +278,28 @@
       <div class="cuentas-lista"></div>
       <button class="boton-gris perfil-anadir">Añadir otra cuenta</button>
     </div>
+    <button class="perfil-borrar">Borrar mi cuenta</button>
     <div class="dialogo-botones">
       <button class="boton-gris perfil-cancelar">Cerrar</button>
       <button class="boton-verde perfil-guardar">Guardar</button>
     </div>
+  </dialog>
+
+  <dialog id="dialogo-borrar-cuenta" class="dialogo-sesion">
+    <h2>Borrar mi cuenta</h2>
+    <p>Se borra para siempre: tu perfil, tu nombre de usuario, tus equipos, rutas y level caps, tus amistades y tus lockes ganados. De los lockes compartidos se te quita a ti; los demás siguen con los suyos. No se puede deshacer.</p>
+    <form class="borrar-formulario">
+      <label class="borrar-clave-campo">
+        <span>Tu contraseña</span>
+        <input class="borrar-clave" type="password" autocomplete="current-password">
+      </label>
+      <p class="sesion-ayuda borrar-google">Para confirmar que eres tú se abrirá la ventana de Google.</p>
+      <span class="sesion-error borrar-error"></span>
+      <div class="dialogo-botones">
+        <button type="button" class="boton-gris boton-izquierda borrar-cancelar">Cancelar</button>
+        <button type="submit" class="boton-rojo borrar-ok">Borrar para siempre</button>
+      </div>
+    </form>
   </dialog>
 
   <dialog id="dialogo-avisos">
@@ -328,6 +352,9 @@
     <span class="etiqueta-campo">Integrantes</span>
     <div class="locke-dentro"></div>
 
+    <span class="etiqueta-campo">Normas</span>
+    <div class="locke-normas"></div>
+
     <label class="campo-ancho campo-descripcion">
       <span>Descripción (opcional)</span>
       <textarea id="locke-descripcion" rows="3"></textarea>
@@ -339,6 +366,26 @@
       <button id="locke-cancelar">Cancelar</button>
       <button id="locke-crear">Crear locke</button>
     </div>
+  </dialog>
+
+  <!-- Crear o cambiar una de «Mis normas» (js/normas/index.js) -->
+  <dialog id="dialogo-norma" class="dialogo-sesion">
+    <h2 class="norma-titulo">Nueva norma</h2>
+    <form class="norma-formulario">
+      <label>
+        <span>Nombre</span>
+        <input class="norma-nombre" type="text" maxlength="80" autocomplete="off">
+      </label>
+      <label>
+        <span>Explicación</span>
+        <textarea class="norma-texto" rows="5" maxlength="800"></textarea>
+      </label>
+      <span class="sesion-error norma-error"></span>
+      <div class="dialogo-botones">
+        <button type="button" class="boton-gris boton-izquierda norma-cancelar">Cancelar</button>
+        <button type="submit" class="boton-verde norma-ok">Guardar</button>
+      </div>
+    </form>
   </dialog>
 
   <!-- Cara a cara con un amigo (botón de espadas de su ficha en «Amigos») -->

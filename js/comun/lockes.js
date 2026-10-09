@@ -14,6 +14,7 @@
 //     estados: {uid: "aceptado"|"pendiente"},
 //     nombres: {uid}, fotos: {uid}, creador,
 //     vidasIniciales, vidasIlimitadas, vidas: {uid:n}, marcador: {uid:n},
+//     normas: [{ id, nombre, texto }],   // copia de las elegidas (ver normas.js)
 //     estado: "abierto"|"cerrado", ganador, fechaFin: "2025-06-01",
 //     contado: [uid], creado, actualizado }
 //
@@ -28,8 +29,9 @@
 // «jugadores» lleva también a los invitados que no han contestado: si no, las reglas no les
 // dejarían ni leer la invitación. Quién ha aceptado está en «estados».
 
-import { usuarioActual, baseDeDatos, alCambiarSesion } from "./nube.js";
+import { usuarioActual, baseDeDatos, alCambiarSesion, cuandoEsteSincronizado } from "./nube.js";
 import { apuntarLockesGanados, miPerfil, alCambiarMiPerfil } from "./perfiles.js";
+import { recibirNormas } from "./normas.js";
 import { hoyComoTexto } from "./utilidades.js";
 
 let todos = [];
@@ -122,6 +124,15 @@ function ponerMiNombre() {
   }
 }
 
+// Las normas de los lockes que he aceptado y no tengo se apuntan en las mías (al aceptar uno,
+// o si quien lo creó le añade más). Después de juntar con la nube: ver cuandoEsteSincronizado.
+async function recibirNormasDeMisLockes() {
+  await cuandoEsteSincronizado();
+  for (const locke of misLockes()) {
+    if (locke.normas && locke.normas.length) recibirNormas(locke.normas);
+  }
+}
+
 function escuchar(usuario) {
   const { bd, fn } = baseDeDatos();
 
@@ -143,6 +154,7 @@ function escuchar(usuario) {
       if (sinApuntar) apuntarLockesGanados().catch((error) => console.error(error));
 
       ponerMiNombre();
+      recibirNormasDeMisLockes();
     },
     (error) => {
       console.error("No se han podido leer los lockes", error);
@@ -169,7 +181,7 @@ export function lockePorId(id) {
 // «invitados» puede venir vacío: un locke para ti solo es perfectamente válido, y luego
 // siempre se puede meter gente.
 export async function crearLocke({
-  nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas, invitados, nombres, fotos
+  nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas, normas, invitados, nombres, fotos
 }) {
   const usuario = usuarioActual();
   const { bd, fn } = baseDeDatos();
@@ -199,6 +211,7 @@ export async function crearLocke({
     vidasIlimitadas: Boolean(vidasIlimitadas),
     vidas: porJugador.vidas,
     marcador: porJugador.marcador,
+    normas: normas || [],
     estado: "abierto",
     ganador: "",
     fechaFin: "",
@@ -302,8 +315,9 @@ export function sePuedenCambiarVidas(locke) {
   );
 }
 
-// Solo quien lo creó. Cambia los datos del principio (nombre, tipo, juego, descripción y,
-// si todavía se puede, las vidas); las suyas propias se ponen a las nuevas de partida.
+// Solo quien lo creó. Cambia los datos del principio (nombre, tipo, juego, descripción,
+// normas y, si todavía se puede, las vidas); las suyas propias se ponen a las nuevas de
+// partida. Las normas se pueden cambiar siempre, también con el locke ya terminado.
 export async function editarLocke(id, datos) {
   const locke = lockePorId(id);
   const usuario = usuarioActual();
@@ -315,6 +329,7 @@ export async function editarLocke(id, datos) {
     tipo: datos.tipo,
     juego: datos.juego || "",
     juegoOtro: datos.juegoOtro || "",
+    normas: datos.normas || [],
     actualizado: Date.now()
   };
 
@@ -352,6 +367,33 @@ export async function quitarDeLocke(id, uid) {
     [`marcador.${uid}`]: fn.deleteField(),
     actualizado: Date.now()
   });
+}
+
+// Al borrar la cuenta: de cada locke se sale uno con todo lo suyo (nombre y foto incluidos).
+// Los que creó y en los que no queda nadie más que haya aceptado, se borran enteros.
+export async function salirDeTodosMisLockes() {
+  const usuario = usuarioActual();
+  if (!usuario) return;
+
+  await Promise.all(
+    todos.map((locke) => {
+      const quedanOtros = (locke.jugadores || []).some(
+        (uid) => uid !== usuario.uid && estadoDe(locke, uid) === "aceptado"
+      );
+      if (locke.creador === usuario.uid && !quedanOtros) return borrarLocke(locke.id);
+
+      const { fn, ref } = referencia(locke.id);
+      return fn.updateDoc(ref, {
+        jugadores: fn.arrayRemove(usuario.uid),
+        [`estados.${usuario.uid}`]: fn.deleteField(),
+        [`vidas.${usuario.uid}`]: fn.deleteField(),
+        [`marcador.${usuario.uid}`]: fn.deleteField(),
+        [`nombres.${usuario.uid}`]: fn.deleteField(),
+        [`fotos.${usuario.uid}`]: fn.deleteField(),
+        actualizado: Date.now()
+      });
+    })
+  );
 }
 
 export async function rechazarLocke(id) {

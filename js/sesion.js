@@ -2,26 +2,28 @@
 // Si Firebase no está configurado no se enseña nada: la web va igual, solo que lo
 // guardado se queda en este navegador.
 //
-//   · Entrar: con usuario y contraseña de Pokely o con Google (ver nube.js).
+//   · Entrar: con usuario y contraseña de LockeDex o con Google (ver nube.js).
 //   · Crear cuenta: usuario, contraseña y repetirla. El usuario es también su nombre.
 //   · Nombre de usuario obligatorio: mientras la cuenta no tenga uno (las de Google al
 //     entrar por primera vez) sale una ventana que no se puede cerrar. Así nadie va por
 //     ahí con el nombre de Google y no puede haber dos «Alfonso».
-//   · Perfil (pulsando tu nombre): cambiar el nombre de usuario y cambiar de cuenta.
+//   · Perfil (pulsando tu nombre): cambiar el nombre de usuario, cambiar de cuenta y
+//     borrarla.
 
 import { escaparHTML } from "./comun/utilidades.js";
 import {
   iniciarNube, alCambiarSesion, entrar, salir, hayNube, usuarioActual,
   entrarConUsuario, crearCuentaDeUsuario, nombreDeUsuario,
-  cuentasRecordadas, cambiarDeCuenta, anadirCuenta, tocaAbrirEntrar
+  cuentasRecordadas, cambiarDeCuenta, anadirCuenta, tocaAbrirEntrar,
+  confirmarIdentidad, borrarMisDatosGuardados, borrarCuentaDeFirebase
 } from "./comun/nube.js";
 import {
   iniciarPerfiles, alCambiarMiPerfil, miPerfil, cambiarMote, dueñoDelMote,
-  FORMATO_MOTE, EXPLICACION_MOTE
+  FORMATO_MOTE, EXPLICACION_MOTE, borrarMiPerfil, borrarMisAmistades
 } from "./comun/perfiles.js";
-import { iniciarLockes } from "./comun/lockes.js";
+import { iniciarLockes, salirDeTodosMisLockes } from "./comun/lockes.js";
 import { iniciarAvisos } from "./avisos.js";
-import { iniciarPresencia } from "./comun/presencia.js";
+import { iniciarPresencia, borrarMiPresencia } from "./comun/presencia.js";
 
 const cajon = document.querySelector(".sesion");
 const datosUsuario = cajon.querySelector(".sesion-usuario");
@@ -34,6 +36,7 @@ const dialogoEntrar = document.querySelector("#dialogo-entrar");
 const dialogoCrear = document.querySelector("#dialogo-crear-cuenta");
 const dialogoMote = document.querySelector("#dialogo-mote");
 const dialogoPerfil = document.querySelector("#dialogo-perfil");
+const dialogoBorrar = document.querySelector("#dialogo-borrar-cuenta");
 
 // Mientras se crea una cuenta de usuario, su nombre se reserva justo después: que no salte
 // entretanto la ventana de «elige tu nombre»
@@ -81,6 +84,8 @@ function textoDeError(error) {
   if (codigo === "auth/weak-password") return "La contraseña tiene que tener al menos 6 caracteres.";
   if (codigo === "auth/too-many-requests") return "Demasiados intentos. Espera un poco.";
   if (codigo === "auth/popup-closed-by-user" || codigo === "auth/cancelled-popup-request") return "";
+  if (codigo === "auth/user-mismatch") return "Esa no es la cuenta de Google con la que estás dentro.";
+  if (codigo === "auth/missing-password") return "Escribe tu contraseña.";
   return "No se ha podido. Inténtalo otra vez.";
 }
 
@@ -273,6 +278,39 @@ function guardarPerfil() {
   });
 }
 
+// ---------- Borrar la cuenta ----------
+
+function abrirBorrar() {
+  const deUsuario = Boolean(nombreDeUsuario(usuarioActual()));
+  dialogoBorrar.querySelector(".borrar-clave-campo").hidden = !deUsuario;
+  dialogoBorrar.querySelector(".borrar-google").hidden = deUsuario;
+  dialogoBorrar.querySelector(".borrar-clave").value = "";
+  dialogoBorrar.querySelector(".borrar-error").textContent = "";
+  dialogoPerfil.close();
+  dialogoBorrar.showModal();
+}
+
+// Primero se comprueba que eres tú (si no, Firebase no deja borrar la cuenta al final y se
+// quedaría a medias). Luego se borra todo lo tuyo de Firestore y, lo último, la cuenta.
+function borrarCuenta() {
+  return conBotonesApagados(dialogoBorrar, async (error) => {
+    const clave = dialogoBorrar.querySelector(".borrar-clave").value;
+    if (nombreDeUsuario(usuarioActual()) && !clave) {
+      error.textContent = "Escribe tu contraseña.";
+      return;
+    }
+    await confirmarIdentidad(clave);
+
+    error.textContent = "Borrando...";
+    await borrarMiPresencia();
+    await salirDeTodosMisLockes();
+    await borrarMisAmistades();
+    await borrarMisDatosGuardados();
+    await borrarMiPerfil();
+    await borrarCuentaDeFirebase(); // recarga la página
+  });
+}
+
 // ---------- Arranque ----------
 
 function alPulsarEnter(campo, accion) {
@@ -344,6 +382,14 @@ export async function iniciarSesionUI() {
     e.currentTarget.disabled = true;
     anadirCuenta().catch((error) => console.error(error));
   });
+
+  // Borrar la cuenta
+  dialogoPerfil.querySelector(".perfil-borrar").addEventListener("click", abrirBorrar);
+  dialogoBorrar.querySelector(".borrar-formulario").addEventListener("submit", (e) => {
+    e.preventDefault();
+    borrarCuenta();
+  });
+  dialogoBorrar.querySelector(".borrar-cancelar").addEventListener("click", () => dialogoBorrar.close());
 
   // Todo esto antes de iniciarNube: así ya están escuchando cuando llegue la sesión
   iniciarPerfiles();

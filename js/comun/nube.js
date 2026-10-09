@@ -33,6 +33,17 @@ let funcionesBD = null;
 const pendientes = new Set();
 let temporizador = null;
 
+// Se cumple cuando lo del navegador ya se ha juntado con lo de la cuenta (o no hay cuenta).
+// Quien escriba algo sincronizado por su cuenta, sin que lo pida la persona (p. ej. las
+// normas que llegan de un locke), tiene que esperar a esto: si no, su escritura sería «más
+// nueva» que lo de la nube y lo pisaría.
+let marcarSincronizado = null;
+const sincronizado = new Promise((cumplir) => (marcarSincronizado = cumplir));
+
+export function cuandoEsteSincronizado() {
+  return sincronizado;
+}
+
 // ---------- Varias cuentas ----------
 //
 // Firebase solo deja una sesión por «app», así que cada cuenta tiene la suya: la primera,
@@ -290,6 +301,10 @@ export async function entrar() {
 // «Pepe» -> pepe@pokely.invalid. «.invalid» es un dominio que no existe ni puede existir:
 // nunca se manda nada ahí. Por eso estas cuentas no pueden recuperar la contraseña.
 //
+// Se queda «pokely» (el nombre antiguo de la web) aunque ahora se llame LockeDex: es el
+// correo con el que entran las cuentas que ya existen, y si cambiase no podrían entrar.
+// Lo mismo con las claves «pokely-...» del navegador.
+//
 // Hay que activar «Correo electrónico/contraseña» en la consola de Firebase
 // (Authentication -> Sign-in method), o Firebase contesta auth/operation-not-allowed.
 
@@ -325,12 +340,53 @@ export async function salir() {
   if (!auth) return;
   await dejarEstaCuenta();
   await funcionesAuth.signOut(auth);
+  olvidarEstaCuentaYRecargar();
+}
 
+function olvidarEstaCuentaYRecargar() {
   const estado = cuentas();
   estado.cuentas = estado.cuentas.filter((cuenta) => cuenta.app !== appActiva);
   estado.activa = estado.cuentas.length ? estado.cuentas[0].app : "";
   escribir(CLAVE_CUENTAS, estado);
   location.reload();
+}
+
+// ---------- Borrar la cuenta ----------
+//
+// Firebase solo deja borrar una cuenta en la que se ha entrado hace un momento, así que
+// antes se vuelve a pedir la contraseña (o la ventana de Google). Va primero, antes de
+// borrar nada: si no, podrían borrarse los datos y quedarse la cuenta.
+
+export async function confirmarIdentidad(contraseña) {
+  if (nombreDeUsuario(usuario)) {
+    const credencial = funcionesAuth.EmailAuthProvider.credential(usuario.email, contraseña);
+    await funcionesAuth.reauthenticateWithCredential(usuario, credencial);
+  } else {
+    await funcionesAuth.reauthenticateWithPopup(usuario, new funcionesAuth.GoogleAuthProvider());
+  }
+}
+
+// Que no se suba nada más: lo que haya en usuarios/{uid}/datos se va a borrar
+export function dejarDeSubir() {
+  clearTimeout(temporizador);
+  pendientes.clear();
+}
+
+// Equipos, rutas, level caps... lo de usuarios/{uid}/datos
+export async function borrarMisDatosGuardados() {
+  dejarDeSubir();
+  const guardados = await funcionesBD.getDocs(funcionesBD.collection(bd, "usuarios", usuario.uid, "datos"));
+  await Promise.all(guardados.docs.map((cada) => funcionesBD.deleteDoc(cada.ref)));
+}
+
+// Lo último, cuando ya no queda nada suyo en Firestore: la cuenta en sí, lo suyo en este
+// navegador y la cuenta en la lista de cuentas
+export async function borrarCuentaDeFirebase() {
+  dejarDeSubir();
+  await funcionesAuth.deleteUser(usuario);
+  vaciarSincronizadas();
+  escribir(CLAVE_DUENO, null);
+  olvidarEstaCuentaYRecargar();
 }
 
 export function hayNube() {
@@ -356,12 +412,16 @@ export function baseDeDatos() {
 // ---------- Arranque ----------
 
 export async function iniciarNube() {
-  if (!hayConfiguracion()) return; // sin configurar: la web va solo con el navegador
+  if (!hayConfiguracion()) {
+    marcarSincronizado();
+    return; // sin configurar: la web va solo con el navegador
+  }
 
   try {
     await cargarFirebase();
   } catch (error) {
     console.error("No se ha podido cargar Firebase", error);
+    marcarSincronizado();
     return;
   }
 
@@ -392,13 +452,20 @@ export async function iniciarNube() {
       });
     }
     avisarDeLaSesion();
-    if (!nuevo) return;
+    if (!nuevo) {
+      marcarSincronizado();
+      return;
+    }
 
     try {
-      if (await juntar()) location.reload(); // había datos más nuevos en la nube
+      if (await juntar()) {
+        location.reload(); // había datos más nuevos en la nube
+        return;
+      }
     } catch (error) {
       console.error("No se han podido sincronizar los datos", error);
     }
+    marcarSincronizado();
   });
 }
 

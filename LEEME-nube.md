@@ -21,7 +21,11 @@ Son unos diez minutos. Todo es gratis y sin tarjeta.
 4. Para las cuentas con usuario y contraseña (sin Google): **Sign-in method → Agregar
    proveedor nuevo → Correo electrónico/contraseña** → activar solo la primera opción →
    **Guardar**. Por dentro, el usuario «Pepe» es el correo inventado `pepe@pokely.invalid`
-   (ver `js/comun/nube.js`); por eso esas cuentas no pueden recuperar la contraseña.
+   (ver `js/comun/nube.js`); por eso esas cuentas no pueden recuperar la contraseña. Se
+   queda `pokely` (el nombre antiguo) aunque la web se llame LockeDex: si cambiase, las
+   cuentas que ya existen no podrían entrar.
+5. Si la web cambia de dirección (otro nombre de repositorio o un dominio propio), hay que
+   añadir la nueva en **Authorized domains**. Si no, no deja iniciar sesión.
 
 ## 3. Crear la base de datos
 
@@ -75,8 +79,8 @@ que ser. Lo que protege tus datos son las reglas del paso 4.
 
 ### 1. Lo tuyo: copia de lo que hay en el navegador
 
-Equipos guardados, equipo en edición, rutas marcadas, combates superados, multiplicador y
-los juegos elegidos. La lista está en `CLAVES_SINCRONIZADAS` (`js/comun/almacen.js`), va a
+Equipos guardados, equipo en edición, rutas marcadas, combates superados, multiplicador,
+los juegos elegidos y «Mis normas». La lista está en `CLAVES_SINCRONIZADAS` (`js/comun/almacen.js`), va a
 `usuarios/{uid}/datos/{clave}` y **nadie más que tú puede leerlo**.
 
 El navegador sigue mandando: `leer()` y `escribir()` son inmediatos y la nube solo guarda
@@ -104,8 +108,9 @@ copia local volvería a plantear quién pisa a quién.
 
 | Colección | Quién la ve | Quién la escribe |
 | --- | --- | --- |
-| `perfiles/{uid}` | cualquiera con sesión | solo su dueño |
+| `perfiles/{uid}` | cualquiera con sesión, de uno en uno (sin lista) | solo su dueño; sin correo |
 | `motes/{mote}` | cualquiera (para ver si está libre) | solo su dueño; uno por persona |
+| `correos/{correo}` | cualquiera con sesión que sepa el correo entero | solo su dueño (el correo de su Google) |
 | `presencia/{uid}` | cualquiera con sesión | solo su dueño (la hora la pone el servidor) |
 | `amistades/{par}` | los dos implicados | los dos implicados |
 | `lockes/{id}` | los que juegan ese locke | cada uno sus vidas, victorias y respuesta; el creador el resto |
@@ -150,7 +155,18 @@ un tipo no reescribe la historia.
 ## Límites del plan gratuito
 
 50.000 lecturas y 20.000 escrituras al día, 1 GiB de datos, y sesión gratis hasta 50.000
-usuarios al mes. Entre seis personas no vas a rozarlos ni de lejos.
+usuarios al mes. Si se pasa, no cobra: deja de responder hasta el día siguiente.
+
+Lo que más gasta es el punto de «conectado» (`js/comun/presencia.js`): una escritura cada
+3 minutos por persona con la web a la vista (escondida no cuenta). Da para unas 1.000 horas
+de gente conectada al día.
+
+## Borrar una cuenta
+
+Desde la web: tu nombre → **Borrar mi cuenta**. Pide otra vez la contraseña (o Google),
+porque Firebase solo deja borrar una cuenta recién entrada, y borra perfil, mote, correo,
+presencia, datos, amistades y la cuenta; de los lockes compartidos se sale (los que creó y
+nadie más había aceptado se borran).
 
 El plan gratis de Firebase (Spark) **no pausa el proyecto** por no usarlo, que es justo por
 lo que no elegimos Supabase.
