@@ -198,6 +198,128 @@
   color: #f1c40f;
 }
 
+/* ---------- Línea evolutiva (js/pokedex/evoluciones.js) ---------- */
+
+/* La foto es un botón: al pulsarla sale el bocadillo */
+.pokedex-evo {
+  display: block;
+  margin: 0 auto;
+  padding: 0.1rem;
+  border: none;
+  border-radius: 0.4rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.pokedex-evo:hover,
+.pokedex-evo:focus-visible {
+  background: rgba(241, 196, 15, 0.18);
+  outline: none;
+}
+
+.bocadillo-evo {
+  --flecha: 2rem;
+  position: absolute;
+  z-index: 50;
+  max-width: min(46rem, calc(100vw - 16px));
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.7rem;
+  background: #2c2e3e;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  color: #f2f2f2;
+  font-size: 0.85rem;
+}
+
+/* El piquito, apuntando a la foto: arriba si el bocadillo va debajo y al revés */
+.bocadillo-evo::before {
+  content: "";
+  position: absolute;
+  top: -0.45rem;
+  left: calc(var(--flecha) - 0.45rem);
+  width: 0.9rem;
+  height: 0.9rem;
+  background: #2c2e3e;
+  box-shadow: -1px -1px 0 rgba(255, 255, 255, 0.08);
+  transform: rotate(45deg);
+}
+
+.bocadillo-evo.encima::before {
+  top: auto;
+  bottom: -0.45rem;
+  box-shadow: 1px 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.evo-arbol {
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.evo-rama,
+.evo-paso {
+  display: flex;
+  align-items: center;
+}
+
+.evo-hijos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.evo-pokemon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  flex: none;
+  width: 4.6rem;
+  padding: 0.35rem 0.2rem;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+.evo-pokemon.actual {
+  background: rgba(241, 196, 15, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(241, 196, 15, 0.6);
+  color: #f1c40f;
+}
+
+.evo-cara {
+  width: 2.6rem;
+  height: 2.6rem;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* Cómo evoluciona, encima de la flecha */
+.evo-metodo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  flex: none;
+  width: 7.5rem;
+  padding: 0 0.3rem;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.evo-flecha {
+  font-size: 1.1rem;
+  line-height: 1;
+  color: #f1c40f;
+}
+
+.evo-aviso {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
 /* ---------- Pantallas estrechas ---------- */
 
 @media (max-width: 760px) {

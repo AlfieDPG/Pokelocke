@@ -265,6 +265,39 @@
   margin: 0.3rem 0 0;
 }
 
+/* El nombre se pulsa para poner o cambiar el mote: la casilla sale en su sitio, del mismo
+   tamaño, para que la tarjeta no se mueva */
+.nombre-editable {
+  max-width: 100%;
+  border-radius: 0.35rem;
+  cursor: text;
+}
+
+.nombre-editable:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mote-campo {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 12rem;
+  margin: 0;
+  padding: 0 0.3rem;
+  border: none;
+  border-bottom: 2px solid #f1c40f;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  outline: none;
+}
+
+.mote-campo::placeholder {
+  color: inherit;
+  opacity: 0.4;
+}
+
 /* Especie (cuando hay mote) y forma, en una sola línea que se dibuja siempre aunque esté
    vacía: así la tarjeta mide igual con mote y forma que sin ellos y la página no crece. */
 /* Alto fijo, haya desplegable de forma o no: así todas las tarjetas miden lo mismo */
@@ -276,7 +309,7 @@
   height: 1.4rem;
   font-size: 0.8rem;
   line-height: 1.15;
-  margin: 0 0 0.45rem;
+  margin: 0.25rem 0 0.45rem; /* un pelín separada del mote */
   overflow: hidden;
   white-space: nowrap;
 }

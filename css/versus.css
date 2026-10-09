@@ -728,15 +728,30 @@ button.locke-anadir .icono {
   margin-top: 0.85rem;
 }
 
-.locke-normas {
+/* Normas, rutas y level caps del locke: tres desplegables en fila */
+.locke-elecciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 0.85rem;
+}
+
+.locke-eleccion {
+  flex: 1 1 11rem;
+  min-width: 0;
+}
+
+.locke-normas,
+.locke-rutas,
+.locke-caps {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 
 .locke-normas-elegir {
-  align-self: flex-start;
-  min-width: 14rem;
+  align-self: stretch;
+  min-width: 0;
   max-width: 100%;
   padding: 0.45rem 0.55rem;
   border: none;

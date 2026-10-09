@@ -19,8 +19,10 @@ import { CLAVES_JUEGO } from "../comun/selector-juego.js";
 import {
   plantillaCampoJuego, activarCamposJuego, leerCampoJuego, nombreJuego, juegoConDatos
 } from "../comun/campo-juego.js";
-import { recibirJuego } from "../comun/juegos-propios.js";
 import { irA } from "../navegacion.js";
+import {
+  rutasPropias, capsPropios, copiaRutasParaLocke, copiaCapsParaLocke
+} from "../comun/personalizados.js";
 import { iniciarCementerio, abrirCementerio, abrirMuerte, totalMuertos } from "./cementerio.js";
 import { iniciarActividad, abrirActividad } from "./actividad.js";
 import {
@@ -123,11 +125,11 @@ function plantillaJuego(locke) {
   const nombre = nombreJuego(locke);
   const normas = normasCompletas(normasDeLocke(locke)).length;
 
-  const atajos = nombre && juegoConDatos(locke)
-    ? `
-      <button class="locke-ir" data-ir="rutas" data-juego="${escaparHTML(locke.juego)}">${icono("mapa")} Rutas</button>
-      <button class="locke-ir" data-ir="levelcaps" data-juego="${escaparHTML(locke.juego)}">${icono("escudo")} Level caps</button>`
-    : "";
+  const rutas = destinoDe(locke, "rutas");
+  const caps = destinoDe(locke, "caps");
+  const atajos = `
+    ${rutas ? `<button class="locke-ir" data-ir="rutas" data-juego="${escaparHTML(rutas)}">${icono("mapa")} Rutas</button>` : ""}
+    ${caps ? `<button class="locke-ir" data-ir="levelcaps" data-juego="${escaparHTML(caps)}">${icono("escudo")} Level caps</button>` : ""}`;
 
   return `
     <div class="locke-juego">
@@ -331,6 +333,52 @@ function normasElegidas(locke) {
   return copiaParaLocke(valor);
 }
 
+// ---------- Rutas y level caps ----------
+//
+// Igual que las normas: las del juego (las de la web, si es uno de la web) o unas
+// personalizadas tuyas, de las que el locke se lleva una copia. Al editar, también la que ya
+// tenga el locke si tú no la tienes. Solo quien lo creó lo cambia.
+
+const DEL_JUEGO = "";
+const PERSONALIZADOS = {
+  rutas: { campo: "rutasPropias", almacen: rutasPropias, copia: copiaRutasParaLocke, hueco: ".locke-rutas" },
+  caps: { campo: "capsPropios", almacen: capsPropios, copia: copiaCapsParaLocke, hueco: ".locke-caps" }
+};
+
+function pintarPersonalizado(tipo, locke, creador) {
+  const { campo: clave, almacen, hueco } = PERSONALIZADOS[tipo];
+  const delLocke = locke && locke[clave];
+  const mios = almacen.listas().filter((lista) => !lista.recibido || (delLocke && lista.id === delLocke.id));
+  const loTengo = delLocke && mios.some((lista) => lista.id === delLocke.id);
+  const elegido = delLocke ? (loTengo ? delLocke.id : LAS_DEL_LOCKE) : DEL_JUEGO;
+
+  const opcion = (valor, texto) =>
+    `<option value="${escaparHTML(valor)}" ${valor === elegido ? "selected" : ""}>${escaparHTML(texto)}</option>`;
+
+  campo(hueco).innerHTML = `
+    <select class="locke-normas-elegir locke-${tipo}-elegir" ${creador ? "" : "disabled"}>
+      ${opcion(DEL_JUEGO, "Las del juego")}
+      ${mios.map((lista) => opcion(lista.id, lista.nombre)).join("")}
+      ${delLocke && !loTengo ? opcion(LAS_DEL_LOCKE, `${delLocke.nombre} (la del locke)`) : ""}
+    </select>`;
+}
+
+function personalizadoElegido(tipo, locke) {
+  const { campo: clave, copia } = PERSONALIZADOS[tipo];
+  const valor = campo(`.locke-${tipo}-elegir`).value;
+  if (valor === DEL_JUEGO) return null;
+  if (valor === LAS_DEL_LOCKE) return (locke && locke[clave]) || null;
+  return copia(valor);
+}
+
+// Lo que abren los botones «Rutas» y «Level caps» de un locke: sus personalizados o, si no
+// tiene, los de su juego (si es uno de la web). "" si nada.
+function destinoDe(locke, tipo) {
+  const propio = locke[PERSONALIZADOS[tipo].campo];
+  if (propio) return propio.id;
+  return juegoConDatos(locke) ? locke.juego : "";
+}
+
 // Botón «Normas» de un locke: se abre la sección con las suyas arriba
 async function irANormas(id) {
   const modulo = await import("../normas/index.js");
@@ -425,6 +473,8 @@ async function abrirDialogo(locke = null) {
   elegidos = [];
   pintarIntegrantes(locke);
   pintarNormas(locke, creador);
+  pintarPersonalizado("rutas", locke, creador);
+  pintarPersonalizado("caps", locke, creador);
   if (!locke) campo("#locke-nombre").focus();
   if (!cerrado) await cargarInvitables(locke);
 }
@@ -444,6 +494,8 @@ async function guardar() {
   const tipo = tipos.find((cada) => cada.id === idTipo) || tipos[0];
   const { juego, juegoOtro } = leerCampoJuego(dialogo.querySelector(".campo-juego"));
   const normas = normasElegidas(locke);
+  const rutasPropias = personalizadoElegido("rutas", locke);
+  const capsPropios = personalizadoElegido("caps", locke);
 
   // Lo único imprescindible es el nombre: un locke para ti solo también vale
   if (!nombre) {
@@ -463,7 +515,7 @@ async function guardar() {
     }
 
     await crearLocke({
-      nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas, normas,
+      nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas, normas, rutasPropias, capsPropios,
       invitados: nuevos.map((perfil) => perfil.uid), nombres, fotos
     });
   } else {
@@ -471,7 +523,9 @@ async function guardar() {
     const vidasNuevas = soyCreador(locke) && sePuedenCambiarVidas(locke) ? (vidasIlimitadas ? 0 : vidas) : undefined;
 
     if (soyCreador(locke)) {
-      await editarLocke(locke.id, { nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas, normas });
+      await editarLocke(locke.id, {
+        nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas, normas, rutasPropias, capsPropios
+      });
     }
     // Invitar va aparte: lo puede hacer cualquiera de dentro, no solo el creador
     if (nuevos.length) await invitarALocke(locke.id, nuevos, vidasNuevas);
@@ -620,8 +674,9 @@ export function iniciar() {
     } else if (boton.classList.contains("locke-ir") && boton.dataset.ir === "actividad") {
       abrirActividad(id);
     } else if (boton.classList.contains("locke-ir")) {
-      // Si es un juego propio de otro que aún no tienes, se apunta antes de abrirlo
-      if (locke.juegoPropio) recibirJuego(locke.juegoPropio);
+      // Unos personalizados que no tienes (o borraste): se apuntan antes de abrirlos
+      const personalizado = PERSONALIZADOS[boton.dataset.ir === "rutas" ? "rutas" : "caps"];
+      if (locke[personalizado.campo]) personalizado.almacen.recibirDeLocke(locke[personalizado.campo], true);
       irAlJuego(boton.dataset.ir, boton.dataset.juego);
     } else if (boton.classList.contains("locke-editar")) {
       abrir(locke);

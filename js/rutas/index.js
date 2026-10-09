@@ -1,13 +1,20 @@
 // Sección «Rutas»: marcar los lugares donde ya se ha hecho la captura del Nuzlocke.
-// Los lugares de cada juego están en ./datos.js; los de los juegos propios, en cada uno
-// (js/comun/juegos-propios.js), y se cambian con «Editar juego».
+// Los lugares de cada juego están en ./datos.js.
+//
+// En «Personalizado» cada uno se hace los suyos (js/comun/personalizados.js). Con «Editar»
+// la misma lista pasa a tener casillas: apartados con su título, lugares que se quitan con
+// la X y se añaden escribiéndolos (con los de la web como sugerencia) o copiando de golpe
+// los de un juego de la web.
 
 import { LUGARES } from "./datos.js";
 import { crearSelectorJuego } from "../comun/selector-juego.js";
 import { leer, escribir } from "../comun/almacen.js";
 import { quitarAcentos, escaparHTML } from "../comun/utilidades.js";
-import { lugaresDe } from "../comun/juegos-propios.js";
-import { abrirEditorJuego } from "../comun/editor-juego.js";
+import { icono } from "../comun/iconos.js";
+import { JUEGOS } from "../comun/juegos.js";
+import {
+  rutasPropias, lugaresDe, seccionesDeLaWeb, lugaresDeLaWeb, MAX_LUGARES
+} from "../comun/personalizados.js";
 
 // NO cambiar estas claves: si se cambian, se pierden las rutas marcadas
 const CLAVE_MARCADAS = "poketeams-rutas-v2"; // { idJuego: ["rutas:Ruta 1", ...] }
@@ -23,15 +30,20 @@ const APARTADOS = [
 
 const vista = document.getElementById("vista-rutas");
 const selector = vista.querySelector(".selector-juego");
+const barra = vista.querySelector(".barra-nuzlocke");
 const lista = vista.querySelector(".rutas-lista");
 const buscador = vista.querySelector(".rutas-buscar");
 const progreso = vista.querySelector(".rutas-progreso");
 const editar = vista.querySelector(".juego-editar");
 
-let juego = null;   // { id, nombre, region }
+let juego = null;   // { id, nombre, region } (los propios llevan además sus secciones)
 let lugares = null; // { rutas, ciudades, postgame, eventos } del juego actual
 let usadas = new Set();
 const marcadas = leer(CLAVE_MARCADAS, {});
+
+let editando = false;       // la lista propia abierta, con casillas para cambiarla
+let abrirEditando = false;  // la próxima lista que se abra, ya en modo editar (al crearla)
+let callado = false;        // guardando desde el editor: no se vuelve a pintar (se perdería el foco)
 
 function claveLugar(apartado, texto) {
   return `${apartado}:${texto}`;
@@ -56,9 +68,9 @@ function botonLugar(apartado, texto) {
   const clave = claveLugar(apartado, texto);
   const usada = usadas.has(clave);
 
-  // Eventos: "Lugar: detalle" -> lugar en negrita y detalle debajo. En los juegos propios,
+  // Eventos: "Lugar: detalle" -> lugar en negrita y detalle debajo. En los personalizados,
   // cualquier lugar escrito así (al copiar uno de la web, los eventos vienen así).
-  // Todo escapado: los juegos propios los escribe la gente.
+  // Todo escapado: los personalizados los escribe la gente.
   const corte = apartado === "eventos" || juego.propio ? texto.indexOf(": ") : -1;
   const evento = apartado === "eventos" || corte > 0;
   const contenido = corte > 0
@@ -70,8 +82,15 @@ function botonLugar(apartado, texto) {
 }
 
 function pintarLista() {
+  buscador.hidden = editando;
+  if (juego.propio && editando) {
+    pintarEditor();
+    pintarProgreso();
+    return;
+  }
+
   if (!apartadosDelJuego().length) {
-    lista.innerHTML = `<p class="rutas-vacio">Este juego no tiene rutas. Añádelas con «Editar juego».</p>`;
+    lista.innerHTML = `<p class="rutas-vacio">Sin lugares.</p>`;
     pintarProgreso();
     return;
   }
@@ -102,6 +121,165 @@ function filtrar() {
   }
 }
 
+// ---------- Editor de los personalizados ----------
+//
+// Cada cambio se guarda al momento. Al escribir un título no se vuelve a pintar (callado),
+// para no perder el foco; al añadir o quitar, sí.
+
+function pintarEditor() {
+  const secciones = juego.secciones || [];
+  const total = secciones.reduce((suma, seccion) => suma + seccion.lugares.length, 0);
+  const caben = total < MAX_LUGARES;
+
+  lista.innerHTML = `
+    <div class="rutas-editor-cabecera">
+      <input class="rutas-ed-nombre" maxlength="40" placeholder="Nombre" value="${escaparHTML(juego.nombre)}">
+      <select class="rutas-ed-copiar" ${caben ? "" : "disabled"}>
+        <option value="">Copiar lugares de...</option>
+        ${JUEGOS.filter((cada) => LUGARES[cada.id]).map((cada) => `<option value="${cada.id}">${escaparHTML(cada.nombre)}</option>`).join("")}
+      </select>
+      <button class="rutas-ed-borrar">${icono("papelera")} Borrar</button>
+    </div>
+    ${secciones
+      .map(
+        (seccion, indice) => `
+          <section class="rutas-grupo rutas-ed-grupo" data-seccion="${indice}">
+            <h3>
+              <input class="rutas-ed-apartado" maxlength="40" placeholder="Apartado" value="${escaparHTML(seccion.titulo)}">
+              <button class="rutas-ed-quitar-apartado" title="Quitar apartado">${icono("aspa")}</button>
+            </h3>
+            <div class="rutas-botones">
+              ${seccion.lugares
+                .map(
+                  (lugar, posicion) => `
+                    <span class="ruta-ed" data-lugar="${posicion}">
+                      <span>${escaparHTML(lugar)}</span>
+                      <button class="ruta-ed-quitar" title="Quitar">${icono("aspa")}</button>
+                    </span>`
+                )
+                .join("")}
+              ${caben ? `<input class="ruta-ed-nuevo" list="lugares-web" maxlength="80" placeholder="Añadir lugar...">` : ""}
+            </div>
+          </section>`
+      )
+      .join("")}
+    <button class="rutas-ed-anadir-apartado">${icono("mas")} Añadir apartado</button>`;
+}
+
+function guardarLista() {
+  callado = true;
+  rutasPropias.guardar({ id: juego.id, nombre: juego.nombre, secciones: juego.secciones });
+  callado = false;
+}
+
+// Cambia una copia de las secciones, guarda y vuelve a pintar
+function cambiarSecciones(cambio) {
+  const secciones = (juego.secciones || []).map((seccion) => ({ ...seccion, lugares: [...seccion.lugares] }));
+  cambio(secciones);
+  juego.secciones = secciones;
+  guardarLista();
+  pintarLista();
+}
+
+function anadirLugar(campo) {
+  const texto = campo.value.trim();
+  if (!texto) return;
+  const indice = Number(campo.closest(".rutas-ed-grupo").dataset.seccion);
+  cambiarSecciones((secciones) => {
+    if (!secciones[indice].lugares.includes(texto)) secciones[indice].lugares.push(texto);
+  });
+  const otra = lista.querySelector(`.rutas-ed-grupo[data-seccion="${indice}"] .ruta-ed-nuevo`);
+  if (otra) otra.focus();
+}
+
+// Los apartados de un juego de la web: los que se llamen igual se juntan con los que ya hay
+function copiarDe(idJuego) {
+  cambiarSecciones((secciones) => {
+    for (const deLaWeb of seccionesDeLaWeb(idJuego)) {
+      const igual = secciones.find((seccion) => seccion.titulo.trim().toLowerCase() === deLaWeb.titulo.toLowerCase());
+      if (igual) igual.lugares.push(...deLaWeb.lugares.filter((lugar) => !igual.lugares.includes(lugar)));
+      else secciones.push(deLaWeb);
+    }
+  });
+}
+
+function activarEditor() {
+  // Sugerencias al escribir un lugar: los de todos los juegos de la web
+  const sugerencias = document.createElement("datalist");
+  sugerencias.id = "lugares-web";
+  sugerencias.innerHTML = lugaresDeLaWeb().map((lugar) => `<option value="${escaparHTML(lugar)}">`).join("");
+  vista.appendChild(sugerencias);
+
+  lista.addEventListener("input", (e) => {
+    if (!juego || !juego.propio || !editando) return;
+    if (e.target.classList.contains("rutas-ed-nombre")) {
+      if (!e.target.value.trim()) return; // sin nombre no se guarda (al salir vuelve el de antes)
+      juego.nombre = e.target.value;
+      guardarLista();
+    } else if (e.target.classList.contains("rutas-ed-apartado")) {
+      const indice = Number(e.target.closest(".rutas-ed-grupo").dataset.seccion);
+      juego.secciones[indice].titulo = e.target.value;
+      guardarLista();
+    } else if (
+      e.target.classList.contains("ruta-ed-nuevo") &&
+      (!(e instanceof InputEvent) || e.inputType === "insertReplacementText")
+    ) {
+      // Elegido de las sugerencias (no escrito a mano): se añade ya, sin esperar al Enter
+      anadirLugar(e.target);
+    }
+  });
+
+  lista.addEventListener("change", (e) => {
+    if (!juego || !juego.propio || !editando) return;
+    if (e.target.classList.contains("rutas-ed-nombre") && !e.target.value.trim()) {
+      e.target.value = juego.nombre;
+    } else if (e.target.classList.contains("rutas-ed-copiar") && e.target.value) {
+      copiarDe(e.target.value);
+    }
+  });
+
+  lista.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || !e.target.classList.contains("ruta-ed-nuevo")) return;
+    e.preventDefault();
+    anadirLugar(e.target);
+  });
+
+  lista.addEventListener("click", (e) => {
+    if (!juego || !juego.propio || !editando) return;
+    const boton = e.target.closest("button");
+    if (!boton) return;
+
+    if (boton.classList.contains("rutas-ed-borrar")) {
+      if (!confirm(`¿Borrar «${juego.nombre}»?`)) return;
+      delete marcadas[juego.id];
+      escribir(CLAVE_MARCADAS, marcadas);
+      rutasPropias.borrar(juego.id);
+      return;
+    }
+    if (boton.classList.contains("rutas-ed-anadir-apartado")) {
+      cambiarSecciones((secciones) => secciones.push({ titulo: "", lugares: [] }));
+      const titulos = lista.querySelectorAll(".rutas-ed-apartado");
+      if (titulos.length) titulos[titulos.length - 1].focus();
+      return;
+    }
+
+    const grupo = boton.closest(".rutas-ed-grupo");
+    if (!grupo) return;
+    const indice = Number(grupo.dataset.seccion);
+
+    if (boton.classList.contains("rutas-ed-quitar-apartado")) {
+      const seccion = juego.secciones[indice];
+      if (seccion.lugares.length && !confirm(`¿Quitar «${seccion.titulo || "este apartado"}» y sus ${seccion.lugares.length} lugares?`)) return;
+      cambiarSecciones((secciones) => secciones.splice(indice, 1));
+    } else if (boton.classList.contains("ruta-ed-quitar")) {
+      const posicion = Number(boton.closest(".ruta-ed").dataset.lugar);
+      cambiarSecciones((secciones) => secciones[indice].lugares.splice(posicion, 1));
+    }
+  });
+}
+
+// ---------- Arranque ----------
+
 export function iniciar() {
   // Un solo oyente para todos los botones de lugar
   lista.addEventListener("click", (e) => {
@@ -116,6 +294,8 @@ export function iniciar() {
     pintarProgreso();
   });
 
+  activarEditor();
+
   buscador.addEventListener("input", filtrar);
 
   vista.querySelector(".rutas-reiniciar").addEventListener("click", () => {
@@ -126,19 +306,57 @@ export function iniciar() {
     pintarLista();
   });
 
-  // Juegos propios: crear uno (desde «Tus juegos») y cambiar el abierto
-  const abrirEnElSelector = (guardado) => selectorJuego.elegirPorId(guardado.id);
-  editar.addEventListener("click", () => abrirEditorJuego(juego.id, abrirEnElSelector));
+  editar.addEventListener("click", () => {
+    editando = !editando;
+    pintarBotonEditar();
+    elegirJuego(juego, true);
+  });
 
-  selectorJuego = crearSelectorJuego(selector, CLAVE_JUEGO, elegirJuego, () => abrirEditorJuego(null, abrirEnElSelector));
+  selectorJuego = crearSelectorJuego(selector, CLAVE_JUEGO, elegirJuego, {
+    almacen: rutasPropias,
+    alNuevo() {
+      const nueva = rutasPropias.crear("Nuevo juego");
+      if (!nueva) {
+        alert("Has llegado al máximo de listas personalizadas.");
+        return;
+      }
+      rutasPropias.guardar({ ...nueva, secciones: [{ titulo: "Rutas", lugares: [] }] });
+      abrirEditando = true;
+      selectorJuego.elegirPorId(nueva.id);
+      const nombre = lista.querySelector(".rutas-ed-nombre");
+      if (nombre) nombre.select();
+    }
+  });
 }
 
 let selectorJuego = null;
 
-function elegirJuego(nuevo) {
+function pintarBotonEditar() {
+  editar.hidden = !juego || !juego.propio;
+  editar.textContent = editando ? "Listo" : "Editar";
+  editar.classList.toggle("activo", editando);
+}
+
+// seguir: es el mismo juego y se vuelve a pintar (al entrar o salir de «Editar»)
+function elegirJuego(nuevo, seguir = false) {
+  const mismo = Boolean(juego && nuevo && juego.id === nuevo.id);
   juego = nuevo;
+  if (callado) {
+    lugares = lugaresDe(juego);
+    return;
+  }
+
+  if (!mismo) editando = abrirEditando;
+  abrirEditando = false;
+
+  barra.hidden = !juego;
+  pintarBotonEditar();
+  if (!juego) {
+    lista.innerHTML = "";
+    return;
+  }
+
   lugares = juego.propio ? lugaresDe(juego) : LUGARES[juego.id];
-  editar.hidden = !juego.propio;
 
   // Solo cuentan las marcas de lugares que siguen existiendo. Si un lugar ha cambiado de
   // apartado (p. ej. de «rutas» a «postgame»), su marca se conserva.
@@ -152,7 +370,7 @@ function elegirJuego(nuevo) {
     if (porTexto.has(texto)) usadas.add(porTexto.get(texto));
   }
 
-  buscador.value = "";
+  if (!mismo || !seguir) buscador.value = "";
   pintarLista();
 }
 

@@ -1,13 +1,17 @@
 // Ventana del perfil: el tuyo (desde el desplegable de tu nombre) o el de un amigo (desde tu
-// lista de amigos o desde «Amigos»).
+// lista de amigos o desde «Amigos»). En vertical, una cosa debajo de otra:
 //
 //   · Foto: la de Google o un Pokémon (su retrato de Mundo Misterioso). En el tuyo, pulsándola
 //     se cambia.
 //   · Nombre, con un lápiz para cambiarlo (es el nombre de usuario, ver perfiles.js).
-//   · Lockes ganados y, en el tuyo, amigos.
-//   · Equipos destacados: los que cada uno elige enseñar. Se guarda una copia en el perfil
-//     (escaparate), que es lo que pueden leer los demás: tus equipos de verdad son privados.
-//   · En el tuyo, a la derecha, tus amigos: pulsando uno se ve su perfil.
+//   · Lockes ganados y, en el tuyo, amigos; en el de un amigo, los lockes jugados juntos en
+//     total (los mismos que cuenta la rivalidad de «Amigos»: js/comun/cara-a-cara.js).
+//   · Equipos destacados: los que cada uno elige enseñar (hasta MAX_DESTACADOS). Se ven los
+//     VER_DESTACADOS primeros y el resto en otra ventana, donde el dueño los ordena. Se guarda
+//     una copia en el perfil (escaparate), que es lo que pueden leer los demás: tus equipos de
+//     verdad son privados.
+//   · En el tuyo, tus VER_AMIGOS amigos con los que más lockes has jugado: pulsando uno se ve
+//     su perfil. Todos están en «Amigos».
 //
 // Se descarga la primera vez que se abre (ver sesion.js).
 
@@ -18,7 +22,10 @@ import {
   miPerfil, alCambiarMiPerfil, cambiarMote, guardarMiPerfil, amigosAceptados, perfilesDeAmigos,
   alCambiarPerfilesAmigos
 } from "./comun/perfiles.js";
+import { alCambiarLockes } from "./comun/lockes.js";
+import { caraACara } from "./comun/cara-a-cara.js";
 import { estaConectado, alCambiarPresencia } from "./comun/presencia.js";
+import { irA } from "./navegacion.js";
 import { leerGuardados } from "./equipos/estado.js";
 import { pasteDelEquipo, copiarAlPortapapeles } from "./equipos/exportar.js";
 import {
@@ -27,12 +34,15 @@ import {
 import { cargarDatos, datos } from "./comun/datos.js";
 import { activarAutocompletado } from "./comun/autocompletado.js";
 
-const MAX_DESTACADOS = 6;
+const MAX_DESTACADOS = 12;   // los que caben en el perfil (cada uno es una copia dentro de él)
+const VER_DESTACADOS = 3;    // los que se ven sin pulsar «Ver todos»
+const VER_AMIGOS = 5;
 
 const dialogo = document.querySelector("#dialogo-perfil");
 const cuerpo = dialogo.querySelector(".perfil-cuerpo");
 const dialogoAvatar = document.querySelector("#dialogo-avatar");
 const dialogoEscaparate = document.querySelector("#dialogo-escaparate");
+const dialogoDestacados = document.querySelector("#dialogo-destacados");
 
 let viendo = null;           // uid del amigo cuyo perfil se ve, o null si es el tuyo
 let desdeMiPerfil = false;   // se llegó al del amigo desde tu lista (sale «Volver»)
@@ -57,12 +67,18 @@ function caraDe(p) {
   );
 }
 
-function plantillaEquipo(equipo, indice, mio) {
+// ordenar: en la ventana de todos los destacados, el dueño los sube y los baja
+function plantillaEquipo(equipo, indice, mio, ordenar = false, total = 0) {
+  const mover = ordenar
+    ? `<button class="perfil-subir-equipo" data-indice="${indice}" title="Subir" ${indice === 0 ? "disabled" : ""}>${icono("arriba")}</button>
+       <button class="perfil-bajar-equipo" data-indice="${indice}" title="Bajar" ${indice === total - 1 ? "disabled" : ""}>${icono("abajo")}</button>`
+    : "";
   return `
     <article class="perfil-equipo">
       <header>
         <strong>${escaparHTML(equipo.nombre)}</strong>
         <div class="perfil-equipo-botones">
+          ${mover}
           <button class="perfil-copiar" data-indice="${indice}" title="Copiar como paste">${icono("copiar")}</button>
           ${mio ? `<button class="perfil-quitar-equipo" data-indice="${indice}" title="Dejar de destacar">${icono("aspa")}</button>` : ""}
         </div>
@@ -71,15 +87,15 @@ function plantillaEquipo(equipo, indice, mio) {
     </article>`;
 }
 
+// El nombre y, al cambiarlo, la casilla en el mismo sitio y del mismo alto: no se mueve nada
 function plantillaNombre(perfil, mio) {
   if (mio && editandoNombre) {
     return `
-      <form class="perfil-nombre-form">
+      <form class="perfil-nombre-fila perfil-nombre-form">
         <input class="perfil-nombre-campo" type="text" maxlength="20" autocomplete="off" value="${escaparHTML(perfil.mote || "")}">
-        <button type="submit" class="boton-verde">${icono("visto")}</button>
-        <button type="button" class="boton-gris perfil-nombre-cancelar">${icono("aspa")}</button>
-      </form>
-      <span class="sesion-error perfil-error">${escaparHTML(errorNombre)}</span>`;
+        <button type="submit" class="perfil-nombre-ok" title="Guardar">${icono("visto")}</button>
+        <button type="button" class="perfil-nombre-cancelar" title="Cancelar">${icono("aspa")}</button>
+      </form>`;
   }
   return `
     <div class="perfil-nombre-fila">
@@ -88,27 +104,56 @@ function plantillaNombre(perfil, mio) {
     </div>`;
 }
 
+// Lockes jugados juntos en total (los de Versus, en marcha o terminados, y los apuntados a
+// mano): lo mismo que la rivalidad de «Amigos»
+function lockesJuntos(amigo) {
+  const mio = miPerfil();
+  return mio && amigo ? caraACara(mio, amigo).juntos : 0;
+}
+
+function textoLockes(cuantos) {
+  return `${cuantos} ${cuantos === 1 ? "locke" : "lockes"}`;
+}
+
+// Los VER_AMIGOS con los que más has jugado (a igualdad, los conectados y por nombre)
 function plantillaAmigos() {
-  const amigos = amigosAceptados()
+  const juntos = new Map(
+    amigosAceptados()
+      .map((amistad) => perfilesDeAmigos().get(amistad.otro))
+      .filter(Boolean)
+      .map((amigo) => [amigo.uid, lockesJuntos(amigo)])
+  );
+  const todos = amigosAceptados()
     .map((amistad) => perfilesDeAmigos().get(amistad.otro))
     .filter(Boolean)
-    .sort((uno, otro) => Number(estaConectado(otro.uid)) - Number(estaConectado(uno.uid)) || uno.nombre.localeCompare(otro.nombre, "es"));
+    .sort(
+      (uno, otro) =>
+        (juntos.get(otro.uid) || 0) - (juntos.get(uno.uid) || 0) ||
+        Number(estaConectado(otro.uid)) - Number(estaConectado(uno.uid)) ||
+        uno.nombre.localeCompare(otro.nombre, "es")
+    );
 
   return `
-    <aside class="perfil-amigos">
-      <h3>Amigos</h3>
-      ${amigos.length
-        ? amigos
+    <section class="perfil-apartado">
+      <h3>
+        Amigos
+        ${todos.length > VER_AMIGOS ? `<button class="perfil-ver-amigos">Ver todos (${todos.length})</button>` : ""}
+      </h3>
+      ${todos.length
+        ? `<div class="perfil-amigos">${todos
+            .slice(0, VER_AMIGOS)
             .map(
               (amigo) => `
-                <button class="perfil-amigo ${estaConectado(amigo.uid) ? "conectado" : ""}" data-uid="${escaparHTML(amigo.uid)}">
+                <button class="perfil-amigo ${estaConectado(amigo.uid) ? "conectado" : ""}" data-uid="${escaparHTML(amigo.uid)}"
+                        title="${escaparHTML(amigo.nombre)}">
                   ${plantillaFoto(amigo, "perfil-amigo-foto")}
-                  <span>${escaparHTML(amigo.nombre)}</span>
+                  <span class="perfil-amigo-nombre">${escaparHTML(amigo.nombre)}</span>
+                  <small>${textoLockes(juntos.get(amigo.uid) || 0)}</small>
                 </button>`
             )
-            .join("")
+            .join("")}</div>`
         : `<p class="perfil-vacio">Todavía ninguno.</p>`}
-    </aside>`;
+    </section>`;
 }
 
 // ---------- Pintar ----------
@@ -128,35 +173,44 @@ function pintar() {
   const escaparate = perfil.escaparate || [];
   const ganados = (perfil.ganados || []).length;
   const amigos = amigosAceptados().length;
+  const juntos = mio ? 0 : lockesJuntos(perfil);
+
+  // Con un error al cambiar el nombre, sale en el hueco de las cifras (así no se mueve nada)
+  const cifras = mio && editandoNombre && errorNombre
+    ? `<span class="perfil-error">${escaparHTML(errorNombre)}</span>`
+    : `<span><strong>${ganados}</strong> ${ganados === 1 ? "locke ganado" : "lockes ganados"}</span>
+       ${mio
+         ? `<span><strong>${amigos}</strong> ${amigos === 1 ? "amigo" : "amigos"}</span>`
+         : `<span><strong>${juntos}</strong> ${juntos === 1 ? "locke" : "lockes"} juntos</span>`}`;
+
+  const quedan = escaparate.length - VER_DESTACADOS;
 
   cuerpo.innerHTML = `
-    <div class="perfil-rejilla ${mio ? "" : "solo"}">
-      <section class="perfil-principal">
-        <header class="perfil-cabeza">
-          ${mio
-            ? `<button class="perfil-avatar" title="Cambiar foto">${plantillaFoto(perfil, "perfil-foto")}<span class="perfil-avatar-lapiz">${icono("lapiz")}</span></button>`
-            : `<div class="perfil-avatar">${plantillaFoto(perfil, "perfil-foto")}</div>`}
-          <div class="perfil-datos">
-            ${plantillaNombre(perfil, mio)}
-            <div class="perfil-cifras">
-              <span><strong>${ganados}</strong> ${ganados === 1 ? "locke ganado" : "lockes ganados"}</span>
-              ${mio ? `<span><strong>${amigos}</strong> ${amigos === 1 ? "amigo" : "amigos"}</span>` : ""}
-            </div>
-          </div>
-        </header>
+    <header class="perfil-cabeza">
+      ${mio
+        ? `<button class="perfil-avatar" title="Cambiar foto">${plantillaFoto(perfil, "perfil-foto")}<span class="perfil-avatar-lapiz">${icono("lapiz")}</span></button>`
+        : `<div class="perfil-avatar">${plantillaFoto(perfil, "perfil-foto")}</div>`}
+      ${plantillaNombre(perfil, mio)}
+      <div class="perfil-cifras">${cifras}</div>
+    </header>
 
-        <div class="perfil-apartado">
-          <h3>
-            Equipos destacados
-            ${mio && escaparate.length < MAX_DESTACADOS ? `<button class="perfil-destacar">${icono("mas")} Destacar</button>` : ""}
-          </h3>
-          ${escaparate.length
-            ? `<div class="perfil-equipos">${escaparate.map((equipo, indice) => plantillaEquipo(equipo, indice, mio)).join("")}</div>`
-            : `<p class="perfil-vacio">Ninguno todavía.</p>`}
-        </div>
-      </section>
-      ${mio ? plantillaAmigos() : ""}
-    </div>`;
+    <section class="perfil-apartado">
+      <h3>
+        Equipos destacados
+        ${mio && escaparate.length < MAX_DESTACADOS ? `<button class="perfil-destacar">${icono("mas")} Destacar</button>` : ""}
+      </h3>
+      ${escaparate.length
+        ? `<div class="perfil-equipos">${escaparate
+            .slice(0, VER_DESTACADOS)
+            .map((equipo, indice) => plantillaEquipo(equipo, indice, mio))
+            .join("")}</div>`
+        : `<p class="perfil-vacio">Ninguno todavía.</p>`}
+      ${quedan > 0 || (mio && escaparate.length > 1)
+        ? `<button class="perfil-ver-equipos">${quedan > 0 ? `Ver todos (${escaparate.length})` : "Ordenar"}</button>`
+        : ""}
+    </section>
+
+    ${mio ? plantillaAmigos() : ""}`;
 
   dialogo.querySelector(".perfil-borrar").hidden = !mio;
   dialogo.querySelector(".perfil-volver").hidden = mio || !desdeMiPerfil;
@@ -166,6 +220,24 @@ function pintar() {
     campo.focus();
     campo.setSelectionRange(campo.value.length, campo.value.length);
   }
+}
+
+// ---------- Todos los destacados ----------
+
+function pintarDestacados() {
+  const perfil = perfilQueSeVe();
+  const mio = !viendo;
+  const escaparate = (perfil && perfil.escaparate) || [];
+
+  dialogoDestacados.querySelector(".destacados-lista").innerHTML = escaparate.length
+    ? escaparate.map((equipo, indice) => plantillaEquipo(equipo, indice, mio, mio, escaparate.length)).join("")
+    : `<p class="perfil-vacio">Ninguno todavía.</p>`;
+  dialogoDestacados.querySelector(".destacados-anadir").hidden = !mio || escaparate.length >= MAX_DESTACADOS;
+}
+
+function abrirDestacados() {
+  pintarDestacados();
+  dialogoDestacados.showModal();
 }
 
 // ---------- Abrir ----------
@@ -262,6 +334,26 @@ async function quitarDestacado(indice) {
   await guardarMiPerfil({ escaparate });
 }
 
+// paso: -1 sube, +1 baja
+async function moverDestacado(indice, paso) {
+  const escaparate = [...((miPerfil() || {}).escaparate || [])];
+  const otro = indice + paso;
+  if (otro < 0 || otro >= escaparate.length) return;
+  [escaparate[indice], escaparate[otro]] = [escaparate[otro], escaparate[indice]];
+  await guardarMiPerfil({ escaparate });
+}
+
+// Los botones de un equipo destacado, en el perfil o en la ventana de todos
+function alPulsarEquipo(boton) {
+  const indice = Number(boton.dataset.indice);
+  if (boton.classList.contains("perfil-quitar-equipo")) quitarDestacado(indice).catch(siFalla);
+  else if (boton.classList.contains("perfil-subir-equipo")) moverDestacado(indice, -1).catch(siFalla);
+  else if (boton.classList.contains("perfil-bajar-equipo")) moverDestacado(indice, 1).catch(siFalla);
+  else if (boton.classList.contains("perfil-copiar")) copiarEquipo(boton).catch((error) => console.error(error));
+  else return false;
+  return true;
+}
+
 async function copiarEquipo(boton) {
   const perfil = perfilQueSeVe();
   const equipo = ((perfil && perfil.escaparate) || [])[Number(boton.dataset.indice)];
@@ -344,14 +436,27 @@ cuerpo.addEventListener("click", (e) => {
   } else if (boton.classList.contains("perfil-destacar")) {
     pintarEscaparate();
     dialogoEscaparate.showModal();
-  } else if (boton.classList.contains("perfil-quitar-equipo")) {
-    quitarDestacado(Number(boton.dataset.indice)).catch(siFalla);
-  } else if (boton.classList.contains("perfil-copiar")) {
-    copiarEquipo(boton).catch((error) => console.error(error));
+  } else if (boton.classList.contains("perfil-ver-equipos")) {
+    abrirDestacados();
+  } else if (boton.classList.contains("perfil-ver-amigos")) {
+    dialogo.close();
+    irA("amigos");
   } else if (boton.classList.contains("perfil-amigo")) {
     abrirPerfilDe(boton.dataset.uid, true);
+  } else {
+    alPulsarEquipo(boton);
   }
 });
+
+dialogoDestacados.querySelector(".destacados-lista").addEventListener("click", (e) => {
+  const boton = e.target.closest("button");
+  if (boton) alPulsarEquipo(boton);
+});
+dialogoDestacados.querySelector(".destacados-anadir").addEventListener("click", () => {
+  pintarEscaparate();
+  dialogoEscaparate.showModal();
+});
+dialogoDestacados.querySelector(".destacados-cerrar").addEventListener("click", () => dialogoDestacados.close());
 
 cuerpo.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -395,7 +500,9 @@ dialogoAvatar.querySelector(".avatar-quitar").addEventListener("click", () => {
 const repintar = () => {
   if (dialogo.open && !editandoNombre) pintar();
   if (dialogoEscaparate.open) pintarEscaparate();
+  if (dialogoDestacados.open) pintarDestacados();
 };
 alCambiarMiPerfil(repintar);
 alCambiarPerfilesAmigos(repintar);
 alCambiarPresencia(repintar);
+alCambiarLockes(repintar);

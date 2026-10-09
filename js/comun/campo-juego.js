@@ -6,14 +6,15 @@
 //
 // Se guarda así:
 //   { juego: "frlg", juegoOtro: "" }                  un juego de la web
-//   { juego: "propio-...", juegoOtro: "" }            uno de tus juegos propios (el locke
-//                                                     guarda además su copia: juegoPropio)
 //   { juego: "", juegoOtro: "Pokémon Añil Fusión" }   otro escrito a mano
 //   { juego: "", juegoOtro: "" }                      sin decir
+//
+// Los lockes de antes pueden ser de un «juego propio» (juego: "propio-...", con su copia en
+// juegoPropio). Ya no se pueden elegir, pero se respetan: salen con su nombre y, al editar
+// el locke, se pueden dejar como estaban.
 
 import { REGIONES, JUEGOS } from "./juegos.js";
 import { escaparHTML } from "./utilidades.js";
-import { juegosPropios } from "./juegos-propios.js";
 
 const OTRO = "__otro";
 
@@ -21,9 +22,9 @@ export function juegoRegistrado(id) {
   return JUEGOS.find((juego) => juego.id === id) || null;
 }
 
-// Si tiene Rutas y Level caps en la web: uno de la web o uno propio
+// Si tiene Rutas y Level caps en la web
 export function juegoConDatos(datos) {
-  return Boolean(datos && (juegoRegistrado(datos.juego) || datos.juegoPropio));
+  return Boolean(datos && juegoRegistrado(datos.juego));
 }
 
 // Nombre para enseñar, o "" si no se dijo
@@ -42,7 +43,9 @@ function opcion(id, nombre, elegido) {
 // HTML del desplegable y la casilla de «otro». «clase» distingue un campo de otro cuando
 // hay varios en la misma ventana (una fila por locke).
 export function plantillaCampoJuego(datos = {}, clase = "") {
-  const elegido = datos.juego || (datos.juegoOtro ? OTRO : "");
+  // Un juego que ya no está en la lista (un juego propio de antes) sale como «Otro» con su nombre
+  const conocido = juegoRegistrado(datos.juego) || (datos.juegoPropio && datos.juegoPropio.id === datos.juego);
+  const elegido = conocido ? datos.juego : datos.juegoOtro ? OTRO : "";
 
   const grupos = REGIONES.filter((region) => JUEGOS.some((juego) => juego.region === region.id))
     .map(
@@ -53,21 +56,14 @@ export function plantillaCampoJuego(datos = {}, clase = "") {
     )
     .join("");
 
-  // Los tuyos y, si el locke es de uno propio que no tienes, ese también (para no perderlo)
-  const propios = juegosPropios().map((juego) => ({ id: juego.id, nombre: juego.nombre }));
-  if (datos.juegoPropio && !propios.some((juego) => juego.id === datos.juegoPropio.id)) {
-    propios.push({ id: datos.juegoPropio.id, nombre: datos.juegoPropio.nombre });
-  }
-  const grupoPropios = propios.length
-    ? `<optgroup label="Tus juegos">${propios.map((juego) => opcion(juego.id, juego.nombre, elegido)).join("")}</optgroup>`
-    : "";
+  const antiguo = datos.juegoPropio && datos.juegoPropio.id === datos.juego ? opcion(datos.juego, datos.juegoPropio.nombre, elegido) : "";
 
   return `
     <span class="campo-juego ${clase}">
       <select class="juego-select">
         <option value="" ${elegido ? "" : "selected"}>Sin decir</option>
         ${grupos}
-        ${grupoPropios}
+        ${antiguo}
         <option value="${OTRO}" ${elegido === OTRO ? "selected" : ""}>Otro (fan game...)</option>
       </select>
       <input class="juego-otro" type="text" placeholder="¿Qué juego?"

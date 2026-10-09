@@ -402,6 +402,7 @@ main {
 .dialogo-sesion .boton-verde {
   background: #27ae60;
   color: #fff;
+  font-family: inherit;
 }
 
 .dialogo-sesion .boton-gris {
@@ -564,30 +565,20 @@ button.cuenta:hover {
 
 /* ---------- Perfil ---------- */
 
+/* En vertical: foto, nombre y cifras centrados arriba; debajo, equipos y amigos */
 #dialogo-perfil {
-  width: min(52rem, 94vw);
-}
-
-/* El de un amigo no lleva columna de amigos: más estrecho */
-#dialogo-perfil:has(.perfil-rejilla.solo) {
-  width: min(36rem, 94vw);
-}
-
-/* Tu perfil a la izquierda y tus amigos a la derecha; el de un amigo, solo */
-.perfil-rejilla {
-  display: grid;
-  grid-template-columns: 1fr 14rem;
-  gap: 1.2rem;
-}
-
-.perfil-rejilla.solo {
-  grid-template-columns: 1fr;
+  width: min(30rem, 94vw);
+  max-height: 92vh;
 }
 
 .perfil-cabeza {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
 }
 
 .perfil-avatar {
@@ -639,28 +630,35 @@ button.perfil-avatar:hover .perfil-avatar-lapiz {
   height: 1.4rem;
 }
 
-.perfil-datos {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  min-width: 0;
-}
-
+/* Nombre y su casilla al cambiarlo: la misma fila, del mismo alto, en el mismo sitio */
 .perfil-nombre-fila {
+  --alto-nombre: 2.4rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  height: var(--alto-nombre);
+  margin: 0;
 }
 
 #dialogo-perfil .perfil-nombre {
   margin: 0;
+  min-width: 0;
+  overflow: hidden;
   font-size: 1.6rem;
-  overflow-wrap: anywhere;
+  line-height: var(--alto-nombre);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.perfil-editar-nombre {
+.perfil-editar-nombre,
+.perfil-nombre-form button {
   display: flex;
-  padding: 0.35rem;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 0;
   border: none;
   border-radius: 0.4rem;
   background: #3a3d52;
@@ -668,44 +666,73 @@ button.perfil-avatar:hover .perfil-avatar-lapiz {
   cursor: pointer;
 }
 
-.perfil-editar-nombre:hover {
+.perfil-editar-nombre {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.perfil-editar-nombre:hover,
+.perfil-nombre-form .perfil-nombre-cancelar:hover {
   background: #4a4e68;
 }
 
-.perfil-editar-nombre .icono {
+.perfil-editar-nombre .icono,
+.perfil-nombre-form .icono {
   width: 0.95rem;
   height: 0.95rem;
 }
 
-.perfil-nombre-form {
-  display: flex;
-  gap: 0.4rem;
+#dialogo-perfil .perfil-nombre-campo {
+  box-sizing: border-box;
+  width: 13rem;
+  min-width: 0;
+  height: var(--alto-nombre);
+  padding: 0 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.45rem;
+  background: #1e1f2b;
+  color: #f2f2f2;
+  font-size: 1.25rem;
+  font-weight: bold;
+  text-align: center;
 }
 
-.perfil-nombre-form input {
-  min-width: 0;
-  font-size: 1.1rem;
+#dialogo-perfil .perfil-nombre-campo:focus {
+  outline: none;
+  border-color: #f1c40f;
 }
 
 .perfil-nombre-form button {
-  display: flex;
-  align-items: center;
-  padding: 0 0.6rem;
-  border: none;
-  border-radius: 0.45rem;
-  cursor: pointer;
+  width: var(--alto-nombre);
+  height: var(--alto-nombre);
 }
 
-.perfil-nombre-form .icono {
-  width: 1rem;
-  height: 1rem;
+.perfil-nombre-form .perfil-nombre-ok {
+  background: #27ae60;
+  color: #fff;
 }
 
+.perfil-nombre-form .perfil-nombre-ok:hover {
+  background: #2ecc71;
+}
+
+.perfil-nombre-form button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Alto fijo: si sale el error de cambiar el nombre (va aquí en vez de las cifras), no se mueve nada */
 .perfil-cifras {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
   gap: 1rem;
+  min-height: 1.4rem;
   font-size: 0.9rem;
+}
+
+.perfil-cifras > span:not(.perfil-error) {
   opacity: 0.8;
 }
 
@@ -714,8 +741,33 @@ button.perfil-avatar:hover .perfil-avatar-lapiz {
   color: #f1c40f;
 }
 
+.perfil-error {
+  font-weight: bold;
+  color: #e74c3c;
+}
+
 .perfil-apartado {
-  margin-top: 1.2rem;
+  margin-top: 1.1rem;
+}
+
+/* «Ver todos» / «Ordenar», debajo de los equipos */
+.perfil-ver-equipos {
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.45rem;
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.perfil-ver-equipos:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 #dialogo-perfil h3 {
@@ -729,7 +781,8 @@ button.perfil-avatar:hover .perfil-avatar-lapiz {
   opacity: 0.85;
 }
 
-.perfil-destacar {
+.perfil-destacar,
+.perfil-ver-amigos {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
@@ -751,17 +804,35 @@ button.perfil-avatar:hover .perfil-avatar-lapiz {
   background: #c0392b;
 }
 
+.perfil-ver-amigos:hover {
+  background: #4a4e68;
+}
+
 .perfil-destacar .icono {
   width: 0.85rem;
   height: 0.85rem;
 }
 
-.perfil-equipos {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  gap: 0.6rem;
-  max-height: 45vh;
+.perfil-equipos,
+.destacados-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Todos los destacados: hasta 12, con scroll si no caben */
+#dialogo-destacados {
+  width: min(30rem, 94vw);
+}
+
+.destacados-lista {
+  max-height: 65vh;
   overflow-y: auto;
+}
+
+.perfil-equipo-botones button:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 .perfil-equipo {
@@ -834,29 +905,27 @@ button.perfil-avatar:hover .perfil-avatar-lapiz {
   opacity: 0.6;
 }
 
-/* Amigos, a la derecha */
+/* Amigos: los cinco con los que más has jugado, en una fila */
 .perfil-amigos {
-  padding-left: 1.2rem;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  max-height: 60vh;
-  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.3rem;
 }
 
 .perfil-amigo {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.55rem;
-  width: 100%;
-  margin-bottom: 0.3rem;
-  padding: 0.4rem 0.5rem;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.45rem 0.2rem;
   border: none;
   border-radius: 0.5rem;
   background: transparent;
   color: #f2f2f2;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: bold;
-  text-align: left;
   cursor: pointer;
 }
 
@@ -864,11 +933,17 @@ button.perfil-avatar:hover .perfil-avatar-lapiz {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.perfil-amigo span:last-child {
-  min-width: 0;
+.perfil-amigo-nombre {
+  max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.perfil-amigo small {
+  font-size: 0.7rem;
+  font-weight: normal;
+  opacity: 0.6;
 }
 
 .perfil-amigo-foto {
@@ -876,8 +951,8 @@ button.perfil-avatar:hover .perfil-avatar-lapiz {
   align-items: center;
   justify-content: center;
   flex: none;
-  width: 2rem;
-  height: 2rem;
+  width: 2.8rem;
+  height: 2.8rem;
   border: 2px solid #6a7bb0;
   border-radius: 50%;
   background: #252735;
@@ -894,15 +969,8 @@ button.perfil-avatar:hover .perfil-avatar-lapiz {
   color: #2ecc71;
 }
 
-/* Borrar la cuenta, a la izquierda y discreto */
-#dialogo-perfil .perfil-borrar {
-  margin-right: auto;
-  background: transparent;
-  color: #e74c3c;
-}
-
-#dialogo-perfil .perfil-borrar:hover {
-  background: rgba(231, 76, 60, 0.12);
+.perfil-amigo .perfil-amigo-foto.sin-foto {
+  font-size: 1.1rem;
 }
 
 /* Ventana de destacar un equipo: tus equipos, uno por fila */
@@ -993,13 +1061,8 @@ button.perfil-avatar:hover .perfil-avatar-lapiz {
 }
 
 @media (max-width: 760px) {
-  .perfil-rejilla {
-    grid-template-columns: 1fr;
-  }
-
   .perfil-amigos {
-    padding-left: 0;
-    border-left: none;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -1082,10 +1145,101 @@ button.perfil-avatar:hover .perfil-avatar-lapiz {
   opacity: 0.55;
 }
 
-/* Lo último del panel: créditos, aviso legal y privacidad (legal.html) */
+/* Lo último del panel: créditos, aviso legal y privacidad (legal.html) y, a su lado, el «?»
+   de las preguntas frecuentes */
+.pie-lateral {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.7rem 0.7rem;
+}
+
+.boton-ayuda {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(242, 242, 242, 0.7);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.boton-ayuda:hover {
+  border-color: #f1c40f;
+  color: #f1c40f;
+}
+
+/* ---------- Preguntas frecuentes ---------- */
+
+#dialogo-ayuda {
+  width: min(40rem, 94vw);
+}
+
+.ayuda-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.ayuda-lista details {
+  border-radius: 0.5rem;
+  background: #252735;
+}
+
+.ayuda-lista summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  list-style: none;
+}
+
+.ayuda-lista summary::-webkit-details-marker {
+  display: none;
+}
+
+.ayuda-lista summary::after {
+  content: "▾";
+  margin-left: auto;
+  opacity: 0.6;
+  transition: transform 0.2s;
+}
+
+.ayuda-lista details:not([open]) summary::after {
+  transform: rotate(-90deg);
+}
+
+.ayuda-lista summary:hover {
+  color: #f1c40f;
+}
+
+.ayuda-lista p {
+  margin: 0;
+  padding: 0 0.85rem 0.75rem;
+  line-height: 1.45;
+}
+
+.ayuda-cerrar {
+  background: #3a3d52;
+  color: #f2f2f2;
+}
+
 .enlace-legal {
   flex: none;
-  padding: 0 0.7rem 0.7rem;
   color: inherit;
   font-size: 0.72rem;
   opacity: 0.45;
@@ -1098,9 +1252,15 @@ button.perfil-avatar:hover .perfil-avatar-lapiz {
 }
 
 /* Borrar la cuenta: en rojo y apartado, que no se pulse sin querer */
+/* Mismo botón que «Cerrar», pero en rojo (también «Borrar mi cuenta» del perfil) */
 .dialogo-sesion .boton-rojo {
+  border: none;
+  border-radius: 0.45rem;
   background: #c0392b;
   color: #fff;
+  font-family: inherit;
+  font-weight: bold;
+  cursor: pointer;
 }
 
 .dialogo-sesion .boton-rojo:hover {

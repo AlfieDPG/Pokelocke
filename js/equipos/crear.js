@@ -6,6 +6,7 @@ import { pedirJSON, URL_API } from "../comun/api.js";
 import { coloresTipo, tiposEs, iconoTipo } from "../comun/tipos.js";
 import { resumenEquipo, puntosDe, multiplicadoresDe, textoMultiplicador } from "../comun/efectividad.js";
 import { nombreOpcionForma, obtenerVariedades } from "../comun/formas.js";
+import { elegirForma } from "../comun/elegir-forma.js";
 import {
   pokemonDesdeAPI, pedirVariedad, cambiarForma, variedadActual,
   ataqueDesdeAPI, obtenerStats, obtenerDatosCombate, descripcionHabilidad, descripcionObjeto, textoForma
@@ -46,34 +47,6 @@ export function mostrarAviso(texto) {
       avisoEl.textContent = "";
     }, 3000);
   }
-}
-
-// ---------- Elegir forma (Alola, Galar, Mega...) ----------
-
-// Ventana para elegir la forma. Devuelve el nombre de la variedad o null si se cancela.
-function elegirForma(entrada, info) {
-  return new Promise((resolver) => {
-    const dialogo = document.getElementById("dialogo-forma");
-    const contenedor = document.getElementById("forma-opciones");
-    let elegido = null;
-
-    document.getElementById("forma-titulo").textContent = `¿Qué forma de ${entrada.es}?`;
-    contenedor.innerHTML = "";
-
-    for (const slug of info.lista) {
-      const b = document.createElement("button");
-      b.textContent = nombreOpcionForma(slug, info.especie);
-      b.addEventListener("click", () => {
-        elegido = slug;
-        dialogo.close();
-      });
-      contenedor.appendChild(b);
-    }
-
-    document.getElementById("forma-cancelar").onclick = () => dialogo.close();
-    dialogo.addEventListener("close", () => resolver(elegido), { once: true });
-    dialogo.showModal();
-  });
 }
 
 // ---------- Añadir Pokémon al equipo (búsqueda manual) ----------
@@ -293,7 +266,7 @@ function crearTarjeta(poke) {
     <button class="btn-shiny ${poke.shiny ? "activo" : ""}" title="Shiny">${poke.shiny ? "★" : "☆"}</button>
     <div class="tarjeta-izq">
       ${arte}
-      <h2>${escaparHTML(poke.mote || poke.es)}</h2>
+      <h2 class="nombre-editable" title="${poke.mote ? "Cambiar mote" : "Poner mote"}">${escaparHTML(poke.mote || poke.es)}</h2>
       <div class="forma-nombre">
         <span class="forma-texto">${detalleNombre(poke)}</span>
         <select class="selector-forma" title="Cambiar de forma" hidden></select>
@@ -319,6 +292,8 @@ function crearTarjeta(poke) {
     botonShiny.textContent = poke.shiny ? "★" : "☆";
     cambiarImagen(tarjeta.querySelector(".arte"), urlsArte(poke));
   });
+
+  tarjeta.querySelector(".nombre-editable").addEventListener("click", (e) => editarMote(e.currentTarget, poke));
 
   tarjeta.querySelector(".quitar-pokemon").addEventListener("click", () => {
     estado.equipo.splice(estado.equipo.indexOf(poke), 1);
@@ -357,6 +332,42 @@ function crearTarjeta(poke) {
   prepararSelectorForma(tarjeta, poke);
 
   return tarjeta;
+}
+
+// ---------- Mote ----------
+//
+// Pulsando el nombre se convierte en una casilla en el mismo sitio. Enter o salir de ella
+// guarda; Escape lo deja como estaba. Vacía, se quita el mote (vuelve el nombre de la especie).
+
+const LARGO_MOTE = 18; // lo que deja Showdown
+
+function editarMote(titulo, poke) {
+  if (titulo.querySelector("input")) return;
+  titulo.innerHTML = `<input class="mote-campo" type="text" maxlength="${LARGO_MOTE}" autocomplete="off"
+    placeholder="${escaparHTML(poke.es)}" value="${escaparHTML(poke.mote || "")}">`;
+  const campo = titulo.querySelector("input");
+  campo.focus();
+  campo.select();
+
+  let hecho = false;
+  const terminar = (guardar) => {
+    if (hecho) return;
+    hecho = true;
+    if (guardar) {
+      poke.mote = campo.value.trim() || null;
+      guardarEquipo();
+    }
+    refrescarTarjeta(poke);
+  };
+
+  campo.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") terminar(true);
+    if (e.key === "Escape") {
+      e.preventDefault(); // que no cierre nada más
+      terminar(false);
+    }
+  });
+  campo.addEventListener("blur", () => terminar(true));
 }
 
 // ---------- Cambiar de forma desde la tarjeta ----------

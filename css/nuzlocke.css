@@ -128,91 +128,351 @@
   opacity: 0.65;
 }
 
-/* ---------- Ventana de un juego propio ---------- */
-
-#dialogo-juego {
-  width: min(46rem, 94vw);
+.juego-editar.activo {
+  background: #27ae60;
+  color: #fff;
 }
 
-.juego-fila {
+.juego-editar.activo:hover {
+  background: #2ecc71;
+}
+
+/* ---------- Editar unos personalizados (Rutas y Level caps) ---------- */
+
+/* Casillas oscuras, del mismo tono que las tarjetas, para que se vea igual que la lista */
+.caps-editor-cabecera input,
+.cap-editable input,
+.rutas-editor-cabecera input,
+.rutas-editor-cabecera select,
+.rutas-ed-grupo input {
+  min-width: 0;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.4rem;
+  background: #1e1f2b;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.88rem;
+}
+
+.caps-editor-cabecera input:focus,
+.cap-editable input:focus,
+.rutas-editor-cabecera input:focus,
+.rutas-ed-grupo input:focus {
+  outline: none;
+  border-color: #f1c40f;
+}
+
+/* Nombre de la lista y borrarla */
+.caps-editor-cabecera,
+.rutas-editor-cabecera {
   display: flex;
-  gap: 0.8rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.4rem;
 }
 
-.juego-campo-nombre {
-  flex: 1;
+.caps-editor-cabecera .caps-ed-nombre,
+.rutas-editor-cabecera .rutas-ed-nombre {
+  flex: 0 1 18rem;
+  font-size: 1.05rem;
+  font-weight: bold;
 }
 
-.juego-campo-base select {
-  padding: 0.5rem 0.6rem;
+.caps-ed-borrar,
+.rutas-ed-borrar,
+.caps-ed-anadir,
+.rutas-ed-anadir-apartado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.8rem;
   border: none;
   border-radius: 0.45rem;
+  background: #2c2e3e;
+  color: #f2f2f2;
   font-family: inherit;
-  font-size: 0.95rem;
-}
-
-#dialogo-juego textarea {
   font-size: 0.85rem;
-  text-transform: none;
-  letter-spacing: normal;
-  font-weight: normal;
-}
-
-.juego-etiqueta {
-  display: block;
-  margin-top: 0.6rem;
-  font-size: 0.8rem;
   font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  cursor: pointer;
 }
 
-.juego-combates {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  max-height: 32vh;
-  margin-top: 0.3rem;
-  overflow-y: auto;
+.caps-ed-borrar,
+.rutas-ed-borrar {
+  margin-left: auto;
 }
 
-/* Una fila por combate: combate, rival, lugar, nivel y quitar */
-.juego-combate {
-  display: grid;
-  grid-template-columns: 1.1fr 1fr 1.1fr 4.2rem auto;
-  gap: 0.3rem;
+.caps-ed-borrar:hover,
+.rutas-ed-borrar:hover {
+  background: #c0392b;
 }
 
-#dialogo-juego .juego-combate input {
-  min-width: 0;
-  padding: 0.4rem 0.5rem;
-  font-size: 0.85rem;
+.caps-ed-anadir:hover,
+.rutas-ed-anadir-apartado:hover {
+  background: #3a3d52;
 }
 
-.c-quitar {
+.caps-ed-anadir {
+  width: 100%;
+  justify-content: center;
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  background: transparent;
+}
+
+.caps-editor-cabecera .icono,
+.rutas-editor-cabecera .icono,
+.caps-ed-anadir .icono,
+.rutas-ed-anadir-apartado .icono {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/* Un combate: imagen, título / nombre / lugar, nivel y botones */
+.cap-editable {
+  gap: 0.6rem;
+}
+
+.cap-ed-imagen {
   display: flex;
   align-items: center;
-  padding: 0 0.4rem;
-  border: none;
+  justify-content: center;
+  flex: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
   border-radius: 0.4rem;
+  background: transparent;
+  color: rgba(242, 242, 242, 0.5);
+  cursor: pointer;
+}
+
+.cap-ed-imagen.con-imagen {
+  border-color: transparent;
+}
+
+.cap-ed-imagen:hover {
+  border-color: #f1c40f;
+  color: #f1c40f;
+}
+
+.cap-ed-imagen img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.cap-ed-imagen .icono {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.cap-ed-campos {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.cap-ed-campos .cap-ed-etiqueta {
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  font-weight: bold;
+}
+
+.cap-ed-campos .cap-ed-nombre {
+  font-weight: bold;
+}
+
+/* Más fuerte que «.cap input» y «.cap label», que son para la casilla de superado */
+.cap.cap-editable input {
+  width: 100%;
+  height: auto;
+  margin: 0;
+  box-sizing: border-box;
+  accent-color: auto;
+  cursor: text;
+}
+
+.cap .cap-ed-nivel {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.cap.cap-editable .cap-ed-nivel input {
+  width: 3.6rem;
+  font-weight: bold;
+}
+
+.cap-ed-acciones {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.cap-ed-acciones button,
+.rutas-ed-quitar-apartado,
+.ruta-ed-quitar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border: none;
+  border-radius: 0.35rem;
   background: transparent;
   color: rgba(242, 242, 242, 0.6);
   cursor: pointer;
 }
 
-.c-quitar:hover {
+.cap-ed-acciones button:hover:not(:disabled) {
+  background: #3a3d52;
+  color: #f2f2f2;
+}
+
+.cap-ed-acciones .cap-ed-quitar:hover,
+.rutas-ed-quitar-apartado:hover,
+.ruta-ed-quitar:hover {
   background: #c0392b;
   color: #fff;
 }
 
-.c-quitar .icono {
-  width: 0.85rem;
-  height: 0.85rem;
+.cap-ed-acciones button:disabled {
+  opacity: 0.25;
+  cursor: default;
 }
 
-.juego-anadir-combate {
-  margin-top: 0.4rem;
-  padding: 0.4rem 0.8rem;
+.cap-ed-acciones .icono,
+.rutas-ed-quitar-apartado .icono,
+.ruta-ed-quitar .icono {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+/* Rutas: el título del apartado como casilla, con su rayita detrás */
+.rutas-ed-grupo h3 input {
+  flex: 0 1 16rem;
+  color: var(--color-apartado);
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+/* Un lugar ya puesto: como un botón de ruta, con su X */
+.ruta-ed {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.6rem;
+  border-radius: 0.45rem;
+  background: #2c2e3e;
+  font-size: 0.88rem;
+  font-weight: bold;
+}
+
+.ruta-ed > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.rutas-ed-grupo .ruta-ed-nuevo {
+  border-style: dashed;
+  background: transparent;
+}
+
+.rutas-ed-anadir-apartado {
+  margin-top: 1rem;
+}
+
+/* ---------- Ventana de la imagen de un combate ---------- */
+
+#dialogo-imagen-combate {
+  width: min(40rem, 94vw);
+}
+
+.imagen-barra {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.imagen-barra .imagen-buscar {
+  flex: 1;
+  min-width: 0;
+}
+
+.imagen-subir {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.85rem;
+  white-space: nowrap;
+}
+
+.imagen-subir .icono {
+  width: 1rem;
+  height: 1rem;
+}
+
+.imagen-personajes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.4rem;
+  height: 50vh;
+  margin-top: 0.7rem;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.imagen-personaje {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.3rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #252735;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.imagen-personaje:hover {
+  background: #32354a;
+  box-shadow: inset 0 0 0 2px #f1c40f;
+}
+
+.imagen-personaje img {
+  width: 3.2rem;
+  height: 3.2rem;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.imagen-personaje span {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.imagen-ninguno {
+  grid-column: 1 / -1;
+  opacity: 0.6;
+}
+
+@media (max-width: 760px) {
+  .cap-ed-campos {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ---------- Rutas ---------- */

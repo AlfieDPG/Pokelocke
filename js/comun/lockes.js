@@ -10,12 +10,13 @@
 // Documento (lockes/{id}), reglas en firestore.rules:
 //
 //   { nombre, descripcion, tipo: {id,nombre,color}, juego, juegoOtro,
-//     juegoPropio,                 // copia del juego si es uno propio (juegos-propios.js)
+//     juegoPropio,                 // solo lockes de antes: copia de un «juego propio» (ver campo-juego.js)
 //     jugadores: [uid],            // todos los metidos, invitados incluidos
 //     estados: {uid: "aceptado"|"pendiente"},
 //     nombres: {uid}, fotos: {uid}, creador,
 //     vidasIniciales, vidasIlimitadas, vidas: {uid:n}, marcador: {uid:n},
 //     normas: { id, nombre, conGenerales, lista },  // copia del conjunto elegido (normas.js)
+//     rutasPropias, capsPropios,   // copias de unas rutas / level caps personalizados (personalizados.js)
 //     muertos: {uid: [muerto]},    // cementerio de cada uno (ver Cementerio, abajo)
 //     estado: "abierto"|"cerrado", ganador, fechaFin: "2025-06-01",
 //     contado: [uid], creado, actualizado }
@@ -34,7 +35,6 @@
 import { usuarioActual, baseDeDatos, alCambiarSesion, cuandoEsteSincronizado } from "./nube.js";
 import { apuntarLockesGanados, miPerfil, alCambiarMiPerfil } from "./perfiles.js";
 import { recibirConjunto, normasDeLocke } from "./normas.js";
-import { recibirJuego, esPropio, copiaParaLocke as copiaDeJuego } from "./juegos-propios.js";
 import { hoyComoTexto } from "./utilidades.js";
 
 let todos = [];
@@ -134,25 +134,32 @@ function ponerMiNombre() {
 // ver cuandoEsteSincronizado.
 async function recibirNormasDeMisLockes() {
   await cuandoEsteSincronizado();
-  for (const locke of misLockes()) {
-    recibirConjunto(normasDeLocke(locke));
-    // Lo mismo con su juego, si es uno propio de quien lo creó (ver juegos-propios.js)
-    if (locke.juegoPropio) recibirJuego(locke.juegoPropio);
+  for (const locke of misLockes()) recibirConjunto(normasDeLocke(locke));
+
+  // Lo mismo con sus rutas y level caps personalizados. El módulo solo se descarga si algún
+  // locke los lleva.
+  const conPropios = misLockes().filter((locke) => locke.rutasPropias || locke.capsPropios);
+  if (!conPropios.length) return;
+  const { rutasPropias, capsPropios } = await import("./personalizados.js");
+  for (const locke of conPropios) {
+    if (locke.rutasPropias) rutasPropias.recibirDeLocke(locke.rutasPropias);
+    if (locke.capsPropios) capsPropios.recibirDeLocke(locke.capsPropios);
   }
 }
 
-// Al cambiar uno de tus juegos propios: los lockes que has creado con él se quedan con el
-// nuevo (y a los demás les llega por recibirNormasDeMisLockes)
-export async function actualizarJuegoEnMisLockes(juego) {
+// Al cambiar tus rutas o level caps personalizados: los lockes que has creado con ellos se
+// quedan con la copia nueva (y a los demás les llega por recibirNormasDeMisLockes).
+// campo: "rutasPropias" o "capsPropios"
+export async function actualizarPersonalizadoEnMisLockes(campo, copia) {
   const usuario = usuarioActual();
   const acceso = baseDeDatos();
   if (!usuario || !acceso) return;
-  const copia = copiaDeJuego(juego.id);
   const { bd, fn } = acceso;
   await Promise.all(
     todos
-      .filter((locke) => locke.creador === usuario.uid && locke.juegoPropio && locke.juegoPropio.id === juego.id)
-      .map((locke) => fn.updateDoc(fn.doc(bd, "lockes", locke.id), { juegoPropio: copia, actualizado: Date.now() }))
+      .filter((locke) => locke.creador === usuario.uid && locke[campo] && locke[campo].id === copia.id)
+      .filter((locke) => locke[campo].actualizado !== copia.actualizado)
+      .map((locke) => fn.updateDoc(fn.doc(bd, "lockes", locke.id), { [campo]: copia, actualizado: Date.now() }))
   );
 }
 
@@ -204,7 +211,8 @@ export function lockePorId(id) {
 // «invitados» puede venir vacío: un locke para ti solo es perfectamente válido, y luego
 // siempre se puede meter gente.
 export async function crearLocke({
-  nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas, normas, invitados, nombres, fotos
+  nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas, normas, rutasPropias, capsPropios,
+  invitados, nombres, fotos
 }) {
   const usuario = usuarioActual();
   const { bd, fn } = baseDeDatos();
@@ -225,7 +233,7 @@ export async function crearLocke({
     tipo,
     juego: juego || "",
     juegoOtro: juegoOtro || "",
-    juegoPropio: esPropio(juego) ? copiaDeJuego(juego) : null,
+    juegoPropio: null,
     jugadores,
     estados,
     nombres,
@@ -236,6 +244,8 @@ export async function crearLocke({
     vidas: porJugador.vidas,
     marcador: porJugador.marcador,
     normas: normas || null,
+    rutasPropias: rutasPropias || null,
+    capsPropios: capsPropios || null,
     estado: "abierto",
     ganador: "",
     fechaFin: "",
@@ -284,7 +294,9 @@ export async function elegirGanador(id, uid) {
 // Los muertos de cada uno van en el propio locke, como sus vidas: muertos: { uid: [muerto] }.
 // Cada uno solo toca su lista (lo comprueban las reglas).
 //
-//   muerto: { id, especie (número de la Pokédex), nombre (de la especie), mote, causa, fecha }
+//   muerto: { id, especie (número de la Pokédex), nombre (de la especie, con su forma), mote,
+//             idForma?, formaPMD?, imagenForma? (si es una forma: para su retrato), fecha }
+//   Los de antes pueden llevar «causa» (contra quién): ya no se pregunta, pero se sigue enseñando.
 
 function nuevoIdMuerto() {
   return `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -306,7 +318,7 @@ export async function apuntarMuerto(id, muerto, quitarVida) {
     especie: muerto.especie,
     nombre: muerto.nombre,
     mote: muerto.mote || "",
-    causa: muerto.causa || "",
+    ...formaDelMuerto(muerto),
     fecha: Date.now()
   };
   const cambios = {
@@ -320,11 +332,21 @@ export async function apuntarMuerto(id, muerto, quitarVida) {
   const { fn, ref } = referencia(id);
   await fn.updateDoc(ref, cambios);
 
-  const { especie, nombre, mote, causa } = nuevo;
+  const { especie, nombre, mote } = nuevo;
   await apuntarSuceso(id, restaVida ? "vida" : "muerte", {
     ...(restaVida ? { delta: -1 } : {}),
-    muerto: { especie, nombre, mote, causa }
+    muerto: { especie, nombre, mote, ...formaDelMuerto(nuevo) }
   });
+}
+
+// Si es una forma (Alola, Mega...), lo que hace falta para su retrato. Solo lo que haya:
+// Firestore no acepta «undefined».
+function formaDelMuerto(muerto) {
+  const forma = {};
+  for (const campo of ["idForma", "formaPMD", "imagenForma"]) {
+    if (muerto[campo] !== undefined && muerto[campo] !== null) forma[campo] = muerto[campo];
+  }
+  return forma;
 }
 
 // Por si se apuntó mal. No devuelve la vida: eso se hace con el «+».
@@ -500,12 +522,11 @@ export async function editarLocke(id, datos) {
     tipo: datos.tipo,
     juego: datos.juego || "",
     juegoOtro: datos.juegoOtro || "",
-    // Si es un juego propio, la copia de ahora; si sigue siendo el mismo y ya no lo tengo
-    // (lo borré), la que tenía el locke
-    juegoPropio: esPropio(datos.juego)
-      ? copiaDeJuego(datos.juego) || (locke.juegoPropio && locke.juegoPropio.id === datos.juego ? locke.juegoPropio : null)
-      : null,
+    // Un locke de antes con un juego propio lo conserva mientras no se cambie de juego
+    juegoPropio: locke.juegoPropio && locke.juegoPropio.id === datos.juego ? locke.juegoPropio : null,
     normas: datos.normas || null,
+    rutasPropias: datos.rutasPropias || null,
+    capsPropios: datos.capsPropios || null,
     actualizado: Date.now()
   };
 

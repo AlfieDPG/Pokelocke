@@ -66,7 +66,10 @@
         <span class="sesion-aviso"></span>
       </div>
 
-      <a class="enlace-legal" href="legal.html" target="_blank" rel="noopener">Créditos y privacidad</a>
+      <div class="pie-lateral">
+        <a class="enlace-legal" href="legal.html" target="_blank" rel="noopener">Créditos y privacidad</a>
+        <button class="boton-ayuda" title="Preguntas frecuentes" aria-label="Preguntas frecuentes">?</button>
+      </div>
     </aside>
 
     <div class="contenido">
@@ -108,7 +111,7 @@
           <div class="barra-nuzlocke">
             <input class="rutas-buscar" type="search" placeholder="Buscar lugar...">
             <span class="rutas-progreso"></span>
-            <button class="juego-editar" hidden>Editar juego</button>
+            <button class="juego-editar" hidden>Editar</button>
             <button class="rutas-reiniciar boton-reiniciar">Desmarcar todo</button>
           </div>
           <div class="rutas-lista"></div>
@@ -124,7 +127,7 @@
               <span class="multiplicador-valor">×1.0</span>
               <button class="multiplicador-mas" aria-label="Subir multiplicador">+</button>
             </div>
-            <button class="juego-editar" hidden>Editar juego</button>
+            <button class="juego-editar" hidden>Editar</button>
             <button class="caps-reiniciar boton-reiniciar">Desmarcar todo</button>
           </div>
           <ol class="caps-lista"></ol>
@@ -278,7 +281,7 @@
   <dialog id="dialogo-perfil" class="dialogo-sesion">
     <div class="perfil-cuerpo"></div>
     <div class="dialogo-botones">
-      <button class="perfil-borrar boton-izquierda">Borrar mi cuenta</button>
+      <button class="perfil-borrar boton-rojo boton-izquierda">Borrar mi cuenta</button>
       <button class="boton-gris perfil-volver">Volver a mi perfil</button>
       <button class="boton-gris perfil-cerrar">Cerrar</button>
     </div>
@@ -310,6 +313,16 @@
     <div class="escaparate-lista"></div>
     <div class="dialogo-botones">
       <button class="boton-gris escaparate-cerrar">Cerrar</button>
+    </div>
+  </dialog>
+
+  <!-- Todos los equipos destacados de un perfil; en el tuyo, para ordenarlos (js/perfil.js) -->
+  <dialog id="dialogo-destacados" class="dialogo-sesion">
+    <h2>Equipos destacados</h2>
+    <div class="destacados-lista"></div>
+    <div class="dialogo-botones">
+      <button class="boton-gris boton-izquierda destacados-anadir">Destacar otro</button>
+      <button class="boton-gris destacados-cerrar">Cerrar</button>
     </div>
   </dialog>
 
@@ -379,8 +392,20 @@
     <span class="etiqueta-campo">Integrantes</span>
     <div class="locke-dentro"></div>
 
-    <span class="etiqueta-campo">Normas</span>
-    <div class="locke-normas"></div>
+    <div class="locke-elecciones">
+      <div class="locke-eleccion">
+        <span class="etiqueta-campo">Normas</span>
+        <div class="locke-normas"></div>
+      </div>
+      <div class="locke-eleccion">
+        <span class="etiqueta-campo">Rutas</span>
+        <div class="locke-rutas"></div>
+      </div>
+      <div class="locke-eleccion">
+        <span class="etiqueta-campo">Level caps</span>
+        <div class="locke-caps"></div>
+      </div>
+    </div>
 
     <label class="campo-ancho campo-descripcion">
       <span>Descripción (opcional)</span>
@@ -395,35 +420,20 @@
     </div>
   </dialog>
 
-  <!-- Crear o cambiar un juego propio, para Rutas y Level caps (js/comun/editor-juego.js) -->
-  <dialog id="dialogo-juego" class="dialogo-sesion">
-    <h2 class="juego-titulo">Nuevo juego</h2>
-    <form class="juego-formulario">
-      <div class="juego-fila">
-        <label class="juego-campo-nombre">
-          <span>Nombre</span>
-          <input class="juego-nombre" type="text" maxlength="40" autocomplete="off">
-        </label>
-        <label class="juego-campo-base">
-          <span>Empezar desde</span>
-          <select class="juego-base"></select>
-        </label>
-      </div>
-      <label>
-        <span>Rutas</span>
-        <textarea class="juego-lugares" rows="9" spellcheck="false"
-          placeholder="# Rutas&#10;Ruta 1&#10;Ruta 2&#10;# Ciudades&#10;Pueblo Paleta"></textarea>
-      </label>
-      <span class="juego-etiqueta">Level caps</span>
-      <div class="juego-combates"></div>
-      <button type="button" class="boton-gris juego-anadir-combate">+ Añadir combate</button>
-      <span class="sesion-error juego-error"></span>
-      <div class="dialogo-botones">
-        <button type="button" class="boton-rojo boton-izquierda juego-borrar">Borrar juego</button>
-        <button type="button" class="boton-gris juego-cancelar">Cancelar</button>
-        <button type="submit" class="boton-verde juego-ok">Guardar</button>
-      </div>
-    </form>
+  <!-- Imagen de un combate de unos level caps personalizados (js/levelcaps/elegir-imagen.js) -->
+  <dialog id="dialogo-imagen-combate" class="dialogo-sesion">
+    <h2>Imagen</h2>
+    <div class="imagen-barra">
+      <input class="imagen-buscar" type="search" placeholder="Buscar personaje..." autocomplete="off">
+      <button type="button" class="boton-gris imagen-subir">Subir imagen</button>
+      <input class="imagen-archivo" type="file" accept="image/png,image/gif,image/webp,image/jpeg" hidden>
+    </div>
+    <div class="imagen-personajes"></div>
+    <span class="sesion-error imagen-error"></span>
+    <div class="dialogo-botones">
+      <button type="button" class="boton-rojo boton-izquierda imagen-quitar">Quitar imagen</button>
+      <button type="button" class="boton-gris imagen-cancelar">Cancelar</button>
+    </div>
   </dialog>
 
   <!-- Cementerio de un locke: una columna por jugador (js/versus/cementerio.js) -->
@@ -446,10 +456,6 @@
       <label>
         <span>Mote</span>
         <input class="muerte-mote" type="text" maxlength="24" autocomplete="off">
-      </label>
-      <label>
-        <span>Contra quién</span>
-        <input class="muerte-causa" type="text" maxlength="60" autocomplete="off">
       </label>
       <label class="casilla-sesion muerte-vida-campo">
         <input class="muerte-vida" type="checkbox" checked>
@@ -527,6 +533,60 @@
     <div class="dialogo-botones">
       <button class="elegir-cancelar">Cancelar</button>
       <button class="elegir-ok">Añadir</button>
+    </div>
+  </dialog>
+
+  <!-- Preguntas frecuentes: el «?» de abajo del panel lateral (js/main.js) -->
+  <dialog id="dialogo-ayuda">
+    <h2>Preguntas frecuentes</h2>
+    <div class="ayuda-lista">
+      <details>
+        <summary>¿Qué es LockeDex?</summary>
+        <p>Una web para jugar Nuzlockes con tus amigos: lleváis el marcador de cada locke en «Versus» (vidas, victorias, muertos y quién gana) y tienes a mano lo que hace falta mientras juegas: tus equipos, las rutas donde ya has capturado, los level caps de cada combate, las normas y la Pokédex.</p>
+      </details>
+      <details>
+        <summary>¿Necesito una cuenta?</summary>
+        <p>Para equipos, rutas, level caps, normas y Pokédex, no: se guarda todo en este navegador. Con una cuenta (usuario y contraseña, o Google) se guarda además en tu cuenta, así que lo tienes en cualquier dispositivo, y puedes usar «Amigos» y «Versus».</p>
+      </details>
+      <details>
+        <summary>¿Cómo añado a un amigo?</summary>
+        <p>En «Amigos», escribe su nombre de usuario (o el correo de su cuenta de Google) y pulsa «Agregar». Le llega una solicitud a la campana de abajo del panel; en cuanto la acepta, os salís el uno en la lista del otro.</p>
+      </details>
+      <details>
+        <summary>¿Cómo funciona un locke en «Versus»?</summary>
+        <p>Con «Nuevo locke» le pones nombre, tipo, juego y vidas, eliges las normas, las rutas y los level caps, e invitas a tus amigos (les llega a la campana). Cada uno lleva lo suyo: suma sus victorias y quita sus vidas. Al quitar una vida puedes apuntar qué Pokémon ha muerto y va a su cementerio. Cuando acaba, quien lo creó elige al ganador y se le suma a sus lockes ganados.</p>
+      </details>
+      <details>
+        <summary>¿Qué son las victorias y las vidas?</summary>
+        <p>Las victorias son los combates que ganas contra los demás jugadores del locke. Las vidas son las que te quedan: cada vez que pierdes un Pokémon (o lo que digan vuestras normas) se quita una. También se puede jugar con vidas ilimitadas.</p>
+      </details>
+      <details>
+        <summary>¿Puedo usar las rutas o los level caps de un fan game?</summary>
+        <p>Sí. En «Rutas» o en «Level caps», pestaña «Personalizado», pulsa «+ Nuevo». Puedes escribirlo todo desde cero o aprovechar lo de la web: copiar los lugares de un juego, o poner a cada combate el retrato de un personaje (o subir tu propia imagen). Luego los eliges al crear un locke y a los demás jugadores les llegan solos.</p>
+      </details>
+      <details>
+        <summary>¿Para qué sirve el multiplicador de los level caps?</summary>
+        <p>Para los randomizers que suben el nivel de los entrenadores: multiplica todos los niveles de la lista por lo que pongas.</p>
+      </details>
+      <details>
+        <summary>¿Cómo paso un equipo a Showdown, o al revés?</summary>
+        <p>En el creador de equipos, «Exportar» copia el equipo en el formato de Showdown. Para traer uno, «Importar paste» en el menú de «Equipos». Pulsando el nombre de un Pokémon le pones o le cambias el mote.</p>
+      </details>
+      <details>
+        <summary>¿Cómo veo la línea evolutiva de un Pokémon?</summary>
+        <p>En la «Pokédex», pulsa la foto del Pokémon: sale su línea evolutiva con cómo evoluciona cada uno.</p>
+      </details>
+      <details>
+        <summary>¿Qué pasa al cerrar sesión? ¿Y con varias cuentas?</summary>
+        <p>Lo tuyo sigue guardado en tu cuenta y vuelve al entrar; de este navegador se quita mientras tanto. Para tener varias cuentas, pulsa tu nombre abajo del panel y «Añadir otra cuenta»: luego cambias de una a otra desde ahí mismo.</p>
+      </details>
+      <details>
+        <summary>¿Cómo borro mi cuenta?</summary>
+        <p>Pulsa tu nombre abajo del panel, «Mi perfil» y «Borrar mi cuenta». Se borra todo lo tuyo y no se puede deshacer.</p>
+      </details>
+    </div>
+    <div class="dialogo-botones">
+      <button class="ayuda-cerrar">Cerrar</button>
     </div>
   </dialog>
 

@@ -6,7 +6,7 @@
 import { icono } from "../comun/iconos.js";
 import { escaparHTML } from "../comun/utilidades.js";
 import { lockePorId, escucharActividad } from "../comun/lockes.js";
-import { retratoEspecie, nombreMuerto } from "./cementerio.js";
+import { retratoMuerto, nombreMuerto } from "./cementerio.js";
 
 let dialogo = null;
 let idLocke = null;
@@ -27,6 +27,7 @@ function textoSuceso(suceso, locke) {
   const nombres = locke.nombres || {};
   const quien = `<strong>${escaparHTML(nombres[suceso.uid] || "Alguien")}</strong>`;
   const muerto = suceso.muerto ? `<strong>${escaparHTML(nombreMuerto(suceso.muerto))}</strong>` : "";
+  // «Contra quién» ya no se pregunta; solo lo llevan los de antes
   const contra = suceso.muerto && suceso.muerto.causa ? ` contra ${escaparHTML(suceso.muerto.causa)}` : "";
 
   switch (suceso.tipo) {
@@ -50,7 +51,7 @@ function textoSuceso(suceso, locke) {
 
 // Icono de cada tipo de suceso (y su color, por la clase)
 function iconoSuceso(suceso) {
-  if (suceso.muerto) return retratoEspecie(suceso.muerto.especie, "suceso-cara");
+  if (suceso.muerto) return retratoMuerto(suceso.muerto, "suceso-cara");
   const nombre = {
     creado: "mas",
     entra: "personaMas",

@@ -20,7 +20,10 @@ export const CLAVES_SINCRONIZADAS = [
   "poketeams-levelcaps-juego-v1",         // juego elegido en «Level caps»
   "poketeams-levelcaps-multiplicador-v1", // multiplicador de nivel
   "poketeams-normas-v2",                  // conjuntos de normas propios
-  "poketeams-juegos-propios-v1"           // juegos propios (Rutas y Level caps)
+  "poketeams-rutas-propias-v1",           // rutas personalizadas
+  "poketeams-levelcaps-propios-v1",       // level caps personalizados
+  "poketeams-juegos-propios-v1"           // los de antes (rutas y level caps juntos): se pasan
+                                          // solos a los dos de arriba (personalizados.js)
 ];
 
 // Cuándo se cambió cada clave por última vez: { clave: milisegundos }.

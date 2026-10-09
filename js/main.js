@@ -6,6 +6,11 @@ activarRespaldoImagenes();
 iniciarNavegacion();
 irA(vistaInicial()); // la que hubiera al recargar, o Versus si se entra de nuevas
 
+// Preguntas frecuentes: el «?» al lado de «Créditos y privacidad»
+const dialogoAyuda = document.querySelector("#dialogo-ayuda");
+document.querySelector(".boton-ayuda").addEventListener("click", () => dialogoAyuda.showModal());
+dialogoAyuda.querySelector(".ayuda-cerrar").addEventListener("click", () => dialogoAyuda.close());
+
 // La sesión se monta aparte: si falla, la web sigue funcionando con el navegador
 iniciarSesionUI().catch((error) => console.error(error));
 

@@ -3,8 +3,9 @@
 //   · Cementerio: una columna por jugador (la tuya primero), con sus muertos como lápidas con
 //     el retrato de Mundo Misterioso. En la tuya, una lápida «+» para apuntar uno y una X en
 //     cada uno para quitarlo si te equivocaste.
-//   · Apuntar un muerto: Pokémon, mote y contra quién. Sale también al darle a «−» en tus
-//     vidas: ahí el Pokémon es opcional (se puede perder una vida sin decir quién).
+//   · Apuntar un muerto: Pokémon (con su forma, si tiene varias: Alola, Mega...) y mote. Sale
+//     también al darle a «−» en tus vidas: ahí el Pokémon es opcional (se puede perder una
+//     vida sin decir quién).
 //
 // Los datos están en js/comun/lockes.js (Cementerio).
 
@@ -13,6 +14,8 @@ import { escaparHTML } from "../comun/utilidades.js";
 import { usuarioActual } from "../comun/nube.js";
 import { cargarDatos, datos } from "../comun/datos.js";
 import { activarAutocompletado } from "../comun/autocompletado.js";
+import { obtenerVariedades } from "../comun/formas.js";
+import { elegirForma, datosDeForma } from "../comun/elegir-forma.js";
 import { imagenConRespaldo, urlsPMD, urlSpritePixel } from "../comun/imagenes.js";
 import { lockePorId, estadoDe, muertosDe, apuntarMuerto, borrarMuerto, cambiarNumero, alCambiarLockes } from "../comun/lockes.js";
 
@@ -22,14 +25,17 @@ let idCementerio = null; // locke del cementerio abierto
 
 let idMuerte = null;     // locke en el que se apunta el muerto
 let desdeVidas = false;  // se abrió con el «−» de las vidas
-let elegido = null;      // Pokémon elegido en el buscador: { id, es }
+let elegido = null;      // Pokémon elegido: { id, es, texto (lo que sale en la casilla), forma }
+let eligiendo = null;    // promesa mientras se pregunta la forma (al guardar se espera a que acabe)
 let listaPokemon = [];   // la que mira el autocompletado (se rellena al cargar los datos)
 let autocompletado = null;
 
-// Retrato de Mundo Misterioso de una especie; si no lo hay, el sprite pequeño
-export function retratoEspecie(especie, clase = "") {
+// Retrato de Mundo Misterioso del muerto (de su forma, si es una); si no lo hay, el sprite
+// pequeño. Una forma sin retrato propio NO cae al de la especie: saldría la forma normal.
+export function retratoMuerto(muerto, clase = "") {
+  const p = { id: muerto.especie, idForma: muerto.idForma, formaPMD: muerto.formaPMD || 0 };
   return imagenConRespaldo(
-    [...urlsPMD({ id: especie }), urlSpritePixel(especie)],
+    [...urlsPMD(p), urlSpritePixel(muerto.imagenForma || muerto.idForma || muerto.especie)],
     `class="${clase}" alt="" loading="lazy" data-quitar-si-falla`
   );
 }
@@ -48,10 +54,11 @@ function plantillaTumba(muerto, mia) {
   const fecha = muerto.fecha
     ? new Date(muerto.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
     : "";
+  // «Contra quién» ya no se pregunta; solo lo llevan los de antes
   const detalle = [muerto.causa && `Contra ${muerto.causa}`, fecha].filter(Boolean).join(" · ");
   return `
     <div class="tumba" title="${escaparHTML(detalle)}">
-      ${retratoEspecie(muerto.especie, "tumba-cara")}
+      ${retratoMuerto(muerto, "tumba-cara")}
       <span class="tumba-mote">${escaparHTML(muerto.mote || muerto.nombre)}</span>
       ${muerto.mote ? `<span class="tumba-especie">${escaparHTML(muerto.nombre)}</span>` : ""}
       ${mia ? `<button class="tumba-quitar" data-muerto="${escaparHTML(muerto.id)}" title="Quitar">${icono("aspa")}</button>` : ""}
@@ -116,10 +123,11 @@ export function abrirMuerte(id, desdeLasVidas) {
   idMuerte = id;
   desdeVidas = desdeLasVidas;
   elegido = null;
+  eligiendo = null;
 
   dialogoMuerte.querySelector(".muerte-titulo").textContent = desdeLasVidas ? "Perder una vida" : "Apuntar un muerto";
   dialogoMuerte.querySelector(".muerte-ok").textContent = desdeLasVidas ? "Quitar vida" : "Apuntar";
-  for (const selector of [".muerte-pokemon", ".muerte-mote", ".muerte-causa"]) {
+  for (const selector of [".muerte-pokemon", ".muerte-mote"]) {
     dialogoMuerte.querySelector(selector).value = "";
   }
   dialogoMuerte.querySelector(".muerte-error").textContent = "";
@@ -136,12 +144,41 @@ export function abrirMuerte(id, desdeLasVidas) {
     .catch((error) => console.error(error));
 }
 
+// Elegida la especie: si tiene varias formas, se pregunta cuál (cancelar = la normal)
+async function elegirEspecie(pokemon) {
+  const campo = dialogoMuerte.querySelector(".muerte-pokemon");
+  elegido = { id: pokemon.id, es: pokemon.es, texto: pokemon.es, forma: {} };
+  campo.value = pokemon.es;
+
+  let info = { especie: "", lista: [] };
+  try {
+    info = await obtenerVariedades(pokemon.id);
+  } catch (error) {
+    // sin información de formas: la normal
+  }
+
+  if (info.lista.length > 1) {
+    const slug = await elegirForma(pokemon, info);
+    try {
+      const forma = slug ? await datosDeForma(info, slug) : {};
+      if (forma.etiqueta) {
+        elegido = { ...elegido, texto: `${pokemon.es} (${forma.etiqueta})`, forma };
+        campo.value = elegido.texto;
+      }
+    } catch (error) {
+      console.error(error); // sin conexión: se queda la normal
+    }
+  }
+  dialogoMuerte.querySelector(".muerte-mote").focus();
+}
+
 async function guardarMuerte() {
   const error = dialogoMuerte.querySelector(".muerte-error");
   const texto = dialogoMuerte.querySelector(".muerte-pokemon").value.trim();
 
   // Si ha escrito algo sin elegirlo de la lista, se coge la primera sugerencia
-  if (texto && (!elegido || elegido.es !== texto)) autocompletado.elegirPrimera();
+  if (texto && (!elegido || elegido.texto !== texto)) autocompletado.elegirPrimera();
+  if (eligiendo) await eligiendo;
   if (texto && !elegido) {
     error.textContent = "Elige un Pokémon de la lista.";
     return;
@@ -159,13 +196,16 @@ async function guardarMuerte() {
     return;
   }
 
+  const { idForma, formaPMD, imagenForma } = elegido.forma;
   await apuntarMuerto(
     id,
     {
       especie: elegido.id,
-      nombre: elegido.es,
+      nombre: elegido.texto,
       mote: dialogoMuerte.querySelector(".muerte-mote").value.trim(),
-      causa: dialogoMuerte.querySelector(".muerte-causa").value.trim()
+      idForma,
+      formaPMD,
+      imagenForma
     },
     desdeVidas || dialogoMuerte.querySelector(".muerte-vida").checked
   );
@@ -200,9 +240,7 @@ export function iniciarCementerio(alFallar) {
     if (e.key === "Enter" && campo.parentElement.querySelector(".sugerencias .opcion")) e.preventDefault();
   });
   autocompletado = activarAutocompletado(campo, listaPokemon, (pokemon) => {
-    elegido = pokemon;
-    campo.value = pokemon.es;
-    dialogoMuerte.querySelector(".muerte-mote").focus();
+    eligiendo = elegirEspecie(pokemon).finally(() => (eligiendo = null));
   });
   campo.addEventListener("input", () => (elegido = null));
 

@@ -11,6 +11,7 @@ import { cargarPokedex, RETRATOS, archivoHoja } from "./datos.js";
 import { imagenConRespaldo, urlsPMD } from "../comun/imagenes.js";
 import { coloresTipo, tiposEs, iconoTipo } from "../comun/tipos.js";
 import { quitarAcentos } from "../comun/utilidades.js";
+import { abrirEvoluciones, cerrarEvoluciones } from "./evoluciones.js";
 
 // "valor" es lo que se usa para ordenar. La columna de la foto no lo tiene, así que no se ordena.
 const COLUMNAS = [
@@ -85,7 +86,7 @@ function filaPokemon(p) {
   return `
     <tr>
       <td class="col-numero">${numeroDex(p.numero)}</td>
-      <td class="col-foto">${foto(p)}</td>
+      <td class="col-foto"><button class="pokedex-evo" data-numero="${p.numero}" title="Línea evolutiva">${foto(p)}</button></td>
       <td class="col-nombre">${p.nombre}</td>
       <td class="col-tipos">${p.tipos.map(chipTipo).join("")}</td>
       ${p.bases.map((base) => `<td class="col-dato">${base}</td>`).join("")}
@@ -229,6 +230,16 @@ export async function iniciar() {
     const boton = e.target.closest("[data-orden]");
     if (boton) ordenarPor(boton.dataset.orden);
   });
+
+  // La foto: su línea evolutiva en un bocadillo (./evoluciones.js)
+  cuerpo.addEventListener("click", (e) => {
+    const boton = e.target.closest(".pokedex-evo");
+    if (boton) abrirEvoluciones(boton, Number(boton.dataset.numero));
+  });
+  // Al buscar, filtrar u ordenar, la foto se mueve o se esconde: el bocadillo se va
+  campoBuscar.addEventListener("input", cerrarEvoluciones);
+  selectorTipo.addEventListener("change", cerrarEvoluciones);
+  cabecera.addEventListener("click", cerrarEvoluciones);
 }
 
 export function mostrar() {

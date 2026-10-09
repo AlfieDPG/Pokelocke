@@ -143,7 +143,8 @@ service cloud.firestore {
     //     a alguien de uno en uno, nombrado en «quitado»: a un invitado que aún no ha
     //     contestado cualquiera de dentro; a cualquiera (menos a sí mismo) quien lo creó.
     //   · contado: cada uno solo se apunta a sí mismo (lo usa el ganador).
-    //   · nombre, tipo, juego, normas, ganador, cerrar...: solo quien lo creó.
+    //   · nombre, tipo, juego, normas, rutas y level caps propios, ganador, cerrar...: solo
+    //     quien lo creó.
     //   · borrarlo: solo quien lo creó.
 
     match /lockes/{id} {
@@ -230,7 +231,8 @@ service cloud.firestore {
         return antes().creador == yo()
           || !despues().diff(antes()).affectedKeys().hasAny([
             'nombre', 'descripcion', 'tipo', 'juego', 'juegoOtro', 'juegoPropio', 'estado', 'ganador',
-            'fechaFin', 'creador', 'vidasIniciales', 'vidasIlimitadas', 'creado', 'normas'
+            'fechaFin', 'creador', 'vidasIniciales', 'vidasIlimitadas', 'creado', 'normas',
+            'rutasPropias', 'capsPropios'
           ]);
       }
 
