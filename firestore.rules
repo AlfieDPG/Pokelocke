@@ -229,7 +229,7 @@ service cloud.firestore {
       function cosasDelCreador() {
         return antes().creador == yo()
           || !despues().diff(antes()).affectedKeys().hasAny([
-            'nombre', 'descripcion', 'tipo', 'juego', 'juegoOtro', 'estado', 'ganador',
+            'nombre', 'descripcion', 'tipo', 'juego', 'juegoOtro', 'juegoPropio', 'estado', 'ganador',
             'fechaFin', 'creador', 'vidasIniciales', 'vidasIlimitadas', 'creado', 'normas'
           ]);
       }

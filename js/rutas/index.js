@@ -1,10 +1,13 @@
 // Sección «Rutas»: marcar los lugares donde ya se ha hecho la captura del Nuzlocke.
-// Los lugares de cada juego están en ./datos.js
+// Los lugares de cada juego están en ./datos.js; los de los juegos propios, en cada uno
+// (js/comun/juegos-propios.js), y se cambian con «Editar juego».
 
 import { LUGARES } from "./datos.js";
 import { crearSelectorJuego } from "../comun/selector-juego.js";
 import { leer, escribir } from "../comun/almacen.js";
-import { quitarAcentos } from "../comun/utilidades.js";
+import { quitarAcentos, escaparHTML } from "../comun/utilidades.js";
+import { lugaresDe } from "../comun/juegos-propios.js";
+import { abrirEditorJuego } from "../comun/editor-juego.js";
 
 // NO cambiar estas claves: si se cambian, se pierden las rutas marcadas
 const CLAVE_MARCADAS = "poketeams-rutas-v2"; // { idJuego: ["rutas:Ruta 1", ...] }
@@ -23,6 +26,7 @@ const selector = vista.querySelector(".selector-juego");
 const lista = vista.querySelector(".rutas-lista");
 const buscador = vista.querySelector(".rutas-buscar");
 const progreso = vista.querySelector(".rutas-progreso");
+const editar = vista.querySelector(".juego-editar");
 
 let juego = null;   // { id, nombre, region }
 let lugares = null; // { rutas, ciudades, postgame, eventos } del juego actual
@@ -52,23 +56,31 @@ function botonLugar(apartado, texto) {
   const clave = claveLugar(apartado, texto);
   const usada = usadas.has(clave);
 
-  // Eventos: "Lugar: detalle" -> lugar en negrita y detalle debajo
-  const corte = apartado === "eventos" ? texto.indexOf(": ") : -1;
-  const contenido =
-    corte > 0
-      ? `<span class="ruta-lugar">${texto.slice(0, corte)}</span><span class="ruta-detalle">${texto.slice(corte + 2)}</span>`
-      : texto;
+  // Eventos: "Lugar: detalle" -> lugar en negrita y detalle debajo. En los juegos propios,
+  // cualquier lugar escrito así (al copiar uno de la web, los eventos vienen así).
+  // Todo escapado: los juegos propios los escribe la gente.
+  const corte = apartado === "eventos" || juego.propio ? texto.indexOf(": ") : -1;
+  const evento = apartado === "eventos" || corte > 0;
+  const contenido = corte > 0
+    ? `<span class="ruta-lugar">${escaparHTML(texto.slice(0, corte))}</span><span class="ruta-detalle">${escaparHTML(texto.slice(corte + 2))}</span>`
+    : escaparHTML(texto);
 
-  return `<button class="ruta ${apartado === "eventos" ? "evento" : ""} ${usada ? "usada" : ""}" aria-pressed="${usada}"
-    data-clave="${clave}" data-buscar="${quitarAcentos(texto)}">${contenido}</button>`;
+  return `<button class="ruta ${evento ? "evento" : ""} ${usada ? "usada" : ""}" aria-pressed="${usada}"
+    data-clave="${escaparHTML(clave)}" data-buscar="${escaparHTML(quitarAcentos(texto))}">${contenido}</button>`;
 }
 
 function pintarLista() {
+  if (!apartadosDelJuego().length) {
+    lista.innerHTML = `<p class="rutas-vacio">Este juego no tiene rutas. Añádelas con «Editar juego».</p>`;
+    pintarProgreso();
+    return;
+  }
+
   lista.innerHTML = apartadosDelJuego()
     .map(
       (a) => `
         <section class="rutas-grupo ${a.clave}">
-          <h3>${a.titulo}</h3>
+          <h3>${escaparHTML(a.titulo)}</h3>
           <div class="rutas-botones ${a.clave}">${lugares[a.clave].map((texto) => botonLugar(a.clave, texto)).join("")}</div>
         </section>`
     )
@@ -114,14 +126,19 @@ export function iniciar() {
     pintarLista();
   });
 
-  selectorJuego = crearSelectorJuego(selector, CLAVE_JUEGO, elegirJuego);
+  // Juegos propios: crear uno (desde «Tus juegos») y cambiar el abierto
+  const abrirEnElSelector = (guardado) => selectorJuego.elegirPorId(guardado.id);
+  editar.addEventListener("click", () => abrirEditorJuego(juego.id, abrirEnElSelector));
+
+  selectorJuego = crearSelectorJuego(selector, CLAVE_JUEGO, elegirJuego, () => abrirEditorJuego(null, abrirEnElSelector));
 }
 
 let selectorJuego = null;
 
 function elegirJuego(nuevo) {
   juego = nuevo;
-  lugares = LUGARES[juego.id];
+  lugares = juego.propio ? lugaresDe(juego) : LUGARES[juego.id];
+  editar.hidden = !juego.propio;
 
   // Solo cuentan las marcas de lugares que siguen existiendo. Si un lugar ha cambiado de
   // apartado (p. ej. de «rutas» a «postgame»), su marca se conserva.

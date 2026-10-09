@@ -1,10 +1,13 @@
 // Sección «Level caps»: combates importantes de cada juego con el nivel máximo permitido.
-// Los combates de cada juego están en ./datos.js
+// Los combates de cada juego están en ./datos.js; los de los juegos propios, en cada uno
+// (js/comun/juegos-propios.js), y se cambian con «Editar juego».
 
 import { COMBATES } from "./datos.js";
 import { crearSelectorJuego } from "../comun/selector-juego.js";
 import { leer, escribir } from "../comun/almacen.js";
 import { imagenConRespaldo, urlSpritePixel } from "../comun/imagenes.js";
+import { escaparHTML } from "../comun/utilidades.js";
+import { abrirEditorJuego } from "../comun/editor-juego.js";
 
 // ---------- Retratos de los entrenadores ----------
 //
@@ -139,7 +142,8 @@ function urlRetrato(archivo) {
 }
 
 function retrato(c) {
-  const delJuego = RETRATOS[juego.id];
+  // Un juego propio copiado de uno de la web usa los retratos de aquel
+  const delJuego = RETRATOS[juego.propio ? juego.base : juego.id];
   const archivo = delJuego && delJuego[c.nombre];
   if (!archivo) return "";
 
@@ -164,6 +168,7 @@ const selector = vista.querySelector(".selector-juego");
 const resumen = vista.querySelector(".caps-actual");
 const lista = vista.querySelector(".caps-lista");
 const valorMultiplicador = vista.querySelector(".multiplicador-valor");
+const editar = vista.querySelector(".juego-editar");
 
 let juego = null;
 let combates = [];
@@ -212,6 +217,10 @@ function pintarResumen() {
   // Los combates de secciones aparte (p. ej. líderes de otras regiones) no cuentan
   const siguiente = combates.find((c) => !c.seccion && !superados.has(claveCombate(c)));
 
+  if (!combates.length) {
+    resumen.innerHTML = "";
+    return;
+  }
   if (!siguiente) {
     resumen.innerHTML = "¡Has superado todos los combates de este juego!";
     return;
@@ -219,21 +228,22 @@ function pintarResumen() {
   resumen.innerHTML = `
     <span>Tu level cap ahora:</span>
     <strong class="caps-nivel-grande">${textoNivel(siguiente)}</strong>
-    <span>antes de ${siguiente.etiqueta.toLowerCase()} · ${siguiente.nombre}</span>
+    <span>antes de ${escaparHTML([siguiente.etiqueta.toLowerCase(), siguiente.nombre].filter(Boolean).join(" · "))}</span>
   `;
 }
 
+// Todo escapado: los juegos propios los escribe la gente
 function filaCombate(c) {
   const clave = claveCombate(c);
   const hecho = superados.has(clave);
   return `
-    <li class="cap ${c.tipo} ${hecho ? "superado" : ""}">
+    <li class="cap ${escaparHTML(c.tipo)} ${hecho ? "superado" : ""}">
       <label>
-        <input type="checkbox" data-clave="${clave}" ${hecho ? "checked" : ""}>
+        <input type="checkbox" data-clave="${escaparHTML(clave)}" ${hecho ? "checked" : ""}>
         ${retrato(c)}
-        <span class="cap-etiqueta">${c.etiqueta}</span>
-        <span class="cap-nombre">${c.nombre}</span>
-        ${c.lugar ? `<span class="cap-lugar">${c.lugar}</span>` : ""}
+        <span class="cap-etiqueta">${escaparHTML(c.etiqueta)}</span>
+        <span class="cap-nombre">${escaparHTML(c.nombre)}</span>
+        ${c.lugar ? `<span class="cap-lugar">${escaparHTML(c.lugar)}</span>` : ""}
       </label>
       <span class="cap-nivel" ${tituloNivel(c)}>Nv. ${textoNivel(c)}</span>
     </li>`;
@@ -243,6 +253,12 @@ function filaCombate(c) {
 const TRAMOS = { "alto-mando": "Alto Mando", campeon: "Campeón" };
 
 function pintarLista() {
+  if (!combates.length) {
+    lista.innerHTML = `<li class="caps-vacio">Este juego no tiene combates. Añádelos con «Editar juego».</li>`;
+    pintarResumen();
+    return;
+  }
+
   // Primero los combates normales y después, con su título, los de cada sección aparte
   let html = "";
   let tipoAnterior = null;
@@ -257,7 +273,7 @@ function pintarLista() {
 
   const secciones = [...new Set(combates.filter((c) => c.seccion).map((c) => c.seccion))];
   for (const seccion of secciones) {
-    html += `<li class="caps-seccion"><h3>${seccion}</h3></li>`;
+    html += `<li class="caps-seccion"><h3>${escaparHTML(seccion)}</h3></li>`;
     html += combates.filter((c) => c.seccion === seccion).map(filaCombate).join("");
   }
 
@@ -291,14 +307,19 @@ export function iniciar() {
   vista.querySelector(".multiplicador-menos").addEventListener("click", () => cambiarMultiplicador(-MULTIPLICADOR_PASO));
   vista.querySelector(".multiplicador-mas").addEventListener("click", () => cambiarMultiplicador(MULTIPLICADOR_PASO));
 
-  selectorJuego = crearSelectorJuego(selector, CLAVE_JUEGO, elegirJuego);
+  // Juegos propios: crear uno (desde «Tus juegos») y cambiar el abierto
+  const abrirEnElSelector = (guardado) => selectorJuego.elegirPorId(guardado.id);
+  editar.addEventListener("click", () => abrirEditorJuego(juego.id, abrirEnElSelector));
+
+  selectorJuego = crearSelectorJuego(selector, CLAVE_JUEGO, elegirJuego, () => abrirEditorJuego(null, abrirEnElSelector));
 }
 
 let selectorJuego = null;
 
 function elegirJuego(nuevo) {
   juego = nuevo;
-  combates = COMBATES[juego.id];
+  combates = (juego.propio ? juego.combates : COMBATES[juego.id]) || [];
+  editar.hidden = !juego.propio;
   superados = new Set(guardados[juego.id] || []);
   multiplicador = multiplicadores[juego.id] || 1;
   pintarMultiplicador();

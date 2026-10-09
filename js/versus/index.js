@@ -17,8 +17,9 @@ import { hayNube, usuarioActual } from "../comun/nube.js";
 import { escribir } from "../comun/almacen.js";
 import { CLAVES_JUEGO } from "../comun/selector-juego.js";
 import {
-  plantillaCampoJuego, activarCamposJuego, leerCampoJuego, nombreJuego, juegoRegistrado
+  plantillaCampoJuego, activarCamposJuego, leerCampoJuego, nombreJuego, juegoConDatos
 } from "../comun/campo-juego.js";
+import { recibirJuego } from "../comun/juegos-propios.js";
 import { irA } from "../navegacion.js";
 import { iniciarCementerio, abrirCementerio, abrirMuerte, totalMuertos } from "./cementerio.js";
 import { iniciarActividad, abrirActividad } from "./actividad.js";
@@ -122,7 +123,7 @@ function plantillaJuego(locke) {
   const nombre = nombreJuego(locke);
   const normas = normasCompletas(normasDeLocke(locke)).length;
 
-  const atajos = nombre && juegoRegistrado(locke.juego)
+  const atajos = nombre && juegoConDatos(locke)
     ? `
       <button class="locke-ir" data-ir="rutas" data-juego="${escaparHTML(locke.juego)}">${icono("mapa")} Rutas</button>
       <button class="locke-ir" data-ir="levelcaps" data-juego="${escaparHTML(locke.juego)}">${icono("escudo")} Level caps</button>`
@@ -619,6 +620,8 @@ export function iniciar() {
     } else if (boton.classList.contains("locke-ir") && boton.dataset.ir === "actividad") {
       abrirActividad(id);
     } else if (boton.classList.contains("locke-ir")) {
+      // Si es un juego propio de otro que aún no tienes, se apunta antes de abrirlo
+      if (locke.juegoPropio) recibirJuego(locke.juegoPropio);
       irAlJuego(boton.dataset.ir, boton.dataset.juego);
     } else if (boton.classList.contains("locke-editar")) {
       abrir(locke);

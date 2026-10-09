@@ -19,7 +19,8 @@ export const CLAVES_SINCRONIZADAS = [
   "poketeams-levelcaps-v2",               // combates superados
   "poketeams-levelcaps-juego-v1",         // juego elegido en «Level caps»
   "poketeams-levelcaps-multiplicador-v1", // multiplicador de nivel
-  "poketeams-normas-v2"                   // conjuntos de normas propios
+  "poketeams-normas-v2",                  // conjuntos de normas propios
+  "poketeams-juegos-propios-v1"           // juegos propios (Rutas y Level caps)
 ];
 
 // Cuándo se cambió cada clave por última vez: { clave: milisegundos }.

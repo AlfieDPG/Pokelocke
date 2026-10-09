@@ -108,6 +108,7 @@
           <div class="barra-nuzlocke">
             <input class="rutas-buscar" type="search" placeholder="Buscar lugar...">
             <span class="rutas-progreso"></span>
+            <button class="juego-editar" hidden>Editar juego</button>
             <button class="rutas-reiniciar boton-reiniciar">Desmarcar todo</button>
           </div>
           <div class="rutas-lista"></div>
@@ -123,6 +124,7 @@
               <span class="multiplicador-valor">×1.0</span>
               <button class="multiplicador-mas" aria-label="Subir multiplicador">+</button>
             </div>
+            <button class="juego-editar" hidden>Editar juego</button>
             <button class="caps-reiniciar boton-reiniciar">Desmarcar todo</button>
           </div>
           <ol class="caps-lista"></ol>
@@ -391,6 +393,37 @@
       <button id="locke-cancelar">Cancelar</button>
       <button id="locke-crear">Crear locke</button>
     </div>
+  </dialog>
+
+  <!-- Crear o cambiar un juego propio, para Rutas y Level caps (js/comun/editor-juego.js) -->
+  <dialog id="dialogo-juego" class="dialogo-sesion">
+    <h2 class="juego-titulo">Nuevo juego</h2>
+    <form class="juego-formulario">
+      <div class="juego-fila">
+        <label class="juego-campo-nombre">
+          <span>Nombre</span>
+          <input class="juego-nombre" type="text" maxlength="40" autocomplete="off">
+        </label>
+        <label class="juego-campo-base">
+          <span>Empezar desde</span>
+          <select class="juego-base"></select>
+        </label>
+      </div>
+      <label>
+        <span>Rutas</span>
+        <textarea class="juego-lugares" rows="9" spellcheck="false"
+          placeholder="# Rutas&#10;Ruta 1&#10;Ruta 2&#10;# Ciudades&#10;Pueblo Paleta"></textarea>
+      </label>
+      <span class="juego-etiqueta">Level caps</span>
+      <div class="juego-combates"></div>
+      <button type="button" class="boton-gris juego-anadir-combate">+ Añadir combate</button>
+      <span class="sesion-error juego-error"></span>
+      <div class="dialogo-botones">
+        <button type="button" class="boton-rojo boton-izquierda juego-borrar">Borrar juego</button>
+        <button type="button" class="boton-gris juego-cancelar">Cancelar</button>
+        <button type="submit" class="boton-verde juego-ok">Guardar</button>
+      </div>
+    </form>
   </dialog>
 
   <!-- Cementerio de un locke: una columna por jugador (js/versus/cementerio.js) -->

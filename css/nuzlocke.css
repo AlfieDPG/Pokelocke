@@ -90,6 +90,131 @@
   background: #e74c3c;
 }
 
+/* Editar un juego propio: a la derecha, junto a «Desmarcar todo» */
+.juego-editar {
+  margin-left: auto;
+  padding: 0.45rem 0.85rem;
+  border: none;
+  border-radius: 0.45rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.juego-editar:hover {
+  background: #4a4e68;
+}
+
+.juego-editar:not([hidden]) ~ .boton-reiniciar {
+  margin-left: 0;
+}
+
+/* «Tus juegos»: la pestaña y el botón de crear uno */
+.selector-juegos .juego-nuevo {
+  border-style: dashed;
+  border-color: rgba(241, 196, 15, 0.6);
+}
+
+.selector-juegos .juego-nuevo:hover {
+  background: rgba(241, 196, 15, 0.1);
+}
+
+.rutas-vacio,
+.caps-vacio {
+  margin: 0.85rem 0 0;
+  font-size: 0.95rem;
+  opacity: 0.65;
+}
+
+/* ---------- Ventana de un juego propio ---------- */
+
+#dialogo-juego {
+  width: min(46rem, 94vw);
+}
+
+.juego-fila {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.juego-campo-nombre {
+  flex: 1;
+}
+
+.juego-campo-base select {
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+#dialogo-juego textarea {
+  font-size: 0.85rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: normal;
+}
+
+.juego-etiqueta {
+  display: block;
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.juego-combates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 32vh;
+  margin-top: 0.3rem;
+  overflow-y: auto;
+}
+
+/* Una fila por combate: combate, rival, lugar, nivel y quitar */
+.juego-combate {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1.1fr 4.2rem auto;
+  gap: 0.3rem;
+}
+
+#dialogo-juego .juego-combate input {
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.c-quitar {
+  display: flex;
+  align-items: center;
+  padding: 0 0.4rem;
+  border: none;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: rgba(242, 242, 242, 0.6);
+  cursor: pointer;
+}
+
+.c-quitar:hover {
+  background: #c0392b;
+  color: #fff;
+}
+
+.c-quitar .icono {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.juego-anadir-combate {
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.8rem;
+}
+
 /* ---------- Rutas ---------- */
 
 /* Un color por apartado, con su rayita al lado del título (igual que en «Normas»).
@@ -227,7 +352,8 @@
 }
 
 /* Con el multiplicador a su izquierda, «Desmarcar todo» ya no necesita empujarse a la derecha */
-.multiplicador + .boton-reiniciar {
+.multiplicador ~ .boton-reiniciar,
+.multiplicador ~ .juego-editar {
   margin-left: 0;
 }
 

@@ -10,6 +10,7 @@
 // Documento (lockes/{id}), reglas en firestore.rules:
 //
 //   { nombre, descripcion, tipo: {id,nombre,color}, juego, juegoOtro,
+//     juegoPropio,                 // copia del juego si es uno propio (juegos-propios.js)
 //     jugadores: [uid],            // todos los metidos, invitados incluidos
 //     estados: {uid: "aceptado"|"pendiente"},
 //     nombres: {uid}, fotos: {uid}, creador,
@@ -33,6 +34,7 @@
 import { usuarioActual, baseDeDatos, alCambiarSesion, cuandoEsteSincronizado } from "./nube.js";
 import { apuntarLockesGanados, miPerfil, alCambiarMiPerfil } from "./perfiles.js";
 import { recibirConjunto, normasDeLocke } from "./normas.js";
+import { recibirJuego, esPropio, copiaParaLocke as copiaDeJuego } from "./juegos-propios.js";
 import { hoyComoTexto } from "./utilidades.js";
 
 let todos = [];
@@ -132,7 +134,26 @@ function ponerMiNombre() {
 // ver cuandoEsteSincronizado.
 async function recibirNormasDeMisLockes() {
   await cuandoEsteSincronizado();
-  for (const locke of misLockes()) recibirConjunto(normasDeLocke(locke));
+  for (const locke of misLockes()) {
+    recibirConjunto(normasDeLocke(locke));
+    // Lo mismo con su juego, si es uno propio de quien lo creó (ver juegos-propios.js)
+    if (locke.juegoPropio) recibirJuego(locke.juegoPropio);
+  }
+}
+
+// Al cambiar uno de tus juegos propios: los lockes que has creado con él se quedan con el
+// nuevo (y a los demás les llega por recibirNormasDeMisLockes)
+export async function actualizarJuegoEnMisLockes(juego) {
+  const usuario = usuarioActual();
+  const acceso = baseDeDatos();
+  if (!usuario || !acceso) return;
+  const copia = copiaDeJuego(juego.id);
+  const { bd, fn } = acceso;
+  await Promise.all(
+    todos
+      .filter((locke) => locke.creador === usuario.uid && locke.juegoPropio && locke.juegoPropio.id === juego.id)
+      .map((locke) => fn.updateDoc(fn.doc(bd, "lockes", locke.id), { juegoPropio: copia, actualizado: Date.now() }))
+  );
 }
 
 function escuchar(usuario) {
@@ -204,6 +225,7 @@ export async function crearLocke({
     tipo,
     juego: juego || "",
     juegoOtro: juegoOtro || "",
+    juegoPropio: esPropio(juego) ? copiaDeJuego(juego) : null,
     jugadores,
     estados,
     nombres,
@@ -478,6 +500,11 @@ export async function editarLocke(id, datos) {
     tipo: datos.tipo,
     juego: datos.juego || "",
     juegoOtro: datos.juegoOtro || "",
+    // Si es un juego propio, la copia de ahora; si sigue siendo el mismo y ya no lo tengo
+    // (lo borré), la que tenía el locke
+    juegoPropio: esPropio(datos.juego)
+      ? copiaDeJuego(datos.juego) || (locke.juegoPropio && locke.juegoPropio.id === datos.juego ? locke.juegoPropio : null)
+      : null,
     normas: datos.normas || null,
     actualizado: Date.now()
   };

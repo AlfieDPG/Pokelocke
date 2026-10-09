@@ -590,7 +590,8 @@ function resumenDeLocke(id, locke) {
     nota: "",
     tipo: locke.tipo,
     juego: locke.juego || "",
-    juegoOtro: locke.juegoOtro || "",
+    // Un juego propio se queda con su nombre (en la ficha no se puede abrir: es de otro)
+    juegoOtro: locke.juegoOtro || (locke.juegoPropio ? locke.juegoPropio.nombre : ""),
     fechaFin: locke.fechaFin || "",
     vidasIlimitadas: Boolean(locke.vidasIlimitadas),
     ganador: nombres[locke.ganador] || "",
