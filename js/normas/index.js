@@ -83,8 +83,6 @@ function pintarPestanas() {
 
 function cuerpoGenerales() {
   return `
-    <p class="normas-explicacion">Las básicas de cualquier Nuzlocke. Las tiene todo el mundo y no se pueden cambiar.
-      Para jugar con otras, crea tu propio conjunto con «Nuevo conjunto».</p>
     <section class="normas-grupo generales">
       ${plantillaLista(NORMAS_GENERALES, false)}
     </section>`;

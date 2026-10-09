@@ -744,11 +744,6 @@ button.locke-anadir .icono {
   font-family: inherit;
   font-size: 0.95rem;
 }
-.normas-elegir-ayuda {
-  margin: 0;
-  font-size: 0.8rem;
-  opacity: 0.6;
-}
 
 .locke-error {
   display: block;

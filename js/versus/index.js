@@ -292,7 +292,7 @@ async function quitarDesdeElDialogo(uid) {
 // ---------- Normas ----------
 //
 // Un desplegable: las generales, tus conjuntos y, al editar, el del locke si tú no lo tienes
-// (para no perderlo al guardar). Debajo, qué normas son. Solo quien lo creó lo cambia.
+// (para no perderlo al guardar). Solo quien lo creó lo cambia.
 
 const SIN_NORMAS = "";
 const LAS_DEL_LOCKE = "__locke";
@@ -316,21 +316,7 @@ function pintarNormas(locke, creador) {
       ${mios.map((conjunto) => opcion(conjunto.id, conjunto.nombre)).join("")}
       ${delLocke && !loTengo ? opcion(LAS_DEL_LOCKE, `${delLocke.nombre} (la del locke)`) : ""}
       ${opcion(SIN_NORMAS, "Sin normas")}
-    </select>
-    <p class="normas-elegir-ayuda"></p>`;
-
-  resumirNormas(locke);
-}
-
-// Debajo del desplegable, los nombres de las normas que lleva lo elegido
-function resumirNormas(locke) {
-  const normas = normasCompletas(normasElegidas(locke));
-  const mios = conjuntos();
-  campo(".locke-normas .normas-elegir-ayuda").textContent = normas.length
-    ? normas.map((norma) => norma.nombre).join(" · ")
-    : mios.length
-      ? "Este locke no tendrá normas."
-      : "Sin normas. Puedes crear las de tu grupo en «Normas».";
+    </select>`;
 }
 
 // Lo que se guarda en el locke: la copia del conjunto elegido (o null)
@@ -401,14 +387,6 @@ async function abrirDialogo(locke = null) {
   error.textContent = fallaElPerfil() || fallaLasAmistades();
 
   campo(".locke-dialogo-titulo").textContent = locke ? "Editar locke" : "Nuevo locke";
-  // Al crear no hace falta explicar nada; al editar sí se dice qué se puede cambiar
-  const texto = campo(".locke-dialogo-texto");
-  texto.textContent = !locke
-    ? ""
-    : creador
-      ? "Cambia lo que quieras. Las vidas de partida solo se pueden cambiar mientras nadie más haya empezado."
-      : "Solo quien creó el locke puede cambiar estos datos. Tú puedes meter a más gente.";
-  texto.hidden = !locke;
   campo("#locke-crear").textContent = locke ? "Guardar" : "Crear locke";
   campo("#locke-crear").hidden = cerrado && !creador;
   campo("#locke-borrar").hidden = !locke || !creador;
@@ -549,11 +527,6 @@ export function iniciar() {
 
   dialogo.querySelector("#locke-cancelar").addEventListener("click", () => dialogo.close());
   activarCamposJuego(dialogo);
-
-  // Al cambiar de conjunto, debajo salen sus normas
-  dialogo.querySelector(".locke-normas").addEventListener("change", () => {
-    resumirNormas(editando ? lockePorId(editando) : null);
-  });
 
   // Con vidas ilimitadas el número no pinta nada
   dialogo.querySelector("#locke-infinitas").addEventListener("change", (e) => {
