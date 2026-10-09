@@ -39,7 +39,13 @@
 }
 
 /* El aviso sale en la misma fila, a la derecha del contador */
+/* A la derecha de «Añadir», fuera del flujo: así el buscador no encoge cuando sale */
 #aviso {
+  position: absolute;
+  left: calc(100% + 0.85rem);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
   white-space: nowrap;
   font-size: 0.85rem;
   font-weight: bold;
@@ -154,17 +160,22 @@
    queda con lo que sobra de la barra de arriba. Las tres filas se reparten ese alto a
    partes iguales, así no queda hueco abajo. Si el contenido de una tarjeta no cupiera,
    minmax(min-content, ...) deja que crezca en vez de recortarla. */
+/* Crear equipo ocupa justo el alto de la ventana y nunca más: no hay scroll. Las tres
+   filas se reparten el hueco a partes iguales (minmax(0, 1fr): pueden encogerse por debajo
+   de su contenido) y lo que cede es el dibujo del Pokémon, que se hace más pequeño lo justo
+   para que quepa todo lo demás. 1.7rem = el margen de arriba y abajo de <main>. */
 #vista-crear {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 1.7rem);
+  height: calc(100vh - 1.7rem);
 }
 
 #resultado {
   flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(3, minmax(min-content, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 0.85rem;
   margin-top: 0.85rem;
 }
@@ -178,14 +189,20 @@
   display: flex;
   gap: 0.85rem;
   align-items: stretch;
+  min-height: 0;
   background: #2c2e3e;
   border-radius: 0.7rem;
   padding: 0.85rem;
   text-align: left;
 }
 
+/* En columna, para que el dibujo pueda quedarse con el alto que sobre (ver .arte) */
 .tarjeta-izq {
   flex: 0 0 12.5rem;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   text-align: center;
 }
 
@@ -223,12 +240,24 @@
   outline: 2px dashed #f1c40f;
 }
 
+/* El dibujo se queda con el alto que dejan libre el nombre, la forma, los tipos y el botón
+   de quitar, hasta un máximo de 8.6rem. Así, si la pantalla es baja, encoge el dibujo y no
+   la página. aspect-ratio reserva el hueco cuadrado aunque la imagen aún no haya cargado. */
 .tarjeta-izq img {
-  width: 8.6rem;
-  aspect-ratio: 1; /* reserva el hueco aunque la imagen aún no haya cargado */
+  flex: 1 1 0;
+  min-height: 3rem;
+  max-height: 8.6rem;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 1;
   object-fit: contain;
   display: block;
   margin: 0 auto;
+}
+
+/* Lo que va debajo del dibujo no encoge nunca */
+.tarjeta-izq > :not(img) {
+  flex: none;
 }
 
 .tarjeta-izq h2 {
@@ -238,15 +267,53 @@
 
 /* Especie (cuando hay mote) y forma, en una sola línea que se dibuja siempre aunque esté
    vacía: así la tarjeta mide igual con mote y forma que sin ellos y la página no crece. */
+/* Alto fijo, haya desplegable de forma o no: así todas las tarjetas miden lo mismo */
 .forma-nombre {
-  min-height: 1.15em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: 1.4rem;
   font-size: 0.8rem;
   line-height: 1.15;
-  opacity: 0.8;
   margin: 0 0 0.45rem;
   overflow: hidden;
   white-space: nowrap;
+}
+
+.forma-texto {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
+  opacity: 0.8;
+}
+
+.forma-texto:empty {
+  display: none;
+}
+
+/* Desplegable para cambiar de forma sin rehacer el Pokémon */
+.selector-forma {
+  min-width: 0;
+  max-width: 100%;
+  height: 1.4rem;
+  padding: 0 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.35rem;
+  background: #252735;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.selector-forma:hover {
+  border-color: rgba(241, 196, 15, 0.6);
+}
+
+.selector-forma:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 /* Botón shiny (arriba a la izquierda de la tarjeta) */
@@ -682,8 +749,14 @@
 /* ---------- Pantallas estrechas (móvil) ---------- */
 
 @media (max-width: 900px) {
+  /* En una sola columna los seis no caben en una pantalla: aquí sí se deja bajar */
+  #vista-crear {
+    height: auto;
+  }
+
   #resultado {
     grid-template-columns: 1fr;
+    grid-template-rows: none;
   }
 }
 
@@ -695,6 +768,14 @@
   .buscador {
     grid-column: 1 / -1;
     grid-row: 1;
+    flex-wrap: wrap;
+  }
+
+  /* Sin hueco a la derecha: debajo del buscador */
+  #aviso {
+    position: static;
+    transform: none;
+    flex-basis: 100%;
   }
 }
 
@@ -899,13 +980,23 @@
 
 /* ---------- Debilidades en la ficha de cada Pokémon ---------- */
 
+/* Las líneas que separan Total, Débil, Resiste e Inmune tienen el mismo hueco que la que
+   separa las estadísticas del Total: 0.3rem por encima y 0.4rem por debajo. */
 .ficha-tipos {
-  margin-top: 0.6rem;
-  padding-top: 0.5rem;
+  margin-top: 0.3rem; /* + los 0.12rem de debajo del Total = igual que encima de su línea */
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+}
+
+.ficha-tipos-fila {
+  padding-top: 0.4rem;
+}
+
+/* 0.42rem = los 0.3rem de margen + los 0.12rem que deja debajo cada fila de estadística */
+.ficha-tipos-fila + .ficha-tipos-fila {
+  margin-top: 0.42rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .ficha-tipos-fila {

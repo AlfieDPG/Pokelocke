@@ -11,16 +11,22 @@
 //   pokemon_stats.csv    -> las estadísticas de cada forma
 //   pokemon.csv          -> qué formas hay, de qué especie y cuál es la normal
 //   pokemon_species.csv  -> el nombre interno de la especie, que hace falta para la etiqueta
-// Son unos 190 KB en total, así que la tabla ya montada se guarda en el navegador
-// y solo se descarga la primera vez.
+// La web no lee los CSV: lleva la tabla ya montada en datos/pokedex.json (la rehace
+// herramientas/generar-datos.html), y la primera vez se la guarda en el navegador.
 
 import { descargarCSV, cargarDatos, datos } from "../comun/datos.js";
 import { etiquetaForma, formaVisible } from "../comun/formas.js";
 import { indicePMD } from "../comun/formas-pmd.js";
 import { leer, escribir } from "../comun/almacen.js";
 
-// NO cambiar esta clave sin motivo: si se cambia, se vuelve a descargar todo
-const CLAVE_POKEDEX = "poketeams-pokedex-v4";
+// NO cambiar esta clave sin motivo: si se cambia, se vuelve a descargar todo. Sí hay que
+// subirla al rehacer datos/pokedex.json, para que los navegadores dejen la copia vieja.
+const CLAVE_POKEDEX = "poketeams-pokedex-v6";
+
+// Formas que no salen aunque sus estadísticas cambien un poco. Los tamaños de Pumpkaboo y
+// Gourgeist solo se mueven unos puntos de PS y Velocidad y llenaban la tabla de filas casi
+// iguales. Se queda la de tamaño normal, que es la que PokeAPI da por defecto.
+const FORMAS_FUERA = /^(pumpkaboo|gourgeist)-(small|large|super)$/;
 
 // Los tipos van por número en pokemon_types.csv y esta numeración no cambia nunca
 // (el 19, Estelar, no es un tipo de Pokémon, así que no entra).
@@ -123,7 +129,7 @@ function formasConEstadisticasPropias(variedades, bases) {
   // la que el resto de la web da por buena (formaVisible deja fuera Gigamax, tótems...) y,
   // entre esas, la de nombre más corto: así sale "zygarde-10" y no "zygarde-10-power-construct".
   const candidatas = variedades
-    .filter((v) => !v.porDefecto && completo(bases[v.id]))
+    .filter((v) => !v.porDefecto && completo(bases[v.id]) && !FORMAS_FUERA.test(v.slug))
     .sort(
       (a, b) =>
         Number(!formaVisible(a.slug)) - Number(!formaVisible(b.slug)) ||
@@ -158,14 +164,14 @@ function formaPMD(variedad, indices) {
   return indicePMD(variedad.id, variedad.porDefecto ? 0 : indices.get(variedad.id) || 0);
 }
 
-function montarTabla(bases, variedades, slugsEspecie, tipos) {
+function montarTabla(bases, variedades, slugsEspecie, tipos, nombresEspecies) {
   const porEspecie = new Map();
   for (const variedad of variedades) {
     if (!porEspecie.has(variedad.especie)) porEspecie.set(variedad.especie, []);
     porEspecie.get(variedad.especie).push(variedad);
   }
 
-  const nombres = new Map(datos.pokemon.map((p) => [p.id, p.es]));
+  const nombres = new Map(nombresEspecies.map((p) => [p.id, p.es]));
   const filas = [];
 
   for (const especie of [...porEspecie.keys()].sort((a, b) => a - b)) {
@@ -192,22 +198,10 @@ function montarTabla(bases, variedades, slugsEspecie, tipos) {
   return filas;
 }
 
-// Lista ordenada por número de Pokédex (y cada especie seguida de sus formas):
-// { clave, numero, forma, tipos, nombre, bases: [PS, At, Def, AtEsp, DefEsp, Vel], total }
-export async function cargarPokedex() {
-  try {
-    localStorage.removeItem("poketeams-pokedex-v1"); // versión antigua (sin formas alternativas)
-    localStorage.removeItem("poketeams-pokedex-v2"); // versión antigua (sin el retrato de cada forma)
-    localStorage.removeItem("poketeams-pokedex-v3"); // versión antigua (sin los tipos)
-  } catch (error) {
-    // si el navegador no deja tocar el almacén, da igual: solo es limpieza
-  }
-
-  const guardada = leer(CLAVE_POKEDEX, null);
-  if (guardada) return guardada;
-
-  await cargarDatos(); // nombres en español de las especies
-
+// La tabla sacada de los CSV de PokeAPI. Como con los nombres, la web no lo hace: lleva el
+// resultado en datos/pokedex.json. Esto lo usa herramientas/generar-datos.html para rehacer
+// ese archivo (y la web si faltase). nombresEspecies: [{ id, es }] (datos.pokemon).
+export async function montarPokedexDePokeAPI(nombresEspecies) {
   const [csvEstadisticas, csvPokemon, csvEspecies, csvTipos] = await Promise.all([
     descargarCSV("pokemon_stats.csv"),
     descargarCSV("pokemon.csv"),
@@ -215,12 +209,64 @@ export async function cargarPokedex() {
     descargarCSV("pokemon_types.csv")
   ]);
 
-  const tabla = montarTabla(
+  return montarTabla(
     leerEstadisticas(csvEstadisticas),
     leerVariedades(csvPokemon),
     leerEspecies(csvEspecies),
-    leerTipos(csvTipos)
+    leerTipos(csvTipos),
+    nombresEspecies
   );
+}
+
+// ---------- Retratos ----------
+//
+// Los 1.200 retratos de la tabla van juntos en unas pocas imágenes (como hojas de pegatinas)
+// en vez de pedirse uno a uno a GitHub: así salen todos de golpe con media docena de
+// descargas. Son varias hojas y no una para que las primeras filas no esperen a la última.
+// Cada fila lleva en «retrato» su casilla contando desde la primera hoja (o -1 si Mundo
+// Misterioso no tiene ninguno). Las genera herramientas/generar-datos.html.
+//
+// WebP sin pérdida: los mismos píxeles que los originales y algo menos que en PNG.
+export const RETRATOS = {
+  columnas: 40,   // casillas por fila de cada hoja
+  filasPorHoja: 5, // 200 retratos por hoja
+  lado: 40        // px de cada retrato (los de Mundo Misterioso son de 40x40)
+};
+
+export function archivoHoja(numero) {
+  return `img/pokedex/retratos-${numero}.webp`;
+}
+
+const URL_POKEDEX = new URL("../../datos/pokedex.json", import.meta.url);
+
+// Lista ordenada por número de Pokédex (y cada especie seguida de sus formas):
+// { clave, numero, forma, tipos, nombre, bases: [PS, At, Def, AtEsp, DefEsp, Vel], total, retrato }
+export async function cargarPokedex() {
+  try {
+    localStorage.removeItem("poketeams-pokedex-v1"); // versión antigua (sin formas alternativas)
+    localStorage.removeItem("poketeams-pokedex-v2"); // versión antigua (sin el retrato de cada forma)
+    localStorage.removeItem("poketeams-pokedex-v3"); // versión antigua (sin los tipos)
+    localStorage.removeItem("poketeams-pokedex-v4"); // versión antigua (con los tamaños de Pumpkaboo)
+    localStorage.removeItem("poketeams-pokedex-v5"); // versión antigua (sin la hoja de retratos)
+  } catch (error) {
+    // si el navegador no deja tocar el almacén, da igual: solo es limpieza
+  }
+
+  const guardada = leer(CLAVE_POKEDEX, null);
+  if (guardada) return guardada;
+
+  let tabla = null;
+  try {
+    const respuesta = await fetch(URL_POKEDEX);
+    if (respuesta.ok) tabla = await respuesta.json();
+  } catch (error) {
+    // sin el archivo, se monta desde PokeAPI (sin hoja de retratos: van uno a uno)
+  }
+
+  if (!tabla) {
+    await cargarDatos(); // nombres en español de las especies
+    tabla = await montarPokedexDePokeAPI(datos.pokemon);
+  }
 
   escribir(CLAVE_POKEDEX, tabla);
   return tabla;

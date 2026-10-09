@@ -7,8 +7,8 @@
 // Para añadir una columna basta con añadirla a COLUMNAS: la cabecera, las celdas y
 // la ordenación salen solas.
 
-import { cargarPokedex } from "./datos.js";
-import { imagenConRespaldo, urlsPMD, urlSpritePixel } from "../comun/imagenes.js";
+import { cargarPokedex, RETRATOS, archivoHoja } from "./datos.js";
+import { imagenConRespaldo, urlsPMD } from "../comun/imagenes.js";
 import { coloresTipo, tiposEs, iconoTipo } from "../comun/tipos.js";
 import { quitarAcentos } from "../comun/utilidades.js";
 
@@ -47,11 +47,29 @@ function mostrarAviso(texto) {
   aviso.hidden = !texto;
 }
 
-// Retrato de Mundo Misterioso, igual que en los equipos: el de la forma concreta si lo hay
-// (Mega-Charizard X, Palafin Héroe...) y si no el de la especie. De último recurso, el sprite
-// pequeño de esa forma, para los Pokémon que todavía no tengan retrato.
+// Retrato de Mundo Misterioso: el de la forma concreta (Mega-Charizard X, Palafin Héroe...)
+// y, si Mundo Misterioso no tiene esa forma, el de la especie. Aquí NUNCA se cae a un
+// sprite de PokeAPI: en las formas modernas esos son renders 3D y desentonan en la tabla.
+//
+// A día de hoy solo dos formas no tienen retrato propio y salen con el de su especie:
+// Mega Kangaskhan (Mundo Misterioso solo dibujó a la cría) y Calyrex Jinete Espectral.
 function foto(p) {
-  const urls = [...urlsPMD({ id: p.numero, formaPMD: p.forma }), urlSpritePixel(p.clave)];
+  // Lo normal: su casilla de la hoja de retratos (ver RETRATOS en ./datos.js)
+  if (p.retrato >= 0) {
+    const porHoja = RETRATOS.columnas * RETRATOS.filasPorHoja;
+    const dentro = p.retrato % porHoja;
+    const columna = dentro % RETRATOS.columnas;
+    const fila = Math.floor(dentro / RETRATOS.columnas);
+    const hoja = archivoHoja(Math.floor(p.retrato / porHoja));
+    return `<span class="pokedex-foto en-hoja" style="background-image:url(${hoja});--columna:${columna};--fila:${fila}"></span>`;
+  }
+  if (p.retrato === -1) return ""; // Mundo Misterioso no tiene ninguno
+
+  // Tabla montada sin hoja (desde PokeAPI): uno a uno
+  const urls = [
+    ...urlsPMD({ id: p.numero, formaPMD: p.forma }),
+    ...(p.forma ? urlsPMD({ id: p.numero, formaPMD: 0 }) : [])
+  ];
   return imagenConRespaldo(urls, `class="pokedex-foto" alt="" loading="lazy" data-quitar-si-falla`);
 }
 
@@ -191,6 +209,10 @@ export async function iniciar() {
 
   // Texto por el que se busca: nombre sin acentos y número, para poder buscar "25" o "pikachu"
   for (const p of pokemon) p.busqueda = `${quitarAcentos(p.nombre)} ${p.numero}`;
+
+  // Medidas de las hojas de retratos, para que el CSS sepa dónde cae cada casilla
+  tabla.style.setProperty("--hoja-columnas", RETRATOS.columnas);
+  tabla.style.setProperty("--hoja-filas", RETRATOS.filasPorHoja);
 
   cuerpo.innerHTML = pokemon.map(filaPokemon).join("");
   [...cuerpo.children].forEach((fila, i) => filas.set(pokemon[i].clave, fila));

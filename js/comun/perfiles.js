@@ -187,10 +187,12 @@ export function iniciarPerfiles() {
     }
 
     escucharAmistades(usuario);
+    // Se escucha ya, sin esperar a asegurarPerfil: así el perfil sale de la caché al
+    // momento en vez de después de dos viajes al servidor
+    escucharMiPerfil(usuario);
 
     try {
       await asegurarPerfil(usuario);
-      escucharMiPerfil(usuario);
     } catch (error) {
       console.error("No se ha podido preparar el perfil", error);
       falloPerfil = explicar(error, "tu perfil");
@@ -237,8 +239,11 @@ function escucharMiPerfil(usuario) {
   dejarDeEscuchar = fn.onSnapshot(
     fn.doc(bd, "perfiles", usuario.uid),
     (documento) => {
+      // La primera vez que entras el perfil aún no existe: llega en cuanto asegurarPerfil
+      // lo crea. Mientras, se queda en null (y se tira del provisional, con sus tipos).
+      if (!documento.exists()) return;
       falloPerfil = "";
-      mio = { uid: usuario.uid, ...PERFIL_VACIO, ...(documento.data() || {}) };
+      mio = { uid: usuario.uid, ...PERFIL_VACIO, ...documento.data() };
       avisar();
     },
     (error) => {
@@ -346,7 +351,36 @@ export async function borrarAmistad(id) {
   await fn.deleteDoc(fn.doc(bd, "amistades", id));
 }
 
-// ---------- Palmarés automático ----------
+// Lo que se guarda en tus lockes ganados de un locke de Versus. Es una copia, no un enlace:
+// tus amigos ven tu ficha pero no pueden leer los lockes en los que no han jugado, así que
+// todo lo que salga en la ficha (quién jugó, con cuántas vidas acabó, cuándo terminó) tiene
+// que ir aquí dentro.
+function resumenDeLocke(id, locke) {
+  const nombres = locke.nombres || {};
+  const vidas = locke.vidas || {};
+  const estados = locke.estados || {};
+
+  const participantes = (locke.jugadores || [])
+    .filter((uid) => (estados[uid] || "aceptado") === "aceptado")
+    .map((uid) => ({
+      nombre: nombres[uid] || "Jugador",
+      vidas: locke.vidasIlimitadas ? null : vidas[uid] || 0
+    }));
+
+  return {
+    id,
+    nombre: locke.nombre,
+    nota: "",
+    tipo: locke.tipo,
+    juego: locke.juego || "",
+    juegoOtro: locke.juegoOtro || "",
+    fechaFin: locke.fechaFin || "",
+    ganador: nombres[locke.ganador] || "",
+    participantes
+  };
+}
+
+// ---------- Lockes ganados automáticos ----------
 //
 // Al cerrar un locke, el que lo cierra marca el ganador. El +1 en el palmarés no lo puede
 // escribir él: las reglas solo dejan que cada uno escriba su propio perfil. Así que lo
@@ -376,7 +410,7 @@ export async function apuntarLockesGanados() {
     if (locke.estado !== "cerrado" || locke.ganador !== usuario.uid) return;
     if ((locke.contado || []).includes(usuario.uid)) return;
 
-    nuevos.push({ id: documento.id, nombre: locke.nombre, nota: "", tipo: locke.tipo });
+    nuevos.push(resumenDeLocke(documento.id, locke));
     porMarcar.push(documento.ref);
   });
 

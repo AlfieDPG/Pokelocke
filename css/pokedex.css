@@ -150,6 +150,16 @@
   image-rendering: pixelated; /* los retratos de Mundo Misterioso son pixelados */
 }
 
+/* Retrato sacado de una hoja de retratos (ver RETRATOS en js/pokedex/datos.js). La hoja se
+   estira para que una casilla mida lo que la foto, y se mueve hasta la casilla que toca.
+   La hoja, --columna y --fila las pone cada fila; --hoja-columnas y --hoja-filas, la tabla. */
+.pokedex-foto.en-hoja {
+  background-size: calc(var(--hoja-columnas) * 100%) calc(var(--hoja-filas) * 100%);
+  background-position:
+    calc(var(--columna) / (var(--hoja-columnas) - 1) * 100%)
+    calc(var(--fila) / max(var(--hoja-filas) - 1, 1) * 100%);
+}
+
 .col-nombre {
   width: 18rem;
   font-weight: bold;

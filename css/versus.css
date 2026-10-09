@@ -112,37 +112,145 @@
   height: 1rem;
 }
 
-.locke-invitar:hover {
-  background: #27ae60;
+.locke-editar:hover {
+  background: #f1c40f;
+  color: #2b2d3a;
 }
 
-.locke-borrar:hover {
+.locke-acciones .locke-borrar:hover {
   background: #c0392b;
-}
-
-/* ---------- Diálogo de invitar ---------- */
-
-.invitar-error {
-  display: block;
-  margin-top: 0.6rem;
-  font-size: 0.85rem;
-  font-weight: bold;
-  color: #e74c3c;
-}
-
-#invitar-enviar {
-  background: #27ae60;
   color: #fff;
 }
 
-#invitar-enviar:disabled {
-  opacity: 0.4;
-  cursor: default;
+/* ---------- Ventana de editar ---------- */
+
+/* Borrar, a la izquierda y en rojo: lejos de Guardar para no darle sin querer */
+#locke-borrar {
+  margin-right: auto;
+  background: #c0392b;
+  color: #fff;
 }
 
-#invitar-cancelar {
+#locke-borrar:hover {
+  background: #e74c3c;
+}
+
+/* Los que ya están dentro, como etiquetas. Solo se puede echar a quien no ha contestado */
+.locke-dentro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.locke-dentro-uno {
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.45rem;
+  background: rgba(241, 196, 15, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(241, 196, 15, 0.4);
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.locke-dentro-uno.pendiente {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  font-weight: normal;
+}
+
+.locke-dentro-uno small {
+  opacity: 0.6;
+}
+
+/* La X para echar a un invitado que no ha contestado */
+.locke-dentro-uno {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.locke-quitar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: rgba(242, 242, 242, 0.6);
+  cursor: pointer;
+}
+
+.locke-quitar:hover:not(:disabled) {
+  background: #c0392b;
+  color: #fff;
+}
+
+.locke-quitar .icono {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+/* Lo que no se puede cambiar (no eres quien lo creó, o ya ha empezado) */
+/* Oscuros y con el texto claro: se leen bien, pero se nota que no se pueden tocar */
+#dialogo-nuevo-locke input:disabled,
+#dialogo-nuevo-locke select:disabled,
+#dialogo-nuevo-locke textarea:disabled {
+  background: #252735;
+  color: rgba(242, 242, 242, 0.75);
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* ---------- Juego del locke y atajos ---------- */
+
+.locke-juego {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 0.95rem 0;
+}
+
+.locke-juego-nombre {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-right: 0.3rem;
+  font-size: 0.88rem;
+  font-weight: bold;
+}
+
+.locke-juego .icono {
+  width: 1rem;
+  height: 1rem;
+}
+
+.locke-ir {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.65rem;
+  border: none;
+  border-radius: 0.4rem;
   background: #3a3d52;
   color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.locke-ir:hover {
+  background: var(--color-locke, #3498db);
+  color: #1e1f2b;
+}
+
+.locke-ir .icono {
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 .locke-descripcion {
@@ -156,9 +264,12 @@
 
 /* ---------- Jugadores ---------- */
 
+/* Cada jugador mide siempre lo mismo y van pegados a la izquierda: si hay uno solo, el
+   resto de la fila se queda vacío en vez de estirarse. auto-fill con un ancho fijo hace
+   justo eso; los que no quepan bajan a la siguiente fila. */
 .locke-jugadores {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fill, 15rem);
   gap: 0.85rem;
   padding: 0.95rem;
 }
@@ -224,12 +335,69 @@
   height: 1.2rem;
 }
 
-/* ---------- Contadores de marcador y vidas ---------- */
+.locke-quien small {
+  font-weight: normal;
+  opacity: 0.6;
+}
+
+/* Tu bloque, un poco destacado: es el único que puedes tocar */
+.locke-jugador.mio {
+  box-shadow: inset 0 0 0 1px rgba(241, 196, 15, 0.35);
+}
+
+/* ---------- Victorias y vidas ---------- */
+
+/* Dos cajitas iguales, una al lado de la otra, cada una con su etiqueta arriba.
+   Las cifras de los demás se ven igual de grandes, solo que sin botones. */
+
+.locke-cifras {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  width: 100%;
+  margin-top: 0.2rem;
+}
+
+.locke-cifra {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.3rem;
+  border-radius: 0.45rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.locke-etiqueta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.68rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+.locke-etiqueta .icono {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+.locke-cifra.victorias .locke-etiqueta {
+  color: #f1c40f;
+}
+
+.locke-cifra.vidas .locke-etiqueta {
+  color: #e74c3c;
+}
 
 .locke-numero {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 1.9rem;
 }
 
 .locke-numero button {
@@ -264,30 +432,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  min-width: 3rem;
+  min-width: 2rem;
+  font-size: 1.6rem;
   font-weight: bold;
-}
-
-/* El marcador, grande: es lo que se mira */
-.locke-numero.marcador .locke-valor {
-  font-size: 1.9rem;
   line-height: 1;
 }
 
 .locke-numero.vidas .locke-valor {
-  font-size: 1.1rem;
   color: #e74c3c;
-}
-
-.locke-numero.vidas .icono {
-  width: 1rem;
-  height: 1rem;
-}
-
-.locke-numero.vidas.ilimitadas .locke-valor {
-  font-size: 1.35rem;
-  line-height: 1;
 }
 
 .locke-ganador {
@@ -346,6 +498,46 @@
   font-size: 0.95rem;
   text-transform: none;
   letter-spacing: normal;
+}
+
+/* Juego: va en un <div> y no en un <label> porque lleva dos campos (desplegable y,
+   con «Otro», la casilla de texto) */
+.campos-locke .campo-juego-locke {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.campo-juego-locke > span:first-child {
+  opacity: 0.85;
+}
+
+/* Desplegable de juego y casilla de «otro» (js/comun/campo-juego.js), también en el
+   diálogo de lockes ganados */
+.campo-juego {
+  display: inline-flex;
+  gap: 0.35rem;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: normal;
+}
+
+.campo-juego select,
+.campo-juego input {
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border: none;
+  border-radius: 0.45rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.campo-juego input {
+  width: 9rem;
 }
 
 /* El nombre se queda con todo el ancho que sobre */

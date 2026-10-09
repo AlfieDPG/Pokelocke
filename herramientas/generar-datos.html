@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Generar datos de Pokely</title>
+  <style>
+    body { margin: 2rem; background: #1e1f2b; color: #f2f2f2; font-family: system-ui, sans-serif; }
+    a { color: #f1c40f; }
+    li { margin: 0.4rem 0; }
+  </style>
+  <script type="module" src="generar-datos.js"></script>
+</head>
+<body>
+  <h1>Generar datos de Pokely</h1>
+  <p>
+    Rehace los archivos que la web lleva ya preparados para cargar rápido. Solo hace falta
+    cuando PokeAPI o Mundo Misterioso añadan Pokémon nuevos. Abre esta página desde la web
+    (no con doble clic), espera a que salgan los enlaces, descarga todos los archivos y
+    ponlos donde dice cada uno. Después sube <code>CLAVE_DATOS</code> en
+    <code>js/comun/datos.js</code> y <code>CLAVE_POKEDEX</code> en
+    <code>js/pokedex/datos.js</code>.
+  </p>
+  <p class="estado">Generando...</p>
+  <ul class="enlaces"></ul>
+</body>
+</html>

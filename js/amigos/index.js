@@ -11,7 +11,10 @@
 
 import { imagenConRespaldo } from "../comun/imagenes.js";
 import { icono } from "../comun/iconos.js";
-import { escaparHTML } from "../comun/utilidades.js";
+import { escaparHTML, fechaLarga } from "../comun/utilidades.js";
+import {
+  plantillaCampoJuego, activarCamposJuego, leerCampoJuego, nombreJuego
+} from "../comun/campo-juego.js";
 import { hayNube, usuarioActual } from "../comun/nube.js";
 import { LEGADO, TIPOS_LEGADO } from "../comun/legado.js";
 import {
@@ -52,14 +55,110 @@ function plantillaContador(tipo, total) {
     </div>`;
 }
 
-function plantillaLocke(ganado) {
+function plantillaLocke(ganado, posicion) {
   const tipo = ganado.tipo || TIPOS_POR_DEFECTO[0];
   return `
-    <li class="locke-ganado" style="--color-locke: ${colorSeguro(tipo.color)}"
-        title="${escaparHTML(tipo.nombre)}">
+    <li class="locke-ganado" data-posicion="${posicion}" style="--color-locke: ${colorSeguro(tipo.color)}"
+        title="Pulsa para ver los datos de este locke">
       <span class="locke-nombre">${escaparHTML(ganado.nombre)}</span>
       ${ganado.nota ? `<span class="locke-nota">${escaparHTML(ganado.nota)}</span>` : ""}
     </li>`;
+}
+
+// ---------- Recuadro con los datos de un locke ----------
+//
+// Al pulsar un locke de una ficha desplegada sale un recuadro flotante al lado: juego, cuándo
+// terminó, quién ganó y quién jugó con cuántas vidas acabó. Todo sale de la copia que se
+// guarda en el perfil (ver resumenDeLocke en perfiles.js): el locke original puede no ser
+// legible para quien mira la ficha.
+
+let fichasPintadas = new Map(); // clave de la ficha -> { nombre, ganados, mia }
+let flotante = null;
+
+function plantillaFlotante(ganado, ficha) {
+  const tipo = ganado.tipo || TIPOS_POR_DEFECTO[0];
+  const juego = nombreJuego(ganado);
+  const fecha = fechaLarga(ganado.fechaFin);
+  const ganador = ganado.ganador || ficha.nombre;
+  const participantes = ganado.participantes || [];
+
+  const filas = [];
+  if (juego) filas.push(`<div class="flotante-fila">${icono("mando")}<span>${escaparHTML(juego)}</span></div>`);
+  if (fecha) filas.push(`<div class="flotante-fila">${icono("calendario")}<span>Terminó el ${escaparHTML(fecha)}</span></div>`);
+  filas.push(`<div class="flotante-fila ganador">${icono("corona")}<span>Ganó <b>${escaparHTML(ganador)}</b></span></div>`);
+
+  const lista = participantes.length
+    ? `
+      <div class="flotante-titulo">Participantes</div>
+      <ul class="flotante-participantes">
+        ${participantes
+          .map((p) => {
+            // null: el locke era de vidas ilimitadas. "" o nada: no se apuntó.
+            const vidas = p.vidas === null ? "∞" : p.vidas === "" || p.vidas === undefined ? "" : p.vidas;
+            const gano = p.nombre === ganador;
+            return `
+              <li class="${gano ? "gano" : ""}">
+                <span>${gano ? icono("corona") : ""}${escaparHTML(p.nombre)}</span>
+                ${vidas === "" ? "" : `<span class="flotante-vidas">${icono("corazon")}${escaparHTML(vidas)}</span>`}
+              </li>`;
+          })
+          .join("")}
+      </ul>`
+    : "";
+
+  const sinDatos =
+    !juego && !fecha && !participantes.length
+      ? `<p class="flotante-vacio">${
+          ficha.mia ? "Sin más datos. Puedes añadirlos con el lápiz de tu ficha." : "Sin más datos."
+        }</p>`
+      : "";
+
+  return `
+    <div class="flotante-cabecera">
+      <span class="flotante-tipo">${escaparHTML(tipo.nombre)}</span>
+      <span class="flotante-nombre">${escaparHTML(ganado.nombre)}</span>
+    </div>
+    ${ganado.nota ? `<p class="flotante-nota">${escaparHTML(ganado.nota)}</p>` : ""}
+    ${filas.join("")}
+    ${lista}
+    ${sinDatos}`;
+}
+
+function cerrarFlotante() {
+  if (!flotante) return;
+  flotante.remove();
+  flotante = null;
+  for (const marcado of lista.querySelectorAll(".locke-ganado.abierto")) marcado.classList.remove("abierto");
+}
+
+function abrirFlotante(elemento, ganado, ficha) {
+  const yaAbierto = elemento.classList.contains("abierto");
+  cerrarFlotante();
+  if (yaAbierto) return; // pulsar otra vez el mismo lo cierra
+
+  const tipo = ganado.tipo || TIPOS_POR_DEFECTO[0];
+  flotante = document.createElement("div");
+  flotante.className = "flotante-locke";
+  flotante.style.setProperty("--color-locke", colorSeguro(tipo.color));
+  flotante.innerHTML = plantillaFlotante(ganado, ficha);
+  document.body.appendChild(flotante);
+  elemento.classList.add("abierto");
+
+  // A la derecha del locke si cabe; si no, a la izquierda. Y sin salirse por abajo.
+  const caja = elemento.getBoundingClientRect();
+  const ancho = flotante.offsetWidth;
+  const alto = flotante.offsetHeight;
+  const margen = 12;
+
+  let izquierda = caja.right + margen;
+  if (izquierda + ancho > window.innerWidth - margen) izquierda = caja.left - ancho - margen;
+  if (izquierda < margen) izquierda = Math.max(margen, Math.min(caja.left, window.innerWidth - ancho - margen));
+
+  let arriba = caja.top;
+  if (arriba + alto > window.innerHeight - margen) arriba = window.innerHeight - alto - margen;
+
+  flotante.style.left = `${Math.round(izquierda)}px`;
+  flotante.style.top = `${Math.round(Math.max(margen, arriba))}px`;
 }
 
 // Botones de la esquina. No plegan la ficha: lo para el oyente del click.
@@ -103,7 +202,7 @@ function plantillaFicha(ficha) {
 
       <div class="contadores-locke">${tipos}</div>
 
-      <ul class="lockes-ganados">${ficha.ganados.map(plantillaLocke).join("")}</ul>
+      <ul class="lockes-ganados">${ficha.ganados.map((ganado, i) => plantillaLocke(ganado, i)).join("")}</ul>
     </article>`;
 }
 
@@ -144,6 +243,8 @@ async function recargar() {
     if (perfil) fichas.push(fichaDePerfil(perfil, false));
   }
 
+  cerrarFlotante();
+  fichasPintadas = new Map(fichas.map((ficha) => [ficha.clave, ficha]));
   lista.innerHTML = fichas.map(plantillaFicha).join("");
   pintarSolicitudes(pendientes, perfiles);
 }
@@ -328,13 +429,90 @@ function pintarPalmares() {
 
       return `
         <div class="fila-palmares" data-posicion="${posicion}">
-          <input class="palmares-nombre" type="text" value="${escaparHTML(ganado.nombre)}" placeholder="Juego o nombre del locke">
-          <select class="palmares-tipo">${opciones}</select>
-          <input class="palmares-nota" type="text" value="${escaparHTML(ganado.nota || "")}" placeholder="Nota (opcional)">
-          <button class="palmares-quitar" title="Quitar">${icono("aspa")}</button>
+          <div class="fila-palmares-principal">
+            <input class="palmares-nombre" type="text" value="${escaparHTML(ganado.nombre)}" placeholder="Juego o nombre del locke">
+            <select class="palmares-tipo">${opciones}</select>
+            <input class="palmares-nota" type="text" value="${escaparHTML(ganado.nota || "")}" placeholder="Nota (opcional)">
+            <button class="palmares-quitar" title="Quitar">${icono("aspa")}</button>
+          </div>
+          ${plantillaDetalles(ganado)}
         </div>`;
     })
     .join("");
+}
+
+// Lo que sale en el recuadro al pulsar el locke en la ficha. Plegado por defecto para que la
+// lista no sea eterna; el resumen del <summary> dice lo que ya hay apuntado.
+function plantillaDetalles(ganado) {
+  const participantes = ganado.participantes || [];
+  const resumen = [
+    nombreJuego(ganado),
+    fechaLarga(ganado.fechaFin),
+    participantes.length ? `${participantes.length} participante${participantes.length === 1 ? "" : "s"}` : ""
+  ].filter(Boolean);
+
+  const filas = participantes
+    .map(
+      (p) => `
+        <div class="participante">
+          <input class="participante-nombre" type="text" value="${escaparHTML(p.nombre || "")}" placeholder="Nombre">
+          <span class="participante-corazon">${icono("corazon")}</span>
+          <input class="participante-vidas" type="number" min="0" max="999"
+            value="${p.vidas === null || p.vidas === undefined ? "" : escaparHTML(p.vidas)}"
+            placeholder="${p.vidas === null ? "∞" : "Vidas"}" title="Vidas con las que acabó">
+          <button class="participante-quitar" title="Quitar">${icono("aspa")}</button>
+        </div>`
+    )
+    .join("");
+
+  return `
+    <details class="palmares-mas" ${ganado.abierto ? "open" : ""}>
+      <summary>
+        Juego, fecha y participantes
+        ${resumen.length ? `<span class="palmares-resumen">· ${escaparHTML(resumen.join(" · "))}</span>` : ""}
+      </summary>
+      <div class="palmares-detalles">
+        <div class="palmares-campo">
+          <span>Juego</span>
+          ${plantillaCampoJuego(ganado)}
+        </div>
+        <label class="palmares-campo">
+          <span>Terminó el</span>
+          <input class="palmares-fecha" type="date" value="${escaparHTML(ganado.fechaFin || "")}">
+        </label>
+        <div class="palmares-campo participantes">
+          <span>Participantes y vidas con las que acabaron</span>
+          ${filas}
+          <button class="participante-anadir">${icono("mas")} Añadir participante</button>
+        </div>
+      </div>
+    </details>`;
+}
+
+// Una fila del diálogo tal y como está escrita ahora mismo. «abierto» solo sirve para que
+// los detalles sigan desplegados al repintar; no se guarda.
+function leerFila(fila, posicion, tipos) {
+  const idTipo = fila.querySelector(".palmares-tipo").value;
+  const anterior = ganadosEnEdicion[posicion] || {};
+
+  return {
+    ...anterior, // conserva lo que no se edita aquí (el ganador de los de Versus)
+    id: anterior.id || nuevoId(),
+    nombre: fila.querySelector(".palmares-nombre").value,
+    nota: fila.querySelector(".palmares-nota").value,
+    tipo: tipos.find((tipo) => tipo.id === idTipo) || tipos[0],
+    ...leerCampoJuego(fila.querySelector(".campo-juego")),
+    fechaFin: fila.querySelector(".palmares-fecha").value,
+    participantes: [...fila.querySelectorAll(".participante")].map((p) => {
+      const vidas = p.querySelector(".participante-vidas");
+      return {
+        nombre: p.querySelector(".participante-nombre").value,
+        // Vacío: si venía de un locke con vidas ilimitadas (null) se respeta; si no, ""
+        vidas: vidas.value === "" ? (vidas.placeholder === "∞" ? null : "") : Number(vidas.value)
+      };
+    }),
+    abierto: fila.querySelector(".palmares-mas").open
+  };
 }
 
 function abrirPalmares() {
@@ -346,19 +524,16 @@ function abrirPalmares() {
 }
 
 async function guardarPalmares() {
-  const tipos = tiposDelDialogo();
-  const filas = [...dialogoPalmares.querySelectorAll(".fila-palmares")];
-
-  const ganados = filas
-    .map((fila, posicion) => {
-      const idTipo = fila.querySelector(".palmares-tipo").value;
-      return {
-        id: ganadosEnEdicion[posicion].id || nuevoId(),
-        nombre: fila.querySelector(".palmares-nombre").value.trim(),
-        nota: fila.querySelector(".palmares-nota").value.trim(),
-        tipo: tipos.find((tipo) => tipo.id === idTipo) || tipos[0]
-      };
-    })
+  const ganados = leerPalmaresDelDialogo()
+    .map(({ abierto, ...ganado }) => ({
+      ...ganado,
+      nombre: ganado.nombre.trim(),
+      nota: ganado.nota.trim(),
+      juegoOtro: ganado.juegoOtro.trim(),
+      participantes: ganado.participantes
+        .map((p) => ({ ...p, nombre: p.nombre.trim() }))
+        .filter((p) => p.nombre)
+    }))
     .filter((ganado) => ganado.nombre);
 
   const cambios = { ganados };
@@ -442,8 +617,18 @@ function activarFichas() {
     const ficha = e.target.closest(".ficha-jugador");
     if (!ficha) return;
 
+    // Un locke de la lista: abre sus datos sin plegar la ficha
+    const locke = e.target.closest(".locke-ganado");
+    if (locke) {
+      const datos = fichasPintadas.get(ficha.dataset.clave);
+      const ganado = datos && datos.ganados[Number(locke.dataset.posicion)];
+      if (ganado) abrirFlotante(locke, ganado, datos);
+      return;
+    }
+
     const boton = e.target.closest("button");
     if (!boton) {
+      cerrarFlotante();
       ficha.classList.toggle("plegada");
       return;
     }
@@ -487,6 +672,18 @@ export function iniciar() {
   activarArrastre();
   activarFichas();
 
+  // El recuadro de datos de un locke se cierra al pulsar fuera, con Escape o al moverse
+  document.addEventListener("click", (e) => {
+    if (!flotante || flotante.contains(e.target) || e.target.closest(".locke-ganado")) return;
+    cerrarFlotante();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") cerrarFlotante();
+  });
+  window.addEventListener("scroll", cerrarFlotante, true);
+  window.addEventListener("resize", cerrarFlotante);
+  lista.addEventListener("dragstart", cerrarFlotante);
+
   solicitudes.addEventListener("click", async (e) => {
     const fila = e.target.closest(".solicitud");
     const boton = e.target.closest("button");
@@ -528,11 +725,29 @@ export function iniciar() {
   });
   dialogoPalmares.querySelector(".palmares-lista").addEventListener("click", (e) => {
     const fila = e.target.closest(".fila-palmares");
-    if (!e.target.closest(".palmares-quitar") || !fila) return;
-    ganadosEnEdicion = leerPalmaresDelDialogo();
-    ganadosEnEdicion.splice(Number(fila.dataset.posicion), 1);
+    const boton = e.target.closest("button");
+    if (!fila || !boton) return;
+
+    const posicion = Number(fila.dataset.posicion);
+
+    // Siempre se recoge lo escrito antes de repintar, o se perdería
+    if (boton.classList.contains("palmares-quitar")) {
+      ganadosEnEdicion = leerPalmaresDelDialogo();
+      ganadosEnEdicion.splice(posicion, 1);
+    } else if (boton.classList.contains("participante-anadir")) {
+      ganadosEnEdicion = leerPalmaresDelDialogo();
+      ganadosEnEdicion[posicion].participantes.push({ nombre: "", vidas: "" });
+    } else if (boton.classList.contains("participante-quitar")) {
+      const cual = [...fila.querySelectorAll(".participante")].indexOf(boton.closest(".participante"));
+      ganadosEnEdicion = leerPalmaresDelDialogo();
+      ganadosEnEdicion[posicion].participantes.splice(cual, 1);
+    } else {
+      return;
+    }
+
     pintarPalmares();
   });
+  activarCamposJuego(dialogoPalmares);
   dialogoPalmares.querySelector(".palmares-legado").addEventListener("click", (e) => {
     const boton = e.target.closest(".palmares-traer");
     if (boton) traerLegado(boton.dataset.clave);
@@ -561,16 +776,9 @@ function leerTiposDelDialogo() {
 
 function leerPalmaresDelDialogo() {
   const tipos = tiposDelDialogo();
-
-  return [...dialogoPalmares.querySelectorAll(".fila-palmares")].map((fila, posicion) => {
-    const idTipo = fila.querySelector(".palmares-tipo").value;
-    return {
-      id: ganadosEnEdicion[posicion].id,
-      nombre: fila.querySelector(".palmares-nombre").value,
-      nota: fila.querySelector(".palmares-nota").value,
-      tipo: tipos.find((tipo) => tipo.id === idTipo) || tipos[0]
-    };
-  });
+  return [...dialogoPalmares.querySelectorAll(".fila-palmares")].map((fila, posicion) =>
+    leerFila(fila, posicion, tipos)
+  );
 }
 
 export function mostrar() {

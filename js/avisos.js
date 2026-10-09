@@ -52,7 +52,7 @@ function plantillaLocke(locke) {
 
   return `
     <div class="aviso" data-tipo="locke" data-id="${escaparHTML(locke.id)}">
-      <span class="aviso-icono locke" style="--color-locke: ${colorSeguro(tipo.color)}">${icono("espadas")}</span>
+      <span class="aviso-icono de-locke" style="--color-locke: ${colorSeguro(tipo.color)}">${icono("espadas")}</span>
       <span class="aviso-texto">
         <b>${quien}</b> te mete en <b>${escaparHTML(locke.nombre)}</b>
         <small>${escaparHTML(tipo.nombre)} · ${locke.vidasIniciales} vidas</small>
@@ -74,7 +74,7 @@ function pintar() {
   cuenta.textContent = total;
   cuenta.hidden = total === 0;
   boton.classList.toggle("con-avisos", total > 0);
-  boton.title = total === 0 ? "No tienes invitaciones" : `Tienes ${total} invitación${total === 1 ? "" : "es"}`;
+  boton.title = total === 0 ? "Notificaciones" : `Tienes ${total} notificación${total === 1 ? "" : "es"}`;
 
   listaDialogo.innerHTML = total
     ? [...amistades.map(plantillaAmistad), ...lockes.map(plantillaLocke)].join("")

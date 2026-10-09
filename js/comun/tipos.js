@@ -14,8 +14,10 @@ export const tiposEs = {
   steel: "Acero", fairy: "Hada"
 };
 
-const URL_ICONOS_TIPO =
-  "https://raw.githubusercontent.com/duiker101/pokemon-type-svg-icons/5781623f147f1bf850f426cfe1874ba56a9b75ee/icons/";
+// Copia en la propia web de los de duiker101/pokemon-type-svg-icons (pesan 1 KB cada uno
+// y así no hay que ir a GitHub a por ellos). Tiene que ser una dirección completa: va en
+// una variable CSS, y el navegador la resolvería desde la carpeta css/.
+const URL_ICONOS_TIPO = new URL("../../img/tipos/", import.meta.url).href;
 
 export function iconoTipo(tipo) {
   return `<span class="icono-tipo" style="--icono: url(${URL_ICONOS_TIPO}${tipo}.svg)"></span>`;

@@ -100,7 +100,7 @@ copia local volvería a plantear quién pisa a quién.
 | --- | --- | --- |
 | `perfiles/{uid}` | cualquiera con sesión | solo su dueño |
 | `amistades/{par}` | los dos implicados | los dos implicados |
-| `lockes/{id}` | los que juegan ese locke | los que juegan ese locke |
+| `lockes/{id}` | los que juegan ese locke | cada uno sus vidas, victorias y respuesta; el creador el resto |
 
 Las tres están escuchadas en vivo (`onSnapshot`): si tu rival quita una vida desde su móvil,
 a ti te cambia en pantalla al momento, y en cuanto alguien te acepta como amigo te sale su

@@ -5,8 +5,10 @@ import { indicePMD } from "./formas-pmd.js";
 const URL_SPRITES = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/";
 const URL_PMD = "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/portrait/";
 
+// Nombre del archivo de sus imágenes. Normalmente el id de la forma (Mega-Charizard X es
+// el 10034), salvo Arceus y Silvally de un tipo, que van por nombre: "493-fire".
 function idImagen(p) {
-  return p.idForma || p.id;
+  return p.imagenForma || p.idForma || p.id;
 }
 
 // Arte grande (normal o shiny). Se arma con el id de la FORMA en vez de usar p.imagen:
@@ -21,9 +23,21 @@ export function urlSpriteHome(p) {
   return `${URL_SPRITES}pokemon/other/home/${p.shiny ? "shiny/" : ""}${idImagen(p)}.png`;
 }
 
+// Artes de PokeAPI que desentonan y tienen uno mejor en Serebii. Las aves de Galar vienen
+// con un contorno blanco (como una pegatina) que no tiene ningún otro arte y que sobre el
+// fondo oscuro de las tarjetas canta mucho. El de Serebii es el mismo dibujo sin contorno.
+// Solo para la versión normal: de las shiny no hay arte 2D sin contorno en ningún sitio.
+const URL_ARTE_SEREBII = "https://www.serebii.net/pokemon/art/";
+const ARTES_SEREBII = {
+  10169: "144-g", // Articuno de Galar
+  10170: "145-g", // Zapdos de Galar
+  10171: "146-g"  // Moltres de Galar
+};
+
 // Arte grande con sus respaldos, por orden de preferencia
 export function urlsArte(p) {
-  return [urlArte(p), p.imagen, urlSpriteHome(p)];
+  const serebii = !p.shiny && ARTES_SEREBII[p.idForma];
+  return [serebii && `${URL_ARTE_SEREBII}${serebii}.png`, urlArte(p), p.imagen, urlSpriteHome(p)].filter(Boolean);
 }
 
 // Sprite pixelado pequeño (96x96). Sirve también para las formas alternativas,

@@ -180,7 +180,8 @@ main {
   color: #3498db;
 }
 
-.aviso-icono.locke {
+/* «de-locke» y no «locke»: esa clase ya es la de las tarjetas de Versus y le pondría su borde */
+.aviso-icono.de-locke {
   color: var(--color-locke, #3498db);
 }
 

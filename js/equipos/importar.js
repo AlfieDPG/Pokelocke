@@ -3,7 +3,7 @@ import { mostrarAviso } from "./crear.js";
 import { datos, buscarPorNombreIngles } from "../comun/datos.js";
 import { pedirJSON, URL_API } from "../comun/api.js";
 import { obtenerVariedades } from "../comun/formas.js";
-import { pokemonDesdeAPI, ataqueDesdeAPI } from "../comun/pokemon.js";
+import { pokemonDesdeAPI, pedirVariedad, ataqueDesdeAPI } from "../comun/pokemon.js";
 import { quitarAcentos } from "../comun/utilidades.js";
 import { irA } from "../navegacion.js";
 
@@ -121,7 +121,8 @@ async function resolverPokemon(nombre) {
         info.lista.find((v) => v.startsWith(slug)) ||
         info.lista.find((v) => trozos.every((t) => v.split("-").includes(t)));
       if (candidato) {
-        const p = await pedirJSON(`${URL_API}pokemon/${candidato}`);
+        // pedirVariedad y no pedirJSON: "arceus-fire" no existe como Pokémon en PokeAPI
+        const p = await pedirVariedad(candidato);
         return await pokemonDesdeAPI(p, base);
       }
     }

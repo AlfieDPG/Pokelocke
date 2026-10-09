@@ -47,7 +47,22 @@ async function cargarFirebase() {
   funcionesAuth = autenticacion;
   funcionesBD = firestore;
   auth = autenticacion.getAuth(aplicacion);
-  bd = firestore.getFirestore(aplicacion);
+  bd = abrirFirestore(firestore, aplicacion);
+}
+
+// Con caché en el navegador (IndexedDB): al entrar, perfiles, amistades y lockes salen al
+// momento con lo de la última vez y se ponen al día en cuanto contesta el servidor. Vale
+// también con la web abierta en varias pestañas. Si el navegador no deja (modo incógnito
+// en algunos), se usa la de siempre, solo en memoria.
+function abrirFirestore(firestore, aplicacion) {
+  try {
+    return firestore.initializeFirestore(aplicacion, {
+      localCache: firestore.persistentLocalCache({ tabManager: firestore.persistentMultipleTabManager() })
+    });
+  } catch (error) {
+    console.error("Firestore sin caché local", error);
+    return firestore.getFirestore(aplicacion);
+  }
 }
 
 // ---------- Subir y bajar ----------

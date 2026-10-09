@@ -327,9 +327,146 @@
   background: #252735;
 }
 
+/* Se pueden pulsar: abren el recuadro con sus datos */
+.locke-ganado {
+  cursor: pointer;
+}
+
+.locke-ganado:hover,
+.locke-ganado.abierto {
+  background: #32354a;
+}
+
 .locke-nombre {
   font-weight: bold;
   font-size: 0.93rem;
+}
+
+/* ---------- Recuadro flotante con los datos de un locke ---------- */
+
+.flotante-locke {
+  position: fixed;
+  z-index: 90;
+  width: 17rem;
+  padding: 0.8rem 0.9rem;
+  border-left: 0.3rem solid var(--color-locke, #3498db);
+  border-radius: 0.6rem;
+  background: #2c2e3e;
+  color: #f2f2f2;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  font-size: 0.85rem;
+}
+
+.flotante-cabecera {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.55rem;
+}
+
+.flotante-tipo {
+  align-self: flex-start;
+  padding: 0.12rem 0.45rem;
+  border-radius: 0.3rem;
+  background: var(--color-locke, #3498db);
+  color: #1e1f2b;
+  font-size: 0.66rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.flotante-nombre {
+  font-size: 1.02rem;
+  font-weight: bold;
+}
+
+.flotante-nota {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: #f1c40f;
+}
+
+.flotante-fila {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.3rem 0;
+}
+
+.flotante-fila .icono {
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  opacity: 0.7;
+}
+
+.flotante-fila.ganador .icono {
+  color: #f1c40f;
+  opacity: 1;
+}
+
+.flotante-titulo {
+  margin: 0.7rem 0 0.35rem;
+  font-size: 0.68rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.6;
+}
+
+.flotante-participantes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.flotante-participantes li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.35rem;
+  background: #252735;
+}
+
+.flotante-participantes li > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.flotante-participantes li.gano {
+  box-shadow: inset 0 0 0 1px rgba(241, 196, 15, 0.45);
+}
+
+.flotante-participantes .icono {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.flotante-participantes li.gano .icono {
+  color: #f1c40f;
+}
+
+.flotante-vidas {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-weight: bold;
+  color: #e74c3c;
+}
+
+.flotante-vacio {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  opacity: 0.6;
 }
 
 .locke-nota {
@@ -380,14 +517,27 @@
 }
 
 .fila-tipo,
-.fila-palmares {
+.fila-palmares-principal {
   display: flex;
   align-items: center;
   gap: 0.45rem;
 }
 
+/* Cada locke: la fila de siempre y, debajo, sus detalles plegables */
+.fila-palmares {
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  background: #252735;
+}
+
+#dialogo-palmares {
+  width: min(52rem, 94vw);
+}
+
 .fila-tipo input[type="text"],
 .fila-palmares input[type="text"],
+.fila-palmares input[type="date"],
+.fila-palmares input[type="number"],
 .fila-palmares select {
   min-width: 0;
   padding: 0.45rem 0.55rem;
@@ -409,8 +559,129 @@
   flex: 1;
 }
 
-.fila-palmares select {
+.fila-palmares .palmares-tipo {
   flex: 0 0 9rem;
+}
+
+/* ---------- Detalles de cada locke (juego, fecha, participantes) ---------- */
+
+.palmares-mas {
+  margin-top: 0.4rem;
+}
+
+.palmares-mas summary {
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  opacity: 0.75;
+  user-select: none;
+}
+
+.palmares-mas summary:hover {
+  opacity: 1;
+}
+
+.palmares-resumen {
+  font-weight: normal;
+  opacity: 0.8;
+}
+
+.palmares-detalles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.palmares-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.palmares-campo > span:first-child {
+  font-size: 0.72rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+
+.palmares-campo.participantes {
+  flex-basis: 100%;
+}
+
+.participante {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.participante .participante-nombre {
+  flex: 1;
+  max-width: 16rem;
+}
+
+.participante .participante-vidas {
+  width: 4.5rem;
+}
+
+.participante-corazon {
+  display: inline-flex;
+  color: #e74c3c;
+}
+
+.participante-corazon .icono {
+  width: 1rem;
+  height: 1rem;
+}
+
+.participante-quitar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.4rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  cursor: pointer;
+}
+
+.participante-quitar:hover {
+  background: #c0392b;
+}
+
+.participante-quitar .icono {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.participante-anadir {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.3rem;
+  padding: 0.35rem 0.7rem;
+  border: none;
+  border-radius: 0.4rem;
+  background: #3a3d52;
+  color: #f2f2f2;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.participante-anadir:hover {
+  background: #4a4e68;
+}
+
+.participante-anadir .icono {
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 .fila-tipo input[type="color"] {
@@ -438,6 +709,12 @@
   background: #3a3d52;
   color: #f2f2f2;
   cursor: pointer;
+}
+
+.tipo-quitar .icono,
+.palmares-quitar .icono {
+  width: 1rem;
+  height: 1rem;
 }
 
 .tipo-quitar:hover,

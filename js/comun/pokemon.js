@@ -1,6 +1,24 @@
 import { pedirJSON, URL_API } from "./api.js";
-import { etiquetaForma, obtenerVariedades } from "./formas.js";
+import { etiquetaForma, obtenerVariedades, formaDeTipo } from "./formas.js";
 import { indicePMD } from "./formas-pmd.js";
+
+const URL_SPRITES = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/";
+
+// Datos de PokeAPI de una variedad por su nombre ("persian-alola", "arceus-fire"...).
+// Las formas de tipo de Arceus y Silvally no existen como Pokémon en PokeAPI: se pide el
+// Pokémon base y se le cambia el tipo, que es lo único que cambia (las estadísticas no).
+export async function pedirVariedad(slug) {
+  const deTipo = formaDeTipo(slug);
+  if (!deTipo) return pedirJSON(`${URL_API}pokemon/${slug}`);
+
+  const base = await pedirJSON(`${URL_API}pokemon/${deTipo.especie}`);
+  return {
+    ...base,
+    name: slug,
+    types: [{ slot: 1, type: { name: deTipo.tipo } }],
+    formaDeTipo: deTipo
+  };
+}
 
 // Icono estilo HOME/Switch (el mismo que se usa en Espada/Escudo y versiones posteriores)
 function obtenerSpriteIcono(p) {
@@ -120,6 +138,8 @@ export async function obtenerStats(poke) {
 
 // Crea el Pokémon del equipo a partir de los datos de PokeAPI
 export async function pokemonDesdeAPI(p, entrada) {
+  if (p.formaDeTipo) return pokemonDeTipo(p, entrada);
+
   const imagen =
     (p.sprites.other &&
       p.sprites.other["official-artwork"] &&
@@ -160,6 +180,58 @@ export async function pokemonDesdeAPI(p, entrada) {
     objeto: null,
     ataques: [null, null, null, null]
   };
+}
+
+// Arceus Fuego, Silvally Agua...: el mismo Pokémon con otro tipo y otras imágenes.
+// «imagenForma» ("493-fire") es el nombre de archivo de sus sprites; lo usa imagenes.js.
+function pokemonDeTipo(p, entrada) {
+  const { tipo, dex, pmd } = p.formaDeTipo;
+  const archivo = `${dex}-${tipo}`;
+
+  return {
+    id: entrada.id,
+    idForma: p.id,
+    imagenForma: archivo,
+    formaSlug: tipo, // Showdown: "Arceus" + "fire" -> "Arceus-Fire"
+    es: entrada.es,
+    en: entrada.en,
+    mote: null,
+    imagen: `${URL_SPRITES}other/official-artwork/${archivo}.png`,
+    sprite: `${URL_SPRITES}versions/generation-viii/icons/${archivo}.png`,
+    shiny: false,
+    forma: `Tipo ${etiquetaForma(p.name)}`,
+    formaPMD: pmd,
+    tipos: [tipo],
+    stats: statsBase(p),
+    habilidad: null,
+    objeto: null,
+    ataques: [null, null, null, null]
+  };
+}
+
+// Slug de la variedad que es ahora mismo un Pokémon del equipo ("persian-alola",
+// "arceus-fire"...), para marcarla en el selector de forma.
+export function variedadActual(poke, info) {
+  if (poke.imagenForma) return `${info.especie}-${poke.formaSlug}`;
+
+  const porSlug = poke.formaSlug && info.lista.find((slug) => slug === `${info.especie}-${poke.formaSlug}`);
+  if (porSlug) return porSlug;
+
+  // Los guardados antes de que se apuntara el slug solo tienen el texto («Forma Alola»)
+  const porTexto = poke.forma && info.lista.find((slug) => `Forma ${etiquetaForma(slug, info.especie)}` === poke.forma);
+  return porTexto || info.lista[0];
+}
+
+// Lo que el jugador ha elegido y que se conserva al cambiar de forma
+const CAMPOS_DEL_JUGADOR = ["mote", "shiny", "habilidad", "objeto", "ataques"];
+
+// Cambia la forma de un Pokémon del equipo sin perder su mote, shiny, habilidad, objeto
+// ni ataques. Devuelve un Pokémon nuevo: el que llama decide dónde ponerlo.
+export async function cambiarForma(poke, slug) {
+  const p = await pedirVariedad(slug);
+  const nuevo = await pokemonDesdeAPI(p, { id: poke.id, es: poke.es, en: poke.en });
+  for (const campo of CAMPOS_DEL_JUGADOR) nuevo[campo] = poke[campo];
+  return nuevo;
 }
 
 // Crea el ataque a partir de su entrada en la lista de nombres

@@ -1,4 +1,51 @@
 import { pedirJSON, URL_API } from "./api.js";
+import { tiposEs } from "./tipos.js";
+
+// ---------- Formas de tipo: Arceus (tablas) y Silvally (memorias) ----------
+//
+// Para PokeAPI son UN solo Pokémon con un solo tipo (Normal): el resto no son variedades
+// sino «pokemon-form», sin estadísticas propias (son las mismas). Pero el tipo sí cambia,
+// y eso importa para el equipo (debilidades, la ficha, el paste de Showdown), así que aquí
+// se tratan como formas elegibles más, con un slug inventado: "arceus-fire".
+//
+// Las imágenes sí existen con ese nombre en el repositorio de sprites ("493-fire.png") y
+// Mundo Misterioso tiene un retrato por tipo, aunque cada uno en su propio orden.
+
+// Orden de los juegos (el de la Pokédex de tipos), que es como salen en el selector
+const TIPOS_ELEGIBLES = [
+  "fighting", "flying", "poison", "ground", "rock", "bug", "ghost", "steel", "fire",
+  "water", "grass", "electric", "psychic", "ice", "dragon", "dark", "fairy"
+];
+
+const FORMAS_DE_TIPO = {
+  arceus: {
+    dex: 493,
+    // Mundo Misterioso los ordena en inglés por orden alfabético (y Hada al final)
+    pmd: {
+      bug: 1, dark: 2, dragon: 3, electric: 4, fighting: 5, fire: 6, flying: 7, ghost: 8,
+      grass: 9, ground: 10, ice: 11, poison: 12, psychic: 13, rock: 14, steel: 15,
+      water: 16, fairy: 17
+    }
+  },
+  silvally: {
+    dex: 773,
+    // Aquí sí van en el orden de los juegos, el mismo que TIPOS_ELEGIBLES
+    pmd: Object.fromEntries(TIPOS_ELEGIBLES.map((tipo, i) => [tipo, i + 1]))
+  }
+};
+
+// "arceus-fire" -> { especie: "arceus", tipo: "fire", dex: 493, pmd: 6 }. Si no es una
+// forma de tipo, null.
+export function formaDeTipo(slug) {
+  const [especie, tipo, ...resto] = String(slug || "").split("-");
+  const datosEspecie = FORMAS_DE_TIPO[especie];
+  if (!datosEspecie || resto.length || !datosEspecie.pmd[tipo]) return null;
+  return { especie, tipo, dex: datosEspecie.dex, pmd: datosEspecie.pmd[tipo] };
+}
+
+export function tieneFormasDeTipo(especie) {
+  return Boolean(FORMAS_DE_TIPO[especie]);
+}
 
 // ---------- Formas (Alola, Galar, Héroe...) ----------
 
@@ -57,8 +104,19 @@ const NOMBRES_FORMA = {
   "cornerstone": "Cimiento", "teal": "Turquesa", "black": "Negro", "white": "Blanco"
 };
 
+// Texto de cada opción del selector de forma: «Forma Alola», «Tipo Fuego»...
+export function nombreOpcionForma(slug, especie) {
+  const deTipo = formaDeTipo(slug);
+  if (deTipo) return `Tipo ${tiposEs[deTipo.tipo]}`;
+  if (tieneFormasDeTipo(especie) && slug === especie) return "Tipo Normal";
+  return "Forma " + etiquetaForma(slug, especie);
+}
+
 // "persian-alola" + "persian" -> "Alola"
 export function etiquetaForma(slug, especie) {
+  const deTipo = formaDeTipo(slug);
+  if (deTipo) return tiposEs[deTipo.tipo];
+
   const sufijo = especie && slug.startsWith(especie + "-") ? slug.slice(especie.length + 1) : "";
   if (!sufijo) return "Normal";
   if (NOMBRES_VARIEDAD[slug]) return NOMBRES_VARIEDAD[slug];
@@ -77,5 +135,9 @@ export async function obtenerVariedades(idEspecie) {
   const otras = sp.varieties
     .map((v) => v.pokemon.name)
     .filter((n) => n !== porDefecto && !FORMAS_OCULTAS.test(n));
-  return { especie: sp.name, lista: [porDefecto, ...otras] };
+
+  // Arceus y Silvally: un tipo por tabla o memoria (ver FORMAS_DE_TIPO)
+  const deTipo = tieneFormasDeTipo(sp.name) ? TIPOS_ELEGIBLES.map((tipo) => `${sp.name}-${tipo}`) : [];
+
+  return { especie: sp.name, lista: [porDefecto, ...otras, ...deTipo] };
 }

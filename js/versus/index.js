@@ -1,21 +1,32 @@
 // Sección «Versus»: el marcador compartido de un locke.
 //
-// Creas un locke, le pones nombre, tipo y vidas, y eliges a qué amigos invitas. Hasta que
-// no aceptan (desde el buzón del panel lateral) salen marcados como pendientes. A partir de
-// ahí los dos veis el mismo marcador: si uno pierde una vida la quita y al otro le cambia
-// en pantalla al momento.
+// Creas un locke, le pones nombre, tipo, juego y vidas, y eliges a qué amigos invitas. Hasta
+// que no aceptan (desde las notificaciones) salen marcados como pendientes. A partir de ahí
+// todos veis el mismo marcador: si uno pierde una vida la quita y a los demás les cambia en
+// pantalla al momento.
+//
+// Cada locke tiene el lápiz, que abre la misma ventana que «Nuevo locke» ya rellena, y (solo
+// para quien lo creó) la papelera. En la ventana quien lo creó cambia los datos del principio
+// o lo borra, y cualquiera de dentro puede meter a más gente o echar a quien no ha contestado.
 //
 // Aquí solo está la pantalla. Los datos y las escrituras están en js/comun/lockes.js.
 
 import { icono } from "../comun/iconos.js";
-import { escaparHTML } from "../comun/utilidades.js";
+import { escaparHTML, fechaLarga } from "../comun/utilidades.js";
 import { hayNube, usuarioActual } from "../comun/nube.js";
+import { escribir } from "../comun/almacen.js";
+import { CLAVES_JUEGO } from "../comun/selector-juego.js";
+import {
+  plantillaCampoJuego, activarCamposJuego, leerCampoJuego, nombreJuego, juegoRegistrado
+} from "../comun/campo-juego.js";
+import { irA } from "../navegacion.js";
 import {
   tiposDe, miPerfilOProvisional, fallaElPerfil, amigosAceptados, perfilesDe, fallaLasAmistades
 } from "../comun/perfiles.js";
 import {
-  alCambiarLockes, misLockes, invitacionesALockes, estadoDe, fallaLosLockes,
-  crearLocke, invitarALocke, cambiarNumero, elegirGanador, borrarLocke, lockePorId
+  alCambiarLockes, misLockes, invitacionesALockes, estadoDe, fallaLosLockes, soyCreador,
+  crearLocke, editarLocke, invitarALocke, quitarDeLocke, sePuedenCambiarVidas,
+  cambiarNumero, elegirGanador, borrarLocke, lockePorId
 } from "../comun/lockes.js";
 
 let seccion = null;
@@ -24,71 +35,105 @@ let aviso = null;
 let dialogo = null;
 let botonNuevo = null;
 
-let invitados = []; // perfiles que salen en el diálogo, para copiar su nombre y foto
+const VIDAS_POR_DEFECTO = 10;
 
-let dialogoInvitar = null;
-let porInvitar = []; // lo mismo, para el diálogo de invitar a un locke ya creado
+let invitables = []; // perfiles que salen para invitar, para copiar su nombre y su foto
+let editando = null; // id del locke que se está editando, o null si se está creando uno
 
 function colorSeguro(color) {
   return /^#[0-9a-f]{6}$/i.test(String(color || "")) ? color : "#3498db";
 }
 
 // ---------- Pintar ----------
+//
+// Cada jugador tiene dos cifras con su etiqueta: Victorias (los combates ganados contra los
+// demás) y Vidas. Los botones de +/- solo salen en TU bloque: las de los demás se ven pero
+// no se tocan (y aunque alguien lo intentase a mano, las reglas de Firestore lo rechazan).
 
-// Con vidas ilimitadas no hay nada que contar: se enseña el infinito y se quitan los botones
-function plantillaVidas(locke, uid, soloLectura) {
-  if (locke.vidasIlimitadas) {
-    return `
-      <div class="locke-numero vidas ilimitadas" title="Vidas ilimitadas">
-        <span class="locke-valor">${icono("corazon")}∞</span>
-      </div>`;
-  }
+function botonesCifra(campo, editable, contenido, textoMenos, textoMas) {
+  if (!editable) return `<span class="locke-valor">${contenido}</span>`;
+  return `
+    <button class="menos" data-campo="${campo}" aria-label="${textoMenos}" title="${textoMenos}">${icono("menos")}</button>
+    <span class="locke-valor">${contenido}</span>
+    <button class="mas" data-campo="${campo}" aria-label="${textoMas}" title="${textoMas}">${icono("mas")}</button>`;
+}
 
-  const vidas = (locke.vidas || {})[uid] || 0;
+function plantillaCifras(locke, uid, editable) {
+  const victorias = (locke.marcador || {})[uid] || 0;
+  const vidas = locke.vidasIlimitadas ? "∞" : (locke.vidas || {})[uid] || 0;
 
   return `
-    <div class="locke-numero vidas">
-      <button class="menos" data-campo="vidas" aria-label="Quitar vida" ${soloLectura ? "disabled" : ""}>${icono("menos")}</button>
-      <span class="locke-valor">${icono("corazon")}${vidas}</span>
-      <button class="mas" data-campo="vidas" aria-label="Sumar vida" ${soloLectura ? "disabled" : ""}>${icono("mas")}</button>
+    <div class="locke-cifras">
+      <div class="locke-cifra victorias">
+        <span class="locke-etiqueta">${icono("espadas")} Victorias</span>
+        <div class="locke-numero marcador">
+          ${botonesCifra("marcador", editable, victorias, "Quitar una victoria", "Sumar una victoria")}
+        </div>
+      </div>
+      <div class="locke-cifra vidas ${locke.vidasIlimitadas ? "ilimitadas" : ""}">
+        <span class="locke-etiqueta">${icono("corazon")} Vidas</span>
+        <div class="locke-numero vidas">
+          ${botonesCifra("vidas", editable && !locke.vidasIlimitadas, vidas, "Quitar una vida", "Sumar una vida")}
+        </div>
+      </div>
     </div>`;
 }
 
-function plantillaJugador(locke, uid, soloLectura) {
+function plantillaJugador(locke, uid) {
+  const usuario = usuarioActual();
   const nombre = escaparHTML((locke.nombres || {})[uid] || "Jugador");
   const foto = (locke.fotos || {})[uid] || "";
-  const puntos = (locke.marcador || {})[uid] || 0;
+  const cerrado = locke.estado === "cerrado";
   const gano = locke.ganador === uid;
   const pendiente = estadoDe(locke, uid) === "pendiente";
+  const esMio = uid === usuario.uid;
+
+  // Elegir ganador: solo quien creó el locke, y solo entre los que han aceptado
+  const puedeGanar = !cerrado && soyCreador(locke) && !pendiente;
 
   return `
-    <div class="locke-jugador ${gano ? "ganador" : ""} ${pendiente ? "pendiente" : ""}" data-uid="${escaparHTML(uid)}">
+    <div class="locke-jugador ${gano ? "ganador" : ""} ${pendiente ? "pendiente" : ""} ${esMio ? "mio" : ""}"
+         data-uid="${escaparHTML(uid)}">
       <div class="locke-cara">
         ${foto ? `<img src="${escaparHTML(foto)}" alt="" referrerpolicy="no-referrer" data-respaldo="" data-quitar-si-falla>` : ""}
       </div>
-      <span class="locke-quien">${nombre}</span>
+      <span class="locke-quien">${nombre}${esMio ? ` <small>(tú)</small>` : ""}</span>
       ${gano ? `<span class="locke-corona">${icono("corona")}</span>` : ""}
       ${pendiente ? `<span class="locke-pendiente">Sin contestar</span>` : ""}
 
-      <div class="locke-numero marcador">
-        <button class="menos" data-campo="marcador" aria-label="Quitar victoria" ${soloLectura ? "disabled" : ""}>${icono("menos")}</button>
-        <span class="locke-valor">${puntos}</span>
-        <button class="mas" data-campo="marcador" aria-label="Sumar victoria" ${soloLectura ? "disabled" : ""}>${icono("mas")}</button>
-      </div>
+      ${plantillaCifras(locke, uid, esMio && !cerrado)}
 
-      ${plantillaVidas(locke, uid, soloLectura)}
+      ${puedeGanar ? `<button class="locke-ganador">${icono("corona")} Ganó</button>` : ""}
+    </div>`;
+}
 
-      ${soloLectura ? "" : `<button class="locke-ganador">${icono("corona")} Ganó</button>`}
+// Juego del locke y, si es uno de la web, atajos a sus Rutas y sus Level caps
+function plantillaJuego(locke) {
+  const nombre = nombreJuego(locke);
+  if (!nombre) return "";
+
+  const atajos = juegoRegistrado(locke.juego)
+    ? `
+      <button class="locke-ir" data-ir="rutas" data-juego="${escaparHTML(locke.juego)}">${icono("mapa")} Rutas</button>
+      <button class="locke-ir" data-ir="levelcaps" data-juego="${escaparHTML(locke.juego)}">${icono("escudo")} Level caps</button>`
+    : "";
+
+  return `
+    <div class="locke-juego">
+      <span class="locke-juego-nombre">${icono("mando")} ${escaparHTML(nombre)}</span>
+      ${atajos}
     </div>`;
 }
 
 function plantillaLocke(locke) {
-  const usuario = usuarioActual();
   const cerrado = locke.estado === "cerrado";
   const tipo = locke.tipo || { nombre: "Locke", color: "#3498db" };
-  const soyElCreador = locke.creador === usuario.uid;
 
   const ganador = cerrado ? escaparHTML((locke.nombres || {})[locke.ganador] || "alguien") : "";
+  const fecha = cerrado && locke.fechaFin ? ` · ${escaparHTML(fechaLarga(locke.fechaFin))}` : "";
+
+  // Un locke cerrado ya no se toca, salvo para que quien lo creó pueda borrarlo
+  const puedeEditar = !cerrado || soyCreador(locke);
 
   return `
     <article class="locke ${cerrado ? "cerrado" : "abierto"}" data-id="${escaparHTML(locke.id)}"
@@ -96,17 +141,18 @@ function plantillaLocke(locke) {
       <header class="locke-cabecera">
         <span class="locke-tipo">${escaparHTML(tipo.nombre)}</span>
         <h2 class="locke-titulo">${escaparHTML(locke.nombre)}</h2>
-        ${cerrado ? `<span class="locke-resultado">${icono("corona")} Ganó ${ganador}</span>` : ""}
+        ${cerrado ? `<span class="locke-resultado">${icono("corona")} Ganó ${ganador}${fecha}</span>` : ""}
         <div class="locke-acciones">
-          ${cerrado ? "" : `<button class="locke-invitar" title="Invitar amigos">${icono("personaMas")}</button>`}
-          ${soyElCreador ? `<button class="locke-borrar" title="Borrar locke">${icono("papelera")}</button>` : ""}
+          ${puedeEditar ? `<button class="locke-editar" title="Editar locke">${icono("lapiz")}</button>` : ""}
+          ${soyCreador(locke) ? `<button class="locke-borrar" title="Borrar locke">${icono("papelera")}</button>` : ""}
         </div>
       </header>
 
+      ${plantillaJuego(locke)}
       ${locke.descripcion ? `<p class="locke-descripcion">${escaparHTML(locke.descripcion)}</p>` : ""}
 
       <div class="locke-jugadores">
-        ${locke.jugadores.map((uid) => plantillaJugador(locke, uid, cerrado)).join("")}
+        ${locke.jugadores.map((uid) => plantillaJugador(locke, uid)).join("")}
       </div>
     </article>`;
 }
@@ -127,7 +173,7 @@ function pintar() {
 
   if (fallo) aviso.textContent = fallo;
   else if (pendientes) {
-    aviso.textContent = `Tienes ${pendientes} invitación${pendientes === 1 ? "" : "es"} sin contestar en el buzón del panel lateral.`;
+    aviso.textContent = `Tienes ${pendientes} invitación${pendientes === 1 ? "" : "es"} sin contestar en las notificaciones (la campana de abajo).`;
   } else if (!mios.length) {
     aviso.textContent = "Todavía no tienes ningún locke. Crea uno con «Nuevo locke».";
   } else {
@@ -145,7 +191,7 @@ function pintar() {
   lista.innerHTML = ordenados.map(plantillaLocke).join("");
 }
 
-// ---------- Diálogo de nuevo locke ----------
+// ---------- Ventana de crear / editar ----------
 
 // Si una de las casillas del diálogo no está (un index.html viejo en la caché del navegador
 // junto a un JavaScript nuevo), se avisa en vez de reventar en silencio.
@@ -155,66 +201,154 @@ function campo(selector) {
   return elemento;
 }
 
-async function abrirDialogo() {
-  // Lo primero, abrir. Pase lo que pase después, el botón nunca puede quedarse sin
-  // hacer nada: si algo falla, se ve el motivo dentro del diálogo.
-  if (!dialogo.open) dialogo.showModal();
-
-  const error = campo(".locke-error");
-  error.textContent = "";
-
-  // Si el perfil no ha cargado se tira del nombre y la foto de Google y de los tipos de
-  // siempre: así al menos se puede rellenar el formulario y ver qué pasa al crear.
-  const mio = miPerfilOProvisional();
-  error.textContent = fallaElPerfil() || fallaLasAmistades();
-
-  campo("#locke-nombre").value = "";
-  campo("#locke-descripcion").value = "";
-  campo("#locke-vidas").value = "3";
-  campo("#locke-vidas").disabled = false;
-  campo("#locke-infinitas").checked = false;
-
-  campo("#locke-tipo").innerHTML = tiposDe(mio)
-    .map((tipo) => `<option value="${escaparHTML(tipo.id)}">${escaparHTML(tipo.nombre)}</option>`)
+// Quién está ya dentro (solo al editar), como etiquetas. A quien no ha contestado se le
+// puede echar con la X (y con eso le desaparece la notificación).
+function plantillaDentro(locke) {
+  const cerrado = locke.estado === "cerrado";
+  return locke.jugadores
+    .map((uid) => {
+      const nombre = escaparHTML((locke.nombres || {})[uid] || "Jugador");
+      const pendiente = estadoDe(locke, uid) === "pendiente";
+      const quitar = pendiente && !cerrado
+        ? `<button class="locke-quitar" data-uid="${escaparHTML(uid)}" title="Quitar del locke">${icono("aspa")}</button>`
+        : "";
+      return `<span class="locke-dentro-uno ${pendiente ? "pendiente" : ""}">${nombre}${pendiente ? " <small>(sin contestar)</small>" : ""}${quitar}</span>`;
+    })
     .join("");
+}
 
-  campo(".locke-amigos").innerHTML = `<p class="locke-sin-amigos">Cargando...</p>`;
-  campo("#locke-nombre").focus();
+// Integrantes: los que ya están (al editar) y los amigos que se pueden meter
+async function pintarIntegrantes(locke) {
+  const dentro = campo(".locke-dentro");
+  dentro.hidden = !locke;
+  dentro.innerHTML = locke ? plantillaDentro(locke) : "";
 
-  const aceptados = amigosAceptados();
-
-  if (!aceptados.length) {
-    invitados = [];
-    dialogo.querySelector(".locke-amigos").innerHTML =
-      `<p class="locke-sin-amigos">Todavía no tienes amigos. Puedes crear el locke solo para ti y meter gente más adelante.</p>`;
+  const caja = campo(".locke-amigos");
+  if (locke && locke.estado === "cerrado") {
+    invitables = [];
+    caja.innerHTML = "";
     return;
   }
 
-  const perfiles = await perfilesDe(aceptados.map((amistad) => amistad.otro));
-  invitados = [...perfiles.values()];
+  // Los que ya estaban marcados siguen marcados al repintar
+  const marcados = new Set([...caja.querySelectorAll("input:checked")].map((casilla) => casilla.value));
 
-  dialogo.querySelector(".locke-amigos").innerHTML = invitados
+  const yaDentro = new Set(locke ? locke.jugadores : []);
+  const aceptados = amigosAceptados();
+  const fuera = aceptados.filter((amistad) => !yaDentro.has(amistad.otro));
+
+  if (!fuera.length) {
+    invitables = [];
+    // Si ya están todos dentro, no se dice nada
+    caja.innerHTML = aceptados.length
+      ? ""
+      : `<p class="locke-sin-amigos">${
+          locke
+            ? "Todavía no tienes amigos. Agrégalos en «Amigos» y espera a que te acepten."
+            : "Todavía no tienes amigos. Puedes crear el locke solo para ti y meter gente más adelante."
+        }</p>`;
+    return;
+  }
+
+  if (!caja.querySelector(".locke-amigo")) caja.innerHTML = `<p class="locke-sin-amigos">Cargando...</p>`;
+
+  const perfiles = await perfilesDe(fuera.map((amistad) => amistad.otro));
+  invitables = [...perfiles.values()];
+
+  caja.innerHTML = invitables
     .map(
       (perfil) => `
         <label class="locke-amigo">
-          <input type="checkbox" value="${escaparHTML(perfil.uid)}">
+          <input type="checkbox" value="${escaparHTML(perfil.uid)}" ${marcados.has(perfil.uid) ? "checked" : ""}>
           <span>${escaparHTML(perfil.nombre)}</span>
         </label>`
     )
     .join("");
 }
 
-async function crear() {
+async function quitarDesdeElDialogo(uid) {
+  const locke = editando ? lockePorId(editando) : null;
+  if (!locke) return;
+  await quitarDeLocke(locke.id, uid);
+  await pintarIntegrantes(lockePorId(locke.id));
+}
+
+// locke: el que se edita; sin él, uno nuevo
+async function abrirDialogo(locke = null) {
+  // Lo primero, abrir. Pase lo que pase después, el botón nunca puede quedarse sin
+  // hacer nada: si algo falla, se ve el motivo dentro del diálogo.
+  if (!dialogo.open) dialogo.showModal();
+
+  editando = locke ? locke.id : null;
+  const creador = !locke || soyCreador(locke);
+  const cerrado = Boolean(locke && locke.estado === "cerrado");
+  invitables = [];
+
+  const error = campo(".locke-error");
+  // Si el perfil no ha cargado se tira del nombre y la foto de Google y de los tipos de
+  // siempre: así al menos se puede rellenar el formulario y ver qué pasa al crear.
+  const mio = miPerfilOProvisional();
+  error.textContent = fallaElPerfil() || fallaLasAmistades();
+
+  campo(".locke-dialogo-titulo").textContent = locke ? "Editar locke" : "Nuevo locke";
+  // Al crear no hace falta explicar nada; al editar sí se dice qué se puede cambiar
+  const texto = campo(".locke-dialogo-texto");
+  texto.textContent = !locke
+    ? ""
+    : creador
+      ? "Cambia lo que quieras. Las vidas de partida solo se pueden cambiar mientras nadie más haya empezado."
+      : "Solo quien creó el locke puede cambiar estos datos. Tú puedes meter a más gente.";
+  texto.hidden = !locke;
+  campo("#locke-crear").textContent = locke ? "Guardar" : "Crear locke";
+  campo("#locke-crear").hidden = cerrado && !creador;
+  campo("#locke-borrar").hidden = !locke || !creador;
+
+  // Los tipos: los míos, más el del locke si ya no lo tengo (para no perderlo al guardar)
+  const tipos = tiposDe(mio).slice();
+  if (locke && locke.tipo && !tipos.some((t) => t.id === locke.tipo.id)) tipos.push(locke.tipo);
+  const tipoElegido = locke && locke.tipo ? locke.tipo.id : tipos[0].id;
+  campo("#locke-tipo").innerHTML = tipos
+    .map(
+      (tipo) =>
+        `<option value="${escaparHTML(tipo.id)}" ${tipo.id === tipoElegido ? "selected" : ""}>${escaparHTML(tipo.nombre)}</option>`
+    )
+    .join("");
+
+  campo("#locke-nombre").value = locke ? locke.nombre : "";
+  campo("#locke-descripcion").value = locke ? locke.descripcion || "" : "";
+  campo(".locke-campo-juego").innerHTML = plantillaCampoJuego(locke || {});
+  campo("#locke-infinitas").checked = Boolean(locke && locke.vidasIlimitadas);
+  campo("#locke-vidas").value = locke && !locke.vidasIlimitadas ? locke.vidasIniciales : VIDAS_POR_DEFECTO;
+
+  // Lo que no es del creador, apagado. Las vidas, además, solo antes de que empiece nadie.
+  const vidasLibres = !locke || (creador && sePuedenCambiarVidas(locke));
+  for (const selector of ["#locke-nombre", "#locke-descripcion", "#locke-tipo", ".juego-select", ".juego-otro"]) {
+    campo(selector).disabled = !creador;
+  }
+  campo("#locke-infinitas").disabled = !vidasLibres;
+  campo("#locke-vidas").disabled = !vidasLibres || campo("#locke-infinitas").checked;
+  campo(".campo-vidas").title = vidasLibres ? "" : "Ya hay gente jugando: sus vidas solo las cambia cada uno.";
+
+  // Ventana recién abierta: nada marcado
+  campo(".locke-amigos").innerHTML = "";
+  if (!locke) campo("#locke-nombre").focus();
+  await pintarIntegrantes(locke);
+}
+
+async function guardar() {
   const mio = miPerfilOProvisional();
   const usuario = usuarioActual();
   const error = dialogo.querySelector(".locke-error");
+  const locke = editando ? lockePorId(editando) : null;
 
   const nombre = dialogo.querySelector("#locke-nombre").value.trim();
   const descripcion = dialogo.querySelector("#locke-descripcion").value.trim();
   const vidasIlimitadas = dialogo.querySelector("#locke-infinitas").checked;
   const vidas = Math.max(0, Math.min(999, Number(dialogo.querySelector("#locke-vidas").value) || 0));
   const idTipo = dialogo.querySelector("#locke-tipo").value;
-  const tipo = tiposDe(mio).find((cada) => cada.id === idTipo) || tiposDe(mio)[0];
+  const tipos = tiposDe(mio).concat(locke && locke.tipo ? [locke.tipo] : []);
+  const tipo = tipos.find((cada) => cada.id === idTipo) || tipos[0];
+  const { juego, juegoOtro } = leerCampoJuego(dialogo.querySelector(".campo-juego"));
 
   // Lo único imprescindible es el nombre: un locke para ti solo también vale
   if (!nombre) {
@@ -224,82 +358,54 @@ async function crear() {
   }
 
   const elegidos = [...dialogo.querySelectorAll(".locke-amigos input:checked")].map((casilla) => casilla.value);
+  const nuevos = invitables.filter((perfil) => elegidos.includes(perfil.uid));
 
-  const nombres = { [usuario.uid]: mio.nombre };
-  const fotos = { [usuario.uid]: mio.foto || "" };
+  if (!locke) {
+    const nombres = { [usuario.uid]: mio.nombre };
+    const fotos = { [usuario.uid]: mio.foto || "" };
+    for (const perfil of nuevos) {
+      nombres[perfil.uid] = perfil.nombre;
+      fotos[perfil.uid] = perfil.foto || "";
+    }
 
-  for (const perfil of invitados) {
-    if (!elegidos.includes(perfil.uid)) continue;
-    nombres[perfil.uid] = perfil.nombre;
-    fotos[perfil.uid] = perfil.foto || "";
+    await crearLocke({
+      nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas,
+      invitados: nuevos.map((perfil) => perfil.uid), nombres, fotos
+    });
+  } else {
+    // Si se acaban de cambiar las vidas de partida, los invitados entran ya con las nuevas
+    const vidasNuevas = soyCreador(locke) && sePuedenCambiarVidas(locke) ? (vidasIlimitadas ? 0 : vidas) : undefined;
+
+    if (soyCreador(locke)) {
+      await editarLocke(locke.id, { nombre, descripcion, tipo, juego, juegoOtro, vidas, vidasIlimitadas });
+    }
+    // Invitar va aparte: lo puede hacer cualquiera de dentro, no solo el creador
+    if (nuevos.length) await invitarALocke(locke.id, nuevos, vidasNuevas);
   }
 
-  await crearLocke({
-    nombre, descripcion, tipo, vidas, vidasIlimitadas, invitados: elegidos, nombres, fotos
-  });
   dialogo.close();
 }
 
-// ---------- Invitar a un locke que ya existe ----------
-//
-// Cualquiera que esté dentro puede invitar, no solo quien lo creó: si Pedro quiere meter a
-// Marc en un locke tuyo, tiene sentido que pueda. Salen sus amigos que aún no están dentro.
-
-async function abrirInvitar(id) {
-  const locke = lockePorId(id);
+async function borrarDesdeElDialogo() {
+  const locke = editando ? lockePorId(editando) : null;
   if (!locke) return;
+  if (!confirm(`¿Borrar «${locke.nombre}»? Lo pierden todos los que juegan.`)) return;
 
-  const caja = dialogoInvitar.querySelector(".invitar-amigos");
-  const enviar = dialogoInvitar.querySelector("#invitar-enviar");
-
-  dialogoInvitar.dataset.id = id;
-  dialogoInvitar.querySelector(".invitar-titulo").textContent = `«${locke.nombre}»`;
-  dialogoInvitar.querySelector(".invitar-error").textContent = fallaLasAmistades();
-  caja.innerHTML = `<p class="locke-sin-amigos">Cargando...</p>`;
-  enviar.disabled = true;
-  if (!dialogoInvitar.open) dialogoInvitar.showModal();
-
-  const dentro = new Set(locke.jugadores);
-  const aceptados = amigosAceptados();
-  const fuera = aceptados.filter((amistad) => !dentro.has(amistad.otro));
-
-  if (!fuera.length) {
-    porInvitar = [];
-    caja.innerHTML = aceptados.length
-      ? `<p class="locke-sin-amigos">Todos tus amigos están ya en este locke.</p>`
-      : `<p class="locke-sin-amigos">Todavía no tienes amigos. Agrégalos en «Amigos» y espera a que te acepten.</p>`;
-    return;
-  }
-
-  const perfiles = await perfilesDe(fuera.map((amistad) => amistad.otro));
-  porInvitar = [...perfiles.values()];
-
-  caja.innerHTML = porInvitar
-    .map(
-      (perfil) => `
-        <label class="locke-amigo">
-          <input type="checkbox" value="${escaparHTML(perfil.uid)}">
-          <span>${escaparHTML(perfil.nombre)}</span>
-        </label>`
-    )
-    .join("");
-  enviar.disabled = false;
+  await borrarLocke(locke.id);
+  dialogo.close();
 }
 
-async function enviarInvitaciones() {
-  const error = dialogoInvitar.querySelector(".invitar-error");
-  const elegidos = [...dialogoInvitar.querySelectorAll(".invitar-amigos input:checked")].map((c) => c.value);
+// Atajos del locke a Rutas o Level caps: se deja apuntado el juego y se abre la sección,
+// que al mostrarse lo lee (ver mostrar() en js/rutas y js/levelcaps).
+function irAlJuego(seccionDestino, idJuego) {
+  escribir(CLAVES_JUEGO[seccionDestino], idJuego);
+  irA(seccionDestino);
+}
 
-  if (!elegidos.length) {
-    error.textContent = "Elige a quién invitas.";
-    return;
-  }
-
-  await invitarALocke(
-    dialogoInvitar.dataset.id,
-    porInvitar.filter((perfil) => elegidos.includes(perfil.uid))
-  );
-  dialogoInvitar.close();
+function textoDeError(error, que) {
+  return error && error.code === "permission-denied"
+    ? `Firebase no deja ${que}. Falta publicar las reglas de Firestore.`
+    : `No se ha podido ${que}. Inténtalo otra vez.`;
 }
 
 // ---------- Arranque ----------
@@ -310,22 +416,9 @@ export function iniciar() {
   aviso = seccion.querySelector(".versus-aviso");
   botonNuevo = seccion.querySelector("#nuevo-locke");
   dialogo = document.querySelector("#dialogo-nuevo-locke");
-  dialogoInvitar = document.querySelector("#dialogo-invitar");
 
-  dialogoInvitar.querySelector("#invitar-cancelar").addEventListener("click", () => dialogoInvitar.close());
-  dialogoInvitar.querySelector("#invitar-enviar").addEventListener("click", () => {
-    dialogoInvitar.querySelector(".invitar-error").textContent = "";
-    enviarInvitaciones().catch((error) => {
-      console.error(error);
-      dialogoInvitar.querySelector(".invitar-error").textContent =
-        error.code === "permission-denied"
-          ? "Firebase no deja invitar. Falta publicar las reglas de Firestore."
-          : "No se ha podido invitar. Inténtalo otra vez.";
-    });
-  });
-
-  botonNuevo.addEventListener("click", () => {
-    abrirDialogo().catch((error) => {
+  const abrir = (locke) => {
+    abrirDialogo(locke).catch((error) => {
       console.error(error);
       // Se dice en los dos sitios: dentro del diálogo si llegó a abrirse, y debajo del
       // botón por si no.
@@ -334,30 +427,50 @@ export function iniciar() {
       if (hueco) hueco.textContent = texto;
       aviso.textContent = texto;
     });
-  });
+  };
+
+  botonNuevo.addEventListener("click", () => abrir(null));
 
   dialogo.querySelector("#locke-cancelar").addEventListener("click", () => dialogo.close());
+  activarCamposJuego(dialogo);
 
   // Con vidas ilimitadas el número no pinta nada
   dialogo.querySelector("#locke-infinitas").addEventListener("change", (e) => {
     dialogo.querySelector("#locke-vidas").disabled = e.target.checked;
   });
 
-  // Enter en el nombre crea, como en el resto de la web
+  // Enter en el nombre guarda, como en el resto de la web
   dialogo.querySelector("#locke-nombre").addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       dialogo.querySelector("#locke-crear").click();
     }
   });
+
   dialogo.querySelector("#locke-crear").addEventListener("click", () => {
     dialogo.querySelector(".locke-error").textContent = "";
-    crear().catch((error) => {
+    guardar().catch((error) => {
       console.error(error);
-      dialogo.querySelector(".locke-error").textContent =
-        error.code === "permission-denied"
-          ? "Firebase no deja crear el locke. Falta publicar las reglas de Firestore."
-          : "No se ha podido crear. Inténtalo otra vez.";
+      dialogo.querySelector(".locke-error").textContent = textoDeError(error, editando ? "guardar los cambios" : "crear el locke");
+    });
+  });
+
+  dialogo.querySelector("#locke-borrar").addEventListener("click", () => {
+    borrarDesdeElDialogo().catch((error) => {
+      console.error(error);
+      dialogo.querySelector(".locke-error").textContent = textoDeError(error, "borrar el locke");
+    });
+  });
+
+  dialogo.querySelector(".locke-dentro").addEventListener("click", (e) => {
+    const boton = e.target.closest(".locke-quitar");
+    if (!boton) return;
+    e.preventDefault();
+    boton.disabled = true;
+    quitarDesdeElDialogo(boton.dataset.uid).catch((error) => {
+      console.error(error);
+      boton.disabled = false;
+      dialogo.querySelector(".locke-error").textContent = textoDeError(error, "quitar a esa persona");
     });
   });
 
@@ -373,8 +486,10 @@ export function iniciar() {
 
     let tarea = null;
 
-    if (boton.classList.contains("locke-invitar")) {
-      tarea = abrirInvitar(id);
+    if (boton.classList.contains("locke-ir")) {
+      irAlJuego(boton.dataset.ir, boton.dataset.juego);
+    } else if (boton.classList.contains("locke-editar")) {
+      abrir(locke);
     } else if (boton.classList.contains("locke-borrar")) {
       if (confirm(`¿Borrar «${locke.nombre}»? Lo pierden todos los que juegan.`)) tarea = borrarLocke(id);
     } else if (boton.classList.contains("locke-ganador")) {

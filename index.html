@@ -7,6 +7,15 @@
   <link rel="icon" type="image/png" sizes="32x32" href="img/pokeball-32.png">
   <link rel="icon" type="image/png" sizes="512x512" href="img/pokeball-512.png">
   <link rel="apple-touch-icon" href="img/pokeball-180.png">
+  <!-- Abre ya la conexión con los sitios de donde salen imágenes y datos -->
+  <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://pokeapi.co" crossorigin>
+  <link rel="preconnect" href="https://firestore.googleapis.com">
+  <!-- Firebase se empieza a bajar a la vez que la web, no después. La versión tiene que
+       ser la misma que VERSION_SDK en js/comun/nube.js -->
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js">
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js">
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/equipos.css">
@@ -22,7 +31,7 @@
       <h1 class="logo">Pokely</h1>
       <nav class="menu-lateral">
         <button data-vista="versus" class="boton-destacado">Versus</button>
-        <details class="grupo-menu" open>
+        <details class="grupo-menu">
           <summary>Equipos</summary>
           <div class="submenu">
             <button data-vista="crear">Crear equipo</button>
@@ -41,7 +50,7 @@
         <div class="sesion-usuario" hidden>
           <img class="sesion-foto" alt="" referrerpolicy="no-referrer">
           <span class="sesion-nombre"></span>
-          <button class="avisos-boton" title="Invitaciones"></button>
+          <button class="avisos-boton" title="Notificaciones"></button>
         </div>
         <button class="sesion-boton"></button>
         <span class="sesion-aviso"></span>
@@ -57,12 +66,12 @@
               <input id="nombre-equipo" type="text" placeholder="Nombre del equipo">
               <button id="ver-debilidades">Debilidades</button>
               <span id="contador"></span>
-              <span id="aviso"></span>
             </div>
 
             <div class="buscador">
               <input id="nombre" type="text" placeholder="Añadir Pokémon al equipo...">
               <button id="buscar">Añadir</button>
+              <span id="aviso"></span>
             </div>
 
             <div class="lado-der">
@@ -176,20 +185,8 @@
     </div>
   </dialog>
 
-  <dialog id="dialogo-invitar">
-    <h2>Invitar a <span class="invitar-titulo"></span></h2>
-    <p>Les llegará al buzón. Entran cuando acepten, con las vidas con las que empezó el locke.</p>
-    <div class="locke-amigos invitar-amigos"></div>
-    <span class="invitar-error"></span>
-    <div class="dialogo-botones">
-      <button id="invitar-cancelar">Cancelar</button>
-      <button id="invitar-enviar">Invitar</button>
-    </div>
-  </dialog>
-
   <dialog id="dialogo-avisos">
-    <h2>Invitaciones</h2>
-    <p>Solicitudes de amistad y lockes a los que te han metido.</p>
+    <h2>Notificaciones</h2>
     <div class="avisos-lista"></div>
     <div class="dialogo-botones">
       <button id="avisos-cerrar">Cerrar</button>
@@ -208,22 +205,27 @@
     </div>
   </dialog>
 
+  <!-- Sirve para crear un locke y para editarlo (js/versus/index.js cambia título y botones) -->
   <dialog id="dialogo-nuevo-locke">
-    <h2>Nuevo locke</h2>
-    <p>Todos los que metas veréis el mismo marcador. Puedes crearlo solo para ti y meter gente luego.</p>
+    <h2 class="locke-dialogo-titulo">Nuevo locke</h2>
+    <p class="locke-dialogo-texto" hidden></p>
 
     <div class="campos-locke">
       <label class="campo-ancho">
         <span>Nombre</span>
-        <input id="locke-nombre" type="text" placeholder="Megalocke 2026">
+        <input id="locke-nombre" type="text">
       </label>
       <label>
         <span>Tipo</span>
         <select id="locke-tipo"></select>
       </label>
+      <div class="campo-juego-locke">
+        <span>Juego</span>
+        <span class="locke-campo-juego"></span>
+      </div>
       <label class="campo-vidas">
         <span>Vidas</span>
-        <input id="locke-vidas" type="number" min="0" max="999" value="3">
+        <input id="locke-vidas" type="number" min="0" max="999" value="10">
       </label>
       <label class="campo-casilla">
         <input id="locke-infinitas" type="checkbox">
@@ -232,16 +234,17 @@
     </div>
 
     <span class="etiqueta-campo">Integrantes</span>
+    <div class="locke-dentro" hidden></div>
     <div class="locke-amigos"></div>
 
     <label class="campo-ancho campo-descripcion">
       <span>Descripción (opcional)</span>
-      <textarea id="locke-descripcion" rows="3"
-        placeholder="Normas especiales, Pokémon prohibidos, cómo contáis las vidas..."></textarea>
+      <textarea id="locke-descripcion" rows="3"></textarea>
     </label>
 
     <span class="locke-error"></span>
     <div class="dialogo-botones">
+      <button id="locke-borrar" hidden>Borrar locke</button>
       <button id="locke-cancelar">Cancelar</button>
       <button id="locke-crear">Crear locke</button>
     </div>

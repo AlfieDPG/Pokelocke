@@ -2,7 +2,8 @@ import { quitarAcentos, normalizarNombre } from "./utilidades.js";
 
 // ---------- Carga de datos (nombres en español e inglés) ----------
 
-// NO cambiar esta clave sin motivo: si se cambia, se vuelven a descargar los datos
+// NO cambiar esta clave sin motivo: si se cambia, se vuelven a descargar los datos. Sí hay
+// que subirla al rehacer datos/nombres.json, para que los navegadores dejen la copia vieja.
 const CLAVE_DATOS = "poketeams-datos-v8";
 
 // Nombres que en español salen repetidos y hay que distinguir (id -> nombre)
@@ -66,6 +67,38 @@ function prepararBusqueda(lista) {
   }
 }
 
+// Los nombres sacados de los CSV de PokeAPI. Son ~1,5 MB de descarga, así que la web no
+// lo hace: lleva el resultado ya preparado en datos/nombres.json. Esto solo lo usa
+// herramientas/generar-datos.html para rehacer ese archivo (y la web si faltase).
+export async function descargarNombresDePokeAPI() {
+  const [csvAtaques, csvHabilidades, csvPokemon, csvObjetos] = await Promise.all([
+    descargarCSV("move_names.csv"),
+    descargarCSV("ability_names.csv"),
+    descargarCSV("pokemon_species_names.csv"),
+    descargarCSV("item_names.csv")
+  ]);
+
+  return {
+    ataques: leerNombres(csvAtaques),
+    habilidades: corregirNombres(leerNombres(csvHabilidades), NOMBRES_CORREGIDOS.habilidades),
+    pokemon: leerNombres(csvPokemon),
+    objetos: leerNombres(csvObjetos)
+  };
+}
+
+// Va al lado de index.html y pesa ~60 KB comprimido: llega en un momento
+const URL_NOMBRES = new URL("../../datos/nombres.json", import.meta.url);
+
+async function nombresPreparados() {
+  try {
+    const respuesta = await fetch(URL_NOMBRES);
+    if (respuesta.ok) return await respuesta.json();
+  } catch (error) {
+    // sin el archivo, se tira de PokeAPI
+  }
+  return descargarNombresDePokeAPI();
+}
+
 async function leerODescargar() {
   try {
     localStorage.removeItem("poketeams-datos-v1"); // versión antigua
@@ -81,19 +114,7 @@ async function leerODescargar() {
     // si falla la lectura, descargamos de nuevo
   }
 
-  const [csvAtaques, csvHabilidades, csvPokemon, csvObjetos] = await Promise.all([
-    descargarCSV("move_names.csv"),
-    descargarCSV("ability_names.csv"),
-    descargarCSV("pokemon_species_names.csv"),
-    descargarCSV("item_names.csv")
-  ]);
-
-  const nuevos = {
-    ataques: leerNombres(csvAtaques),
-    habilidades: corregirNombres(leerNombres(csvHabilidades), NOMBRES_CORREGIDOS.habilidades),
-    pokemon: leerNombres(csvPokemon),
-    objetos: leerNombres(csvObjetos)
-  };
+  const nuevos = await nombresPreparados();
 
   prepararBusqueda(nuevos.ataques);
   prepararBusqueda(nuevos.habilidades);

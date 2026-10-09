@@ -114,8 +114,10 @@ export function iniciar() {
     pintarLista();
   });
 
-  crearSelectorJuego(selector, CLAVE_JUEGO, elegirJuego);
+  selectorJuego = crearSelectorJuego(selector, CLAVE_JUEGO, elegirJuego);
 }
+
+let selectorJuego = null;
 
 function elegirJuego(nuevo) {
   juego = nuevo;
@@ -138,5 +140,7 @@ function elegirJuego(nuevo) {
 }
 
 export function mostrar() {
-  // nada que actualizar: la vista se mantiene como se dejó
+  // Si se ha llegado desde un locke de «Versus», el juego viene apuntado en CLAVE_JUEGO.
+  // Si es el mismo que ya había, no hace nada.
+  selectorJuego.elegirPorId(leer(CLAVE_JUEGO, null));
 }

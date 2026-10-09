@@ -5,9 +5,10 @@ import { datos } from "../comun/datos.js";
 import { pedirJSON, URL_API } from "../comun/api.js";
 import { coloresTipo, tiposEs, iconoTipo } from "../comun/tipos.js";
 import { resumenEquipo, puntosDe, multiplicadoresDe, textoMultiplicador } from "../comun/efectividad.js";
-import { etiquetaForma, obtenerVariedades } from "../comun/formas.js";
+import { nombreOpcionForma, obtenerVariedades } from "../comun/formas.js";
 import {
-  pokemonDesdeAPI, ataqueDesdeAPI, obtenerStats, obtenerDatosCombate, descripcionHabilidad, descripcionObjeto, textoForma
+  pokemonDesdeAPI, pedirVariedad, cambiarForma, variedadActual,
+  ataqueDesdeAPI, obtenerStats, obtenerDatosCombate, descripcionHabilidad, descripcionObjeto, textoForma
 } from "../comun/pokemon.js";
 import { activarTooltips, actualizarTooltip, ocultarTooltip, escaparHTML } from "../comun/tooltip.js";
 import { activarAutocompletado } from "../comun/autocompletado.js";
@@ -58,7 +59,7 @@ function elegirForma(entrada, info) {
 
     for (const slug of info.lista) {
       const b = document.createElement("button");
-      b.textContent = "Forma " + etiquetaForma(slug, info.especie);
+      b.textContent = nombreOpcionForma(slug, info.especie);
       b.addEventListener("click", () => {
         elegido = slug;
         dialogo.close();
@@ -102,7 +103,7 @@ async function agregarPokemon(entrada) {
       mostrarAviso("Añadiendo...");
     }
 
-    const p = await pedirJSON(`${URL_API}pokemon/${variedad || entrada.id}`);
+    const p = variedad ? await pedirVariedad(variedad) : await pedirJSON(`${URL_API}pokemon/${entrada.id}`);
     estado.equipo.push(await pokemonDesdeAPI(p, entrada));
 
     guardarEquipo();
@@ -218,8 +219,8 @@ let tarjetaArrastrada = null;
 
 function activarArrastreTarjetas() {
   resultado.addEventListener("dragstart", (e) => {
-    // Desde un campo o un botón no se arrastra: ahí se escribe y se pulsa
-    if (e.target.closest("input, textarea, button")) {
+    // Desde un campo, un botón o un desplegable no se arrastra: ahí se escribe y se pulsa
+    if (e.target.closest("input, textarea, button, select")) {
       e.preventDefault();
       return;
     }
@@ -290,7 +291,10 @@ function crearTarjeta(poke) {
     <div class="tarjeta-izq">
       ${arte}
       <h2>${escaparHTML(poke.mote || poke.es)}</h2>
-      <div class="forma-nombre">${detalleNombre(poke)}</div>
+      <div class="forma-nombre">
+        <span class="forma-texto">${detalleNombre(poke)}</span>
+        <select class="selector-forma" title="Cambiar de forma" hidden></select>
+      </div>
       <div class="chips">${chipsTipos}</div>
       <button class="quitar-pokemon">Quitar</button>
     </div>
@@ -347,7 +351,64 @@ function crearTarjeta(poke) {
     pintarAtaque(hueco, poke, i);
   }
 
+  prepararSelectorForma(tarjeta, poke);
+
   return tarjeta;
+}
+
+// ---------- Cambiar de forma desde la tarjeta ----------
+//
+// Si la especie tiene más de una forma (Alola, Mega, los tipos de Arceus...), debajo del
+// nombre sale un desplegable en lugar del texto de la forma. Al cambiarlo se pide la forma
+// nueva y se le pasan el mote, el shiny, la habilidad, el objeto y los ataques: así no hay
+// que borrar el Pokémon y volver a montarlo entero.
+//
+// Las formas se piden aparte para no retrasar la tarjeta; como pedirJSON guarda las
+// respuestas, a partir de la primera vez sale al instante.
+
+async function prepararSelectorForma(tarjeta, poke) {
+  let info;
+  try {
+    info = await obtenerVariedades(poke.id);
+  } catch (error) {
+    return; // sin conexión: se queda el texto de la forma, como antes
+  }
+
+  // Mientras llegaba, la tarjeta puede haberse redibujado o quitado
+  if (info.lista.length < 2 || tarjetas.get(poke) !== tarjeta) return;
+
+  const selector = tarjeta.querySelector(".selector-forma");
+  const actual = variedadActual(poke, info);
+
+  selector.innerHTML = info.lista
+    .map(
+      (slug) =>
+        `<option value="${escaparHTML(slug)}" ${slug === actual ? "selected" : ""}>${escaparHTML(nombreOpcionForma(slug, info.especie))}</option>`
+    )
+    .join("");
+
+  // El desplegable ya dice la forma: el texto se queda solo con la especie si hay mote
+  tarjeta.querySelector(".forma-texto").innerHTML = poke.mote ? escaparHTML(poke.es) : "";
+  selector.hidden = false;
+
+  selector.addEventListener("change", async () => {
+    selector.disabled = true;
+
+    try {
+      const nuevo = await cambiarForma(poke, selector.value);
+      const posicion = estado.equipo.indexOf(poke);
+      if (posicion < 0) return;
+
+      estado.equipo[posicion] = nuevo;
+      guardarEquipo();
+      ocultarTooltip();
+      tarjeta.replaceWith(crearTarjeta(nuevo));
+    } catch (error) {
+      selector.value = actual;
+      selector.disabled = false;
+      mostrarAviso("No he podido cambiar la forma.");
+    }
+  });
 }
 
 // ---------- Habilidad y objeto (casillas con formato de tarjeta) ----------
@@ -499,9 +560,9 @@ function bloqueTipos(tipos) {
 
   return `
     <div class="ficha-tipos">
-      ${fila("Débil a", debiles, "debil")}
+      ${fila("Débil", debiles, "debil")}
       ${fila("Resiste", resisten, "resiste")}
-      ${fila("Inmune a", inmunes, "inmune")}
+      ${fila("Inmune", inmunes, "inmune")}
     </div>`;
 }
 
