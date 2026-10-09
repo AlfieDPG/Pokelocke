@@ -34,10 +34,12 @@
 
 import { usuarioActual, baseDeDatos, alCambiarSesion, cuandoEsteSincronizado } from "./nube.js";
 import { apuntarLockesGanados, miPerfil, alCambiarMiPerfil } from "./perfiles.js";
-import { recibirConjunto, normasDeLocke } from "./normas.js";
+import { quitarConjuntosAjenos, normasDeLocke } from "./normas.js";
 import { hoyComoTexto } from "./utilidades.js";
+import { leer, escribir } from "./almacen.js";
 
 let todos = [];
+let delServidor = false; // la última lista llegó del servidor (no solo de la caché del navegador)
 let dejarDeEscuchar = null;
 let fallo = "";
 const oyentes = new Set();
@@ -129,15 +131,42 @@ function ponerMiNombre() {
   }
 }
 
-// El conjunto de normas de los lockes que he aceptado, si no lo tengo, se apunta en los míos
-// (al aceptar uno, o si quien lo creó le cambia el conjunto). Después de juntar con la nube:
-// ver cuandoEsteSincronizado.
+// Las normas de cada uno son suyas: las de un locke de otro NO se copian en las tuyas (se ven
+// desde el botón «Normas» del locke, que lee la copia que lleva el locke).
+//
+// Antes sí se copiaban, y las que llegaron así se quitan aquí, una sola vez por cuenta en cada
+// navegador. Un conjunto se da por ajeno si lo usa un locke de otro y ninguno tuyo: el dueño
+// siempre tiene el locke con el que lo compartió, así que el suyo no se toca. Después de
+// juntar con la nube: ver cuandoEsteSincronizado.
+const CLAVE_NORMAS_LIMPIAS = "poketeams-normas-ajenas-quitadas-v1"; // [uid]
+
+function quitarNormasQueLlegaronDeOtros(usuario) {
+  const hechas = leer(CLAVE_NORMAS_LIMPIAS, []);
+  // Solo con la lista de verdad del servidor: la de la caché puede estar a medias
+  if (hechas.includes(usuario.uid) || !delServidor) return;
+
+  const idDe = (locke) => {
+    const normas = normasDeLocke(locke);
+    return normas && normas.id;
+  };
+  const mias = new Set(todos.filter((locke) => locke.creador === usuario.uid).map(idDe).filter(Boolean));
+  const ajenas = todos
+    .filter((locke) => locke.creador !== usuario.uid)
+    .map(idDe)
+    .filter((id) => id && !mias.has(id));
+  quitarConjuntosAjenos(ajenas);
+  escribir(CLAVE_NORMAS_LIMPIAS, [...hechas, usuario.uid]);
+}
+
 async function recibirNormasDeMisLockes() {
   await cuandoEsteSincronizado();
-  for (const locke of misLockes()) recibirConjunto(normasDeLocke(locke));
+  const usuario = usuarioActual();
+  if (!usuario) return;
+  quitarNormasQueLlegaronDeOtros(usuario);
 
-  // Lo mismo con sus rutas y level caps personalizados. El módulo solo se descarga si algún
-  // locke los lleva.
+  // Las rutas y level caps personalizados de un locke solo llegan a los tuyos si los abres
+  // desde su botón; aquí solo se ponen al día los que ya te llegaron. El módulo solo se
+  // descarga si algún locke los lleva.
   const conPropios = misLockes().filter((locke) => locke.rutasPropias || locke.capsPropios);
   if (!conPropios.length) return;
   const { rutasPropias, capsPropios } = await import("./personalizados.js");
@@ -166,10 +195,14 @@ export async function actualizarPersonalizadoEnMisLockes(campo, copia) {
 function escuchar(usuario) {
   const { bd, fn } = baseDeDatos();
 
+  // includeMetadataChanges: avisa también cuando lo de la caché queda confirmado por el
+  // servidor aunque no cambie nada (hace falta para delServidor; no cuesta lecturas)
   dejarDeEscuchar = fn.onSnapshot(
     fn.query(fn.collection(bd, "lockes"), fn.where("jugadores", "array-contains", usuario.uid)),
+    { includeMetadataChanges: true },
     (instantanea) => {
       fallo = "";
+      delServidor = !instantanea.metadata.fromCache;
       todos = instantanea.docs.map((documento) => ({ id: documento.id, ...documento.data() }));
       avisar();
 
@@ -360,6 +393,24 @@ export async function borrarMuerto(id, idMuerto) {
     [`muertos.${usuario.uid}`]: muertosDe(locke, usuario.uid).filter((muerto) => muerto.id !== idMuerto),
     actualizado: Date.now()
   });
+}
+
+// Cambia de sitio tus muertos: ids en el orden nuevo (del primero al último). Si alguno no
+// está en la lista (se ha borrado entretanto), se queda donde estaba, al final.
+export async function reordenarMuertos(id, ids) {
+  const locke = lockePorId(id);
+  const usuario = usuarioActual();
+  if (!locke || !usuario) return;
+
+  const muertos = muertosDe(locke, usuario.uid);
+  const posicion = new Map(ids.map((idMuerto, i) => [idMuerto, i]));
+  const ordenados = [...muertos].sort(
+    (uno, otro) => (posicion.get(uno.id) ?? Infinity) - (posicion.get(otro.id) ?? Infinity)
+  );
+  if (ordenados.every((muerto, i) => muerto === muertos[i])) return; // no ha cambiado nada
+
+  const { fn, ref } = referencia(id);
+  await fn.updateDoc(ref, { [`muertos.${usuario.uid}`]: ordenados, actualizado: Date.now() });
 }
 
 // ---------- Actividad ----------

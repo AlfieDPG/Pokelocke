@@ -86,7 +86,7 @@ function filaPokemon(p) {
   return `
     <tr>
       <td class="col-numero">${numeroDex(p.numero)}</td>
-      <td class="col-foto"><button class="pokedex-evo" data-numero="${p.numero}" title="Línea evolutiva">${foto(p)}</button></td>
+      <td class="col-foto"><button class="pokedex-evo" data-numero="${p.numero}" data-clave="${p.clave}" title="Línea evolutiva">${foto(p)}</button></td>
       <td class="col-nombre">${p.nombre}</td>
       <td class="col-tipos">${p.tipos.map(chipTipo).join("")}</td>
       ${p.bases.map((base) => `<td class="col-dato">${base}</td>`).join("")}
@@ -234,7 +234,7 @@ export async function iniciar() {
   // La foto: su línea evolutiva en un bocadillo (./evoluciones.js)
   cuerpo.addEventListener("click", (e) => {
     const boton = e.target.closest(".pokedex-evo");
-    if (boton) abrirEvoluciones(boton, Number(boton.dataset.numero));
+    if (boton) abrirEvoluciones(boton, Number(boton.dataset.numero), Number(boton.dataset.clave));
   });
   // Al buscar, filtrar u ordenar, la foto se mueve o se esconde: el bocadillo se va
   campoBuscar.addEventListener("input", cerrarEvoluciones);

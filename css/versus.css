@@ -906,6 +906,20 @@ button.locke-anadir .icono {
   filter: none;
 }
 
+/* Las tuyas se cambian de sitio arrastrándolas (js/versus/cementerio.js) */
+.tumba.movible {
+  cursor: grab;
+}
+
+.tumba.movible img {
+  -webkit-user-drag: none; /* que se arrastre la lápida, no la foto */
+}
+
+.tumba.arrastrando {
+  opacity: 0.4;
+  outline: 2px dashed #f1c40f;
+}
+
 .tumba-mote {
   max-width: 100%;
   overflow: hidden;

@@ -349,6 +349,13 @@ export const LUGARES = {
 
   usum: {
     ...ISLAS_ALOLA,
+    // En Ultrasol / Ultraluna Akala tiene dos lugares más: la sala del dominante de la Colina
+    // Saltagua y el Túnel del Volcán, justo después del Área Volcánica
+    akala: ISLAS_ALOLA.akala.flatMap((lugar) => {
+      if (lugar === "Colina Saltagua") return [lugar, "Colina Saltagua (Sala del dominante)"];
+      if (lugar === "Área Volcánica del Wela") return [lugar, "Túnel del Volcán"];
+      return [lugar];
+    }),
     eventos: [
       "Ruta 1: Pokémon inicial",
       "Ultrópolis: Poipole (regalo de los Ultraguardianes)",

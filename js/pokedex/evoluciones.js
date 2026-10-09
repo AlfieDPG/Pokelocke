@@ -1,12 +1,19 @@
 // Bocadillo de la Pokédex: al pulsar la foto de un Pokémon sale, pegada a ella, su línea
-// evolutiva entera (con las ramas, como las de Eevee) y cómo evoluciona cada uno.
+// evolutiva entera y cómo evoluciona cada uno. Lleva también:
+//   · las formas regionales, cada una con su propia línea (Vulpix de Alola -> Ninetales de
+//     Alola, Meowth de Galar -> Perrserker...);
+//   · las megaevoluciones (con su megapiedra) y los cambios de forma (Giratina Origen,
+//     Rotom Calor...), colgando con una flecha discontinua del Pokémon del que salen.
 //
-// Sale de PokeAPI: pokemon-species/{n} dice cuál es su cadena y evolution-chain/{id} la da
-// entera. Los nombres de especies, objetos y ataques, en español, de datos/nombres.json.
+// Sale de PokeAPI: pokemon-species/{n} dice cuál es su cadena, evolution-chain/{id} la da
+// entera (con la forma que evoluciona y la que sale) y las variedades de cada especie dan las
+// formas. Los nombres de especies, objetos y ataques, en español, de datos/nombres.json.
 
 import { pedirJSON, URL_API } from "../comun/api.js";
-import { cargarDatos, datos } from "../comun/datos.js";
-import { imagenConRespaldo, urlsPMD, urlSpritePixel } from "../comun/imagenes.js";
+import { cargarDatos, datos, buscarPorNombreIngles } from "../comun/datos.js";
+import { obtenerVariedades, formaDeTipo, etiquetaForma } from "../comun/formas.js";
+import { indicePMD } from "../comun/formas-pmd.js";
+import { imagenConRespaldo, urlsPMD } from "../comun/imagenes.js";
 import { tiposEs } from "../comun/tipos.js";
 import { escaparHTML } from "../comun/utilidades.js";
 
@@ -34,6 +41,17 @@ const especie = (recurso) => nombreEn(datos.pokemon, recurso);
 const objeto = (recurso) => nombreEn(datos.objetos, recurso);
 const ataque = (recurso) => nombreEn(datos.ataques, recurso);
 
+// Objeto por su nombre en inglés (para los cambios de forma de abajo)
+function objetoIngles(nombre) {
+  const entrada = buscarPorNombreIngles(datos.objetos, nombre);
+  return entrada ? entrada.es : nombre;
+}
+
+function ataqueIngles(nombre) {
+  const entrada = buscarPorNombreIngles(datos.ataques, nombre);
+  return entrada ? entrada.es : nombre;
+}
+
 // ---------- Cómo evoluciona ----------
 
 const MOMENTOS = { day: "de día", night: "de noche", dusk: "al anochecer", "full-moon": "con luna llena" };
@@ -48,10 +66,12 @@ const ESPECIALES = {
   "take-damage": "Tras recibir mucho daño sin debilitarse",
   "agile-style-move": "Usar {ataque} en estilo rápido 20 veces",
   "strong-style-move": "Usar {ataque} en estilo fuerte 20 veces",
-  "recoil-damage": "Recibir 294 PS de daño de retroceso",
+  "recoil-damage": "Recibir mucho daño de retroceso",
   "use-move": "Usar {ataque} 20 veces",
   "three-defeated-bisharp": "Derrotar a 3 Bisharp líderes",
   "gimmighoul-coins": "Reunir 999 monedas de Gimmighoul",
+  "meltan-candies": "400 caramelos de Meltan (Pokémon GO)",
+  "in-battle-level-up": "Subir de nivel en combate",
   other: "Método especial"
 };
 
@@ -59,12 +79,16 @@ const TRIGGERS_CON_ATAQUE = ["agile-style-move", "strong-style-move", "use-move"
 
 function textoDetalle(d) {
   const trigger = (d.trigger && d.trigger.name) || "";
+  const movimiento = ataque(d.used_move || d.known_move) || "un movimiento";
   const partes = [];
 
   if (trigger === "level-up") partes.push(d.min_level ? `Nivel ${d.min_level}` : "Subir de nivel");
   else if (trigger === "use-item") partes.push(objeto(d.item) || "Usar un objeto");
   else if (trigger === "trade") partes.push("Intercambio");
-  else partes.push((ESPECIALES[trigger] || ESPECIALES.other).replace("{ataque}", ataque(d.known_move) || "un movimiento"));
+  else if (trigger === "use-move" && d.min_move_count) partes.push(`Usar ${movimiento} ${d.min_move_count} veces`);
+  else if ((trigger === "take-damage" || trigger === "recoil-damage") && d.min_damage_taken) {
+    partes.push(`${trigger === "take-damage" ? "Recibir" : "Recibir de retroceso"} ${d.min_damage_taken} PS de daño sin debilitarse`);
+  } else partes.push((ESPECIALES[trigger] || ESPECIALES.other).replace("{ataque}", movimiento));
 
   if (d.held_item) partes.push(`llevando ${objeto(d.held_item)}`);
   if (d.known_move && !TRIGGERS_CON_ATAQUE.includes(trigger)) partes.push(`sabiendo ${ataque(d.known_move)}`);
@@ -72,6 +96,7 @@ function textoDetalle(d) {
   if (d.min_happiness) partes.push("con mucha amistad");
   if (d.min_affection) partes.push("con mucho afecto");
   if (d.min_beauty) partes.push("con mucha belleza");
+  if (d.min_steps) partes.push(`tras andar ${d.min_steps} pasos`);
   if (d.time_of_day) partes.push(MOMENTOS[d.time_of_day] || d.time_of_day);
   if (d.location) partes.push("en un lugar concreto");
   if (d.needs_overworld_rain) partes.push("con lluvia");
@@ -82,6 +107,7 @@ function textoDetalle(d) {
   if (d.relative_physical_stats === 0) partes.push("con el mismo Ataque que Defensa");
   if (d.trade_species) partes.push(`por ${especie(d.trade_species)}`);
   if (d.turn_upside_down) partes.push("con la consola boca abajo");
+  if ((d.allowed_natures || []).length) partes.push("según su naturaleza");
   if (d.gender === 1) partes.push("(hembra)");
   if (d.gender === 2) partes.push("(macho)");
 
@@ -90,43 +116,272 @@ function textoDetalle(d) {
 
 // PokeAPI da una forma por juego (Leafeon: en un lugar concreto en unos, con Piedra Hoja en
 // otros): se enseñan las distintas, una por línea, como mucho tres
-function textoMetodos(detalles) {
-  const textos = [...new Set((detalles || []).map(textoDetalle).filter(Boolean))].slice(0, 3);
-  return textos.map((texto) => `<span>${escaparHTML(texto)}</span>`).join("");
+function textosMetodo(detalles) {
+  return [...new Set((detalles || []).map(textoDetalle).filter(Boolean))].slice(0, 3);
+}
+
+// ---------- Megaevoluciones y cambios de forma ----------
+//
+// Ninguno sale en las cadenas de PokeAPI. Las megapiedras se buscan entre los objetos de la
+// categoría «mega-stones» por el parecido del nombre («charizardite-x» -> charizard-mega-x).
+// Los demás cambios de forma, a mano: si una forma no está aquí y no es regional, sale como
+// «Cambio de forma».
+
+const REGIONAL = /-(alola|galar|hisui|paldea)(-|$)/;
+const MEGA = /^(.+?)-mega(?:-([xyz]))?$/;
+
+let piedras = null;
+
+async function megapiedras() {
+  if (!piedras) {
+    piedras = pedirJSON(`${URL_API}item-category/mega-stones/`)
+      .then((categoria) => categoria.items)
+      .catch(() => []);
+  }
+  return piedras;
+}
+
+function prefijoComun(uno, otro) {
+  let n = 0;
+  while (n < uno.length && n < otro.length && uno[n] === otro[n]) n++;
+  return n;
+}
+
+// La megapiedra que más se parece al nombre de la mega (y con la misma letra: X, Y, Z)
+function piedraDe(slug, lista) {
+  const mega = MEGA.exec(slug);
+  if (!mega) return null;
+  const [, base, letra = ""] = mega;
+  let mejor = null;
+  let largo = 3;
+  for (const piedra of lista) {
+    const [, nombre, letraPiedra = ""] = /^(.+?)(?:-([xyz]))?$/.exec(piedra.name);
+    if (letraPiedra !== letra) continue;
+    const n = prefijoComun(nombre, base);
+    if (n > largo) {
+      largo = n;
+      mejor = piedra;
+    }
+  }
+  return mejor;
+}
+
+// slug -> [objeto en inglés, más texto] o una función que da el texto
+const CAMBIOS = {
+  "kyogre-primal": () => `Regresión primigenia con ${objetoIngles("Blue Orb")}`,
+  "groudon-primal": () => `Regresión primigenia con ${objetoIngles("Red Orb")}`,
+  "rayquaza-mega": () => `Megaevolución sabiendo ${ataqueIngles("Dragon Ascent")}`,
+  "giratina-origin": () => objetoIngles("Griseous Core"),
+  "dialga-origin": () => objetoIngles("Adamant Crystal"),
+  "palkia-origin": () => objetoIngles("Lustrous Globe"),
+  "shaymin-sky": () => `${objetoIngles("Gracidea")}, de día`,
+  "kyurem-black": () => `${objetoIngles("DNA Splicers")} con Zekrom`,
+  "kyurem-white": () => `${objetoIngles("DNA Splicers")} con Reshiram`,
+  "necrozma-dusk": () => `${objetoIngles("N-Solarizer")} con Solgaleo`,
+  "necrozma-dawn": () => `${objetoIngles("N-Lunarizer")} con Lunala`,
+  "necrozma-ultra": () => "Ultraexplosión en combate",
+  "hoopa-unbound": () => objetoIngles("Prison Bottle"),
+  "zacian-crowned": () => `Llevando ${objetoIngles("Rusted Sword")}`,
+  "zamazenta-crowned": () => `Llevando ${objetoIngles("Rusted Shield")}`,
+  "calyrex-ice": () => `${objetoIngles("Reins of Unity")} con Glastrier`,
+  "calyrex-shadow": () => `${objetoIngles("Reins of Unity")} con Spectrier`,
+  "tornadus-therian": () => objetoIngles("Reveal Glass"),
+  "thundurus-therian": () => objetoIngles("Reveal Glass"),
+  "landorus-therian": () => objetoIngles("Reveal Glass"),
+  "enamorus-therian": () => objetoIngles("Reveal Glass"),
+  "meloetta-pirouette": () => `Usar ${ataqueIngles("Relic Song")} en combate`,
+  "keldeo-resolute": () => `Sabiendo ${ataqueIngles("Secret Sword")}`,
+  "palafin-hero": () => "Salir del combate y volver a entrar",
+  "darmanitan-zen": () => "En combate, con poca vida (Modo Daruma)",
+  "darmanitan-galar-zen": () => "En combate, con poca vida (Modo Daruma)",
+  "oricorio-pom-pom": () => objetoIngles("Yellow Nectar"),
+  "oricorio-pau": () => objetoIngles("Pink Nectar"),
+  "oricorio-sensu": () => objetoIngles("Purple Nectar"),
+  "ogerpon-wellspring-mask": () => `Llevando ${objetoIngles("Wellspring Mask")}`,
+  "ogerpon-hearthflame-mask": () => `Llevando ${objetoIngles("Hearthflame Mask")}`,
+  "ogerpon-cornerstone-mask": () => `Llevando ${objetoIngles("Cornerstone Mask")}`
+};
+
+const PREFIJOS_CAMBIO = {
+  "rotom-": "Cambiar el motor de Rotom",
+  "deoxys-": "Tocar un meteorito",
+  "zygarde-": "Con el Zygarde Cubo",
+  "wormadam-": "Según el manto de Burmy",
+  "castform-": "Según el tiempo, en combate",
+  "cherrim-": "Con sol, en combate"
+};
+
+// Texto del cambio de forma, o null si no es un cambio de forma (sino una forma regional o
+// distinta sin más: esas salen con su propia línea)
+function textoCambio(slug, lista) {
+  if (CAMBIOS[slug]) return CAMBIOS[slug]();
+  if (MEGA.test(slug)) {
+    const piedra = piedraDe(slug, lista);
+    return piedra ? `Megaevolución con ${objeto(piedra)}` : "Megaevolución";
+  }
+  for (const [prefijo, texto] of Object.entries(PREFIJOS_CAMBIO)) {
+    if (slug.startsWith(prefijo)) return texto;
+  }
+  if (REGIONAL.test(slug) || /-(male|female)$/.test(slug)) return null;
+  return "Cambio de forma";
+}
+
+// ---------- Montar el árbol ----------
+//
+// Cada nodo es una forma concreta (el nombre de su variedad: "vulpix", "vulpix-alola"). Las
+// flechas salen de los detalles de la cadena: required_pokemon_form dice qué forma evoluciona
+// y evolved_pokemon_form cuál sale (si no lo dicen, la normal). Así cada forma regional
+// queda con su propia línea.
+
+function recorrer(eslabon, alVer, padre = null) {
+  alVer(eslabon, padre);
+  for (const hijo of eslabon.evolves_to || []) recorrer(hijo, alVer, eslabon);
+}
+
+async function montar(numero) {
+  const [datosEspecie] = await Promise.all([pedirJSON(`${URL_API}pokemon-species/${numero}`), cargarDatos()]);
+  const cadena = await pedirJSON(datosEspecie.evolution_chain.url);
+
+  const eslabones = [];
+  recorrer(cadena.chain, (eslabon) => eslabones.push(eslabon));
+
+  // Las formas de cada especie de la cadena
+  const infos = new Map();
+  await Promise.all(
+    eslabones.map(async (eslabon) => {
+      const id = idDeUrl(eslabon.species.url);
+      let info = { especie: eslabon.species.name, lista: [eslabon.species.name] };
+      try {
+        info = await obtenerVariedades(id);
+      } catch (error) {
+        // sin formas: solo la normal
+      }
+      // Sin las de tipo de Arceus y Silvally: serían 17 más y no son evoluciones
+      infos.set(id, { ...info, lista: info.lista.filter((slug) => !formaDeTipo(slug)) });
+    })
+  );
+
+  const nodos = new Map(); // slug -> { slug, especie, nombre, hijos, cambios, entra }
+  const nodo = (eslabon, slug) => {
+    const id = idDeUrl(eslabon.species.url);
+    const info = infos.get(id);
+    if (!info.lista.includes(slug)) slug = info.lista[0];
+    if (!nodos.has(slug)) {
+      nodos.set(slug, { slug, especie: id, info, nombre: especie(eslabon.species), hijos: [], cambios: [], entra: false });
+    }
+    return nodos.get(slug);
+  };
+
+  // Primero la forma normal de cada especie, para que salgan en el orden de la cadena
+  for (const eslabon of eslabones) nodo(eslabon, infos.get(idDeUrl(eslabon.species.url)).lista[0]);
+
+  // Las flechas, juntando los detalles que van de la misma forma a la misma forma
+  recorrer(cadena.chain, (eslabon, padre) => {
+    if (!padre) return;
+    const flechas = new Map();
+    const detalles = eslabon.evolution_details.length ? eslabon.evolution_details : [{}];
+    for (const d of detalles) {
+      const desde = nodo(padre, d.required_pokemon_form ? d.required_pokemon_form.name : "");
+      let hacia = d.evolved_pokemon_form ? d.evolved_pokemon_form.name : "";
+      // Una regional que evoluciona sin decir a qué: a la misma región, si la especie la tiene
+      const region = REGIONAL.exec(desde.slug);
+      if (!hacia && region) hacia = `${infos.get(idDeUrl(eslabon.species.url)).especie}-${desde.slug.slice(desde.slug.indexOf(region[1]))}`;
+      const destino = nodo(eslabon, hacia);
+      const clave = `${desde.slug}>${destino.slug}`;
+      if (!flechas.has(clave)) flechas.set(clave, { desde, destino, detalles: [] });
+      if (d.trigger) flechas.get(clave).detalles.push(d);
+    }
+    for (const { desde, destino, detalles: suyos } of flechas.values()) {
+      desde.hijos.push({ nodo: destino, textos: textosMetodo(suyos) });
+      destino.entra = true;
+    }
+  });
+
+  // Las demás formas: cambios de forma colgando de la normal; el resto, con su propia línea
+  const lista = eslabones.some((eslabon) => infos.get(idDeUrl(eslabon.species.url)).lista.some((slug) => MEGA.test(slug)))
+    ? await megapiedras()
+    : [];
+  for (const eslabon of eslabones) {
+    const info = infos.get(idDeUrl(eslabon.species.url));
+    for (const slug of info.lista.slice(1)) {
+      if (nodos.has(slug)) continue;
+      const texto = textoCambio(slug, lista);
+      const suyo = nodo(eslabon, slug);
+      if (texto) {
+        nodos.get(info.lista[0]).cambios.push({ nodo: suyo, textos: [texto] });
+        suyo.entra = true;
+      }
+    }
+  }
+
+  // Imagen y nombre de cada forma
+  await Promise.all(
+    [...nodos.values()].map(async (n) => {
+      try {
+        n.forma = await formaDe(n);
+      } catch (error) {
+        n.forma = {}; // sin conexión: el retrato de la especie
+      }
+    })
+  );
+
+  return [...nodos.values()].filter((n) => !n.entra);
+}
+
+// El nombre de la forma y su retrato de Mundo Misterioso. La subcarpeta del retrato se cuenta
+// igual que en la tabla (js/pokedex/datos.js): posición entre TODAS las variedades que no son
+// la normal, por id, con las correcciones de formas-pmd.js.
+async function formaDe(n) {
+  if (n.slug === n.info.lista[0]) return {};
+  const etiqueta = etiquetaForma(n.slug, n.info.especie);
+  const datosEspecie = await pedirJSON(`${URL_API}pokemon-species/${n.especie}`); // ya pedida
+  const otras = datosEspecie.varieties
+    .filter((variedad) => !variedad.is_default)
+    .map((variedad) => ({ nombre: variedad.pokemon.name, id: idDeUrl(variedad.pokemon.url) }))
+    .sort((una, otra) => una.id - otra.id);
+  const posicion = otras.findIndex((variedad) => variedad.nombre === n.slug);
+  if (posicion < 0) return { etiqueta };
+  const id = otras[posicion].id;
+  return { etiqueta, idForma: id, formaPMD: indicePMD(id, posicion + 1) };
 }
 
 // ---------- Pintar ----------
 
-function retrato(id) {
-  return imagenConRespaldo([...urlsPMD({ id }), urlSpritePixel(id)], `class="evo-cara" alt="" data-quitar-si-falla`);
+// Siempre un retrato de Mundo Misterioso, como en la tabla: el de la forma y, si no lo tiene,
+// el de su especie. Nunca los sprites de PokeAPI (en las formas modernas son renders 3D).
+// Las hembras (Meowstic, Indeedee...) no van por número de forma: Mundo Misterioso las guarda
+// en {número}/0000/0000/0002.
+function retrato(n) {
+  const deEspecie = urlsPMD({ id: n.especie });
+  const forma = { id: n.especie, idForma: n.forma.idForma, formaPMD: n.forma.formaPMD || 0 };
+  const urls = /-female$/.test(n.slug)
+    ? [...deEspecie.map((url) => url.replace(/Normal\.png$/, "0000/0000/0002/Normal.png")), ...deEspecie]
+    : [...urlsPMD(forma), ...(n.forma.formaPMD ? deEspecie : [])];
+  return imagenConRespaldo(urls, `class="evo-cara" alt="" data-quitar-si-falla`);
 }
 
-function plantillaEslabon(eslabon, actual) {
-  const id = idDeUrl(eslabon.species.url);
-  const hijos = eslabon.evolves_to || [];
+// clave: el id de la fila pulsada (el de su forma): esa sale marcada
+function plantillaNodo(n, clave) {
+  const actual = (n.forma.idForma || n.especie) === clave;
+  const paso = (rama, cambio) => `
+    <div class="evo-paso ${cambio ? "cambio" : ""}">
+      <div class="evo-metodo">
+        ${rama.textos.map((texto) => `<span>${escaparHTML(texto)}</span>`).join("")}
+        <span class="evo-flecha">${cambio ? "⇢" : "→"}</span>
+      </div>
+      ${plantillaNodo(rama.nodo, clave)}
+    </div>`;
+  const pasos = [...n.hijos.map((rama) => paso(rama, false)), ...n.cambios.map((rama) => paso(rama, true))];
+
   return `
     <div class="evo-rama">
-      <div class="evo-pokemon ${id === actual ? "actual" : ""}">
-        ${retrato(id)}
-        <span>${escaparHTML(especie(eslabon.species))}</span>
+      <div class="evo-pokemon ${actual ? "actual" : ""}">
+        ${retrato(n)}
+        <span>${escaparHTML(n.nombre)}</span>
+        ${n.forma.etiqueta ? `<small>${escaparHTML(n.forma.etiqueta)}</small>` : ""}
       </div>
-      ${hijos.length
-        ? `<div class="evo-hijos">${hijos
-            .map(
-              (hijo) => `
-                <div class="evo-paso">
-                  <div class="evo-metodo">${textoMetodos(hijo.evolution_details)}<span class="evo-flecha">→</span></div>
-                  ${plantillaEslabon(hijo, actual)}
-                </div>`
-            )
-            .join("")}</div>`
-        : ""}
+      ${pasos.length ? `<div class="evo-hijos">${pasos.join("")}</div>` : ""}
     </div>`;
-}
-
-async function cadenaDe(numero) {
-  const [datosEspecie] = await Promise.all([pedirJSON(`${URL_API}pokemon-species/${numero}`), cargarDatos()]);
-  return pedirJSON(datosEspecie.evolution_chain.url);
 }
 
 // Pegado a la foto: debajo si cabe y si no encima, sin salirse por los lados. La flecha del
@@ -154,8 +409,9 @@ export function cerrarEvoluciones() {
   abiertoDe = null;
 }
 
-// boton: la foto pulsada; numero: su número de la Pokédex. Pulsar la misma otra vez lo cierra.
-export async function abrirEvoluciones(boton, numero) {
+// boton: la foto pulsada; numero: su número de la Pokédex; clave: el id de su forma (la de la
+// fila). Pulsar la misma otra vez lo cierra.
+export async function abrirEvoluciones(boton, numero, clave = numero) {
   if (abiertoDe === boton) {
     cerrarEvoluciones();
     return;
@@ -172,10 +428,13 @@ export async function abrirEvoluciones(boton, numero) {
   const este = bocadillo;
   let html;
   try {
-    const cadena = await cadenaDe(numero);
-    html = (cadena.chain.evolves_to || []).length
-      ? `<div class="evo-arbol">${plantillaEslabon(cadena.chain, numero)}</div>`
-      : `<div class="evo-arbol">${plantillaEslabon(cadena.chain, numero)}<p class="evo-aviso">No evoluciona.</p></div>`;
+    const raices = await montar(numero);
+    const evoluciona = raices.some((n) => n.hijos.length || n.cambios.length) || raices.length > 1;
+    html = `
+      <div class="evo-arbol">
+        ${raices.map((n) => `<div class="evo-linea">${plantillaNodo(n, clave)}</div>`).join("")}
+        ${evoluciona ? "" : `<p class="evo-aviso">No evoluciona.</p>`}
+      </div>`;
   } catch (error) {
     console.error(error);
     html = `<p class="evo-aviso">No se ha podido cargar. Revisa tu conexión.</p>`;

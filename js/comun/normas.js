@@ -13,8 +13,9 @@
 //   locke.normas: { id, nombre, conGenerales, lista: [{ id, nombre, texto }] }
 //                 (id "generales" y lista vacía: solo las generales)
 //
-// Al aceptar un locke, si su conjunto no lo tienes, se apunta en los tuyos. Los que borres
-// a mano no vuelven: se quedan en «quitados».
+// Los conjuntos son de quien los crea: al aceptar un locke de otro, su conjunto NO pasa a los
+// tuyos (lo ves desde el botón «Normas» del locke). Antes sí pasaba: los que llegaron así se
+// quitan solos (quitarConjuntosAjenos, desde lockes.js).
 //
 //   localStorage «poketeams-normas-v2»:
 //     { conjuntos: [{ id, nombre, conGenerales, normas: [{ id, nombre, texto }] }], quitados: [id] }
@@ -182,23 +183,14 @@ export function quitarNorma(idConjunto, idNorma) {
   guardar(estado);
 }
 
-// ---------- Lo que llega de los lockes ----------
+// ---------- Los que llegaron de lockes de otros (versiones de antes) ----------
 
-// El conjunto de un locke que hayas aceptado: si no lo tienes (ni uno con el mismo nombre)
-// y no lo borraste tú, se apunta en los tuyos. Devuelve true si se ha apuntado.
-export function recibirConjunto(copia) {
-  if (!copia || !copia.id || copia.id === ID_GENERALES || !(copia.lista || []).length) return false;
-
+// Quita de los tuyos estos conjuntos (ids). No van a «quitados»: no hay nada que los vuelva a traer.
+export function quitarConjuntosAjenos(ids) {
+  if (!ids.length) return;
   const estado = guardado();
-  if (estado.quitados.includes(copia.id) || estado.conjuntos.some((conjunto) => conjunto.id === copia.id)) return false;
-  if (!nombreDeConjuntoLibre(copia.nombre || "")) return false;
-
-  estado.conjuntos.push({
-    id: copia.id,
-    nombre: copia.nombre,
-    conGenerales: Boolean(copia.conGenerales),
-    normas: copia.lista.map(({ id, nombre, texto }) => ({ id, nombre, texto: texto || "" }))
-  });
+  const quedan = estado.conjuntos.filter((conjunto) => !ids.includes(conjunto.id));
+  if (quedan.length === estado.conjuntos.length) return;
+  estado.conjuntos = quedan;
   guardar(estado);
-  return true;
 }

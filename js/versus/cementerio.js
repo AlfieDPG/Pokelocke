@@ -1,8 +1,8 @@
 // Cementerio de un locke y la ventana de apuntar un muerto.
 //
 //   · Cementerio: una columna por jugador (la tuya primero), con sus muertos como lápidas con
-//     el retrato de Mundo Misterioso. En la tuya, una lápida «+» para apuntar uno y una X en
-//     cada uno para quitarlo si te equivocaste.
+//     el retrato de Mundo Misterioso. En la tuya, una lápida «+» para apuntar uno, una X en
+//     cada uno para quitarlo si te equivocaste, y se cambian de sitio arrastrándolos.
 //   · Apuntar un muerto: Pokémon (con su forma, si tiene varias: Alola, Mega...) y mote. Sale
 //     también al darle a «−» en tus vidas: ahí el Pokémon es opcional (se puede perder una
 //     vida sin decir quién).
@@ -17,7 +17,9 @@ import { activarAutocompletado } from "../comun/autocompletado.js";
 import { obtenerVariedades } from "../comun/formas.js";
 import { elegirForma, datosDeForma } from "../comun/elegir-forma.js";
 import { imagenConRespaldo, urlsPMD, urlSpritePixel } from "../comun/imagenes.js";
-import { lockePorId, estadoDe, muertosDe, apuntarMuerto, borrarMuerto, cambiarNumero, alCambiarLockes } from "../comun/lockes.js";
+import {
+  lockePorId, estadoDe, muertosDe, apuntarMuerto, borrarMuerto, reordenarMuertos, cambiarNumero, alCambiarLockes
+} from "../comun/lockes.js";
 
 let dialogoCementerio = null;
 let dialogoMuerte = null;
@@ -56,8 +58,10 @@ function plantillaTumba(muerto, mia) {
     : "";
   // «Contra quién» ya no se pregunta; solo lo llevan los de antes
   const detalle = [muerto.causa && `Contra ${muerto.causa}`, fecha].filter(Boolean).join(" · ");
+  // Las tuyas se pueden arrastrar para cambiarlas de sitio
   return `
-    <div class="tumba" title="${escaparHTML(detalle)}">
+    <div class="tumba ${mia ? "movible" : ""}" title="${escaparHTML(detalle)}" data-id="${escaparHTML(muerto.id)}"
+         ${mia ? `draggable="true"` : ""}>
       ${retratoMuerto(muerto, "tumba-cara")}
       <span class="tumba-mote">${escaparHTML(muerto.mote || muerto.nombre)}</span>
       ${muerto.mote ? `<span class="tumba-especie">${escaparHTML(muerto.nombre)}</span>` : ""}
@@ -88,7 +92,55 @@ function plantillaColumna(locke, uid) {
     </section>`;
 }
 
+// ---------- Cambiar de sitio tus muertos arrastrándolos ----------
+//
+// Solo dentro de tu columna (los de los demás no se tocan: lo comprueban las reglas). Se ven
+// del último al primero, así que al guardar se le da la vuelta al orden de la pantalla.
+
+let tumbaArrastrada = null;
+
+function activarArrastreTumbas(alFallar) {
+  const cuerpo = dialogoCementerio.querySelector(".cementerio-cuerpo");
+
+  cuerpo.addEventListener("dragstart", (e) => {
+    tumbaArrastrada = e.target.closest(".tumba.movible");
+    if (!tumbaArrastrada) return;
+    tumbaArrastrada.classList.add("arrastrando");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "");
+  });
+
+  cuerpo.addEventListener("dragover", (e) => {
+    if (!tumbaArrastrada) return;
+    const destino = e.target.closest(".tumba.movible");
+    // Solo entre las lápidas de la misma columna (la tuya)
+    if (!destino || destino.parentElement !== tumbaArrastrada.parentElement) return;
+    e.preventDefault();
+    if (destino === tumbaArrastrada) return;
+
+    const r = destino.getBoundingClientRect();
+    if (e.clientX < r.left + r.width / 2) destino.before(tumbaArrastrada);
+    else destino.after(tumbaArrastrada);
+  });
+
+  cuerpo.addEventListener("drop", (e) => e.preventDefault());
+
+  cuerpo.addEventListener("dragend", () => {
+    if (!tumbaArrastrada) return;
+    const columna = tumbaArrastrada.parentElement;
+    tumbaArrastrada.classList.remove("arrastrando");
+    tumbaArrastrada = null;
+
+    const ids = [...columna.querySelectorAll(".tumba.movible")].map((tumba) => tumba.dataset.id).reverse();
+    reordenarMuertos(idCementerio, ids).catch((error) => {
+      alFallar(error);
+      pintarCementerio(); // vuelve a como estaba
+    });
+  });
+}
+
 function pintarCementerio() {
+  if (tumbaArrastrada) return; // a mitad de arrastrar no se repinta (se perdería lo arrastrado)
   const locke = idCementerio ? lockePorId(idCementerio) : null;
   if (!locke) {
     if (dialogoCementerio.open) dialogoCementerio.close();
@@ -220,6 +272,7 @@ export function iniciarCementerio(alFallar) {
 
   dialogoCementerio.querySelector(".cementerio-cerrar").addEventListener("click", () => dialogoCementerio.close());
   dialogoCementerio.addEventListener("close", () => (idCementerio = null));
+  activarArrastreTumbas(alFallar);
 
   dialogoCementerio.querySelector(".cementerio-cuerpo").addEventListener("click", (e) => {
     if (e.target.closest(".tumba-nueva")) {

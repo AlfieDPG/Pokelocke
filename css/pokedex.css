@@ -209,11 +209,18 @@
   border-radius: 0.4rem;
   background: transparent;
   cursor: pointer;
+  transition: transform 0.12s, background-color 0.12s, box-shadow 0.12s;
 }
 
+/* Al pasar por encima, el mismo efecto que las caras de «Mis equipos»: un pelín más grande
+   y con el borde amarillo */
 .pokedex-evo:hover,
 .pokedex-evo:focus-visible {
+  position: relative;
+  z-index: 1;
+  transform: scale(1.12);
   background: rgba(241, 196, 15, 0.18);
+  box-shadow: 0 0 0 2px rgba(241, 196, 15, 0.7), 0 4px 12px rgba(0, 0, 0, 0.45);
   outline: none;
 }
 
@@ -250,8 +257,32 @@
 }
 
 .evo-arbol {
-  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 70vh;
   overflow: auto;
+}
+
+/* Cada forma regional con su propia línea, separada de la anterior */
+.evo-linea + .evo-linea {
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.evo-pokemon small {
+  font-size: 0.68rem;
+  font-weight: normal;
+  opacity: 0.75;
+}
+
+/* Megaevoluciones y cambios de forma: flecha discontinua y la ficha con borde discontinuo */
+.evo-paso.cambio > .evo-metodo {
+  opacity: 0.75;
+}
+
+.evo-paso.cambio > .evo-rama > .evo-pokemon {
+  border: 1px dashed rgba(241, 196, 15, 0.45);
 }
 
 .evo-rama,
@@ -275,9 +306,18 @@
   width: 4.6rem;
   padding: 0.35rem 0.2rem;
   border-radius: 0.5rem;
+  border: 1px solid transparent; /* los cambios de forma lo llevan discontinuo */
   font-size: 0.78rem;
   font-weight: bold;
   text-align: center;
+  transition: transform 0.12s, background-color 0.12s, box-shadow 0.12s;
+}
+
+/* El mismo efecto al pasar por encima que las fotos de la tabla */
+.evo-pokemon:hover {
+  transform: scale(1.08);
+  background: rgba(241, 196, 15, 0.18);
+  box-shadow: 0 0 0 2px rgba(241, 196, 15, 0.7), 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
 .evo-pokemon.actual {

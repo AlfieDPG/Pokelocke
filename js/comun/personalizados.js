@@ -99,8 +99,8 @@ function limpiarRutas(lista) {
 // ---------- Lockes que las usan ----------
 //
 // Un locke puede llevar unas rutas y unos level caps personalizados, como lleva sus normas:
-// una COPIA dentro del locke (locke.rutasPropias, locke.capsPropios), que reciben los demás
-// al entrar. Cuando quien lo creó cambia la suya, sus lockes se ponen al día solos, unos
+// una COPIA dentro del locke (locke.rutasPropias, locke.capsPropios), que los demás abren con
+// los botones del locke. Cuando quien lo creó cambia la suya, sus lockes se ponen al día solos, unos
 // segundos después de dejar de tocarla (no a cada tecla: cada vez es una escritura).
 
 const ESPERA_LOCKES = 3000;
@@ -205,9 +205,9 @@ function crearAlmacen(clave, limpiar, campoLocke) {
       return ok;
     },
 
-    // La copia que trae un locke: si no la tienes, se apunta; si la tienes porque te llegó de
-    // un locke y esta es más nueva, se pone al día. Las tuyas no se tocan. Las que borraste no
-    // vuelven, salvo con forzar (al pulsar su botón en el locke).
+    // La copia que trae un locke: si la tienes porque te llegó de un locke y esta es más nueva,
+    // se pone al día. Las tuyas no se tocan. Solo se apunta en las tuyas con forzar: al pulsar
+    // su botón en el locke (cada uno tiene lo suyo; no se llena la lista de todos sin pedirlo).
     recibirDeLocke(copia, forzar = false) {
       if (!copia || !copia.id) return;
       const estado = guardado();
@@ -219,7 +219,7 @@ function crearAlmacen(clave, limpiar, campoLocke) {
         if (!actual.recibido || (actual.actualizado || 0) >= (copia.actualizado || 0)) return;
         estado.listas[posicion] = recibida;
       } else {
-        if (estado.quitados.includes(copia.id) && !forzar) return;
+        if (!forzar) return;
         estado.quitados = estado.quitados.filter((id) => id !== copia.id);
         estado.listas.push(recibida);
       }
