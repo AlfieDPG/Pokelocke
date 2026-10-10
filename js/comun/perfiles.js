@@ -582,7 +582,7 @@ function resumenDeLocke(id, locke) {
     .filter((uid) => (estados[uid] || "aceptado") === "aceptado")
     .map((uid) => ({
       nombre: nombres[uid] || "Jugador",
-      vidas: locke.vidasIlimitadas ? null : vidas[uid] || 0
+      vidas: locke.vidasIlimitadas ? null : Math.max(0, vidas[uid] || 0) // -1: eliminado (vida cero)
     }));
 
   return {

@@ -18,7 +18,8 @@ import { obtenerVariedades } from "../comun/formas.js";
 import { elegirForma, datosDeForma } from "../comun/elegir-forma.js";
 import { imagenConRespaldo, urlsPMD, urlSpritePixel } from "../comun/imagenes.js";
 import {
-  lockePorId, estadoDe, muertosDe, apuntarMuerto, borrarMuerto, reordenarMuertos, cambiarNumero, alCambiarLockes
+  lockePorId, estadoDe, muertosDe, apuntarMuerto, borrarMuerto, reordenarMuertos, cambiarNumero, alCambiarLockes,
+  estaEliminado
 } from "../comun/lockes.js";
 
 let dialogoCementerio = null;
@@ -177,8 +178,16 @@ export function abrirMuerte(id, desdeLasVidas) {
   elegido = null;
   eligiendo = null;
 
-  dialogoMuerte.querySelector(".muerte-titulo").textContent = desdeLasVidas ? "Perder una vida" : "Apuntar un muerto";
-  dialogoMuerte.querySelector(".muerte-ok").textContent = desdeLasVidas ? "Quitar vida" : "Apuntar";
+  // Con 0 vidas, la que se pierde es la vida cero: queda fuera del locke
+  const usuario = usuarioActual();
+  const vidaCero = !locke.vidasIlimitadas && usuario && ((locke.vidas || {})[usuario.uid] || 0) === 0;
+
+  dialogoMuerte.querySelector(".muerte-titulo").textContent =
+    desdeLasVidas ? (vidaCero ? "Perder la vida cero" : "Perder una vida") : "Apuntar un muerto";
+  dialogoMuerte.querySelector(".muerte-ok").textContent =
+    desdeLasVidas ? (vidaCero ? "Perder el locke" : "Quitar vida") : "Apuntar";
+  dialogoMuerte.querySelector(".muerte-vida-texto").textContent =
+    vidaCero ? "Perder también la vida cero (quedas eliminado)" : "Quitar también una vida";
   for (const selector of [".muerte-pokemon", ".muerte-mote"]) {
     dialogoMuerte.querySelector(selector).value = "";
   }
@@ -186,7 +195,8 @@ export function abrirMuerte(id, desdeLasVidas) {
 
   // La casilla de la vida solo desde el cementerio, y solo si el locke tiene vidas
   const casilla = dialogoMuerte.querySelector(".muerte-vida");
-  dialogoMuerte.querySelector(".muerte-vida-campo").hidden = desdeLasVidas || locke.vidasIlimitadas;
+  dialogoMuerte.querySelector(".muerte-vida-campo").hidden =
+    desdeLasVidas || locke.vidasIlimitadas || estaEliminado(locke, usuario && usuario.uid);
   casilla.checked = !locke.vidasIlimitadas;
 
   dialogoMuerte.showModal();

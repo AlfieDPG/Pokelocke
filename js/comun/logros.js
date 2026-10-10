@@ -46,32 +46,40 @@ export const CATEGORIAS = [
 
 const cuantos = (lista, condicion) => lista.filter(condicion).length;
 
+// Un locke apuntado a mano en tu palmarés: ¿era de vidas ilimitadas? Los de antes no lo
+// llevan apuntado y se deduce de las vidas de los participantes (igual que en «Amigos»)
+function apuntadoIlimitado(ganado) {
+  if (typeof ganado.vidasIlimitadas === "boolean") return ganado.vidasIlimitadas;
+  const participantes = ganado.participantes || [];
+  return participantes.length > 0 && participantes.every((p) => p.vidas === null);
+}
+
 export const LOGROS = [
   // ---------- Versus ----------
   { id: "v-primer-locke", categoria: "versus", nivel: "bronce", icono: "espadas",
-    nombre: "Primeros pasos", descripcion: "Únete a tu primer locke.",
-    valor: (c) => c.lockes.length },
+    nombre: "Primeros pasos", descripcion: "Juega tu primer locke.",
+    valor: (c) => c.jugados },
   { id: "v-crear", categoria: "versus", nivel: "bronce", icono: "mas",
     nombre: "Anfitrión", descripcion: "Crea un locke.",
     valor: (c) => cuantos(c.lockes, (l) => l.creador === c.yo) },
   { id: "v-con-amigos", categoria: "versus", nivel: "bronce", icono: "amigos",
     nombre: "Cuantos más, mejor", descripcion: "Juega un locke con al menos un amigo.",
-    valor: (c) => Math.max(0, ...c.lockes.map(c.jugadoresDe)) >= 2 },
+    valor: (c) => c.masJugadores >= 2 },
   { id: "v-cuatro", categoria: "versus", nivel: "plata", icono: "amigos",
     nombre: "Todos contra todos", descripcion: "Juega un locke de 4 jugadores o más.",
-    valor: (c) => Math.max(0, ...c.lockes.map(c.jugadoresDe)), meta: 4 },
+    valor: (c) => c.masJugadores, meta: 4 },
   { id: "v-terminar", categoria: "versus", nivel: "bronce", icono: "visto",
     nombre: "Hasta el final", descripcion: "Termina un locke.",
-    valor: (c) => c.terminados.length },
+    valor: (c) => c.terminados.length + c.apuntados.length },
   { id: "v-ilimitadas", categoria: "versus", nivel: "bronce", icono: "corazon",
     nombre: "Sin presión", descripcion: "Juega un locke con vidas ilimitadas.",
-    valor: (c) => cuantos(c.lockes, (l) => l.vidasIlimitadas) },
+    valor: (c) => cuantos(c.lockes, (l) => l.vidasIlimitadas) + cuantos(c.apuntados, apuntadoIlimitado) },
   { id: "v-jugar-5", categoria: "versus", nivel: "plata", icono: "espadas",
     nombre: "Veterano", descripcion: "Juega 5 lockes.",
-    valor: (c) => c.lockes.length, meta: 5 },
+    valor: (c) => c.jugados, meta: 5 },
   { id: "v-jugar-15", categoria: "versus", nivel: "oro", icono: "espadas",
     nombre: "Incansable", descripcion: "Juega 15 lockes.",
-    valor: (c) => c.lockes.length, meta: 15 },
+    valor: (c) => c.jugados, meta: 15 },
   { id: "v-ganar-1", categoria: "versus", nivel: "bronce", icono: "corona",
     nombre: "¡Campeón!", descripcion: "Gana un locke.",
     valor: (c) => c.ganados },
@@ -89,7 +97,8 @@ export const LOGROS = [
     valor: (c) => cuantos(c.mios, (l) => !l.vidasIlimitadas && (l.vidasIniciales || 0) > 0 && c.vidasDe(l) >= l.vidasIniciales) },
   { id: "v-limite", categoria: "versus", nivel: "plata", icono: "corazon",
     nombre: "Al límite", descripcion: "Gana un locke con una sola vida.",
-    valor: (c) => cuantos(c.mios, (l) => !l.vidasIlimitadas && c.vidasDe(l) === 1) },
+    valor: (c) => cuantos(c.mios, (l) => !l.vidasIlimitadas && c.vidasDe(l) === 1) +
+      cuantos(c.apuntados, (g) => !apuntadoIlimitado(g) && c.misVidasEn(g) === 1) },
   { id: "v-victorias-10", categoria: "versus", nivel: "bronce", icono: "espadas",
     nombre: "Luchador", descripcion: "Suma 10 victorias en tus lockes.",
     valor: (c) => c.victorias, meta: 10 },
@@ -275,6 +284,18 @@ async function contexto() {
   const terminados = lockes.filter((locke) => locke.estado === "cerrado");
   const mios = terminados.filter((locke) => locke.ganador === yo); // los que he ganado
   const muertosDe = (locke) => ((locke.muertos || {})[yo]) || [];
+  const jugadoresDe = (locke) => (locke.jugadores || []).filter((uid) => estadoDe(locke, uid) === "aceptado").length;
+
+  // Los lockes de tu palmarés que no son de Versus: los que apuntaste a mano (los de antes de
+  // la web). Cuentan como jugados y terminados, además de ganados. Los de Versus que ganas
+  // también se copian ahí: esos ya están en «lockes» y no se cuentan dos veces.
+  const deVersus = new Set(lockes.map((locke) => locke.id));
+  const apuntados = (perfil.ganados || []).filter((ganado) => !deVersus.has(ganado.id));
+  const miNombre = String(perfil.nombre || "").trim().toLowerCase();
+  const misVidasEn = (ganado) => {
+    const yoEn = (ganado.participantes || []).find((p) => String(p.nombre || "").trim().toLowerCase() === miNombre);
+    return yoEn && typeof yoEn.vidas === "number" ? yoEn.vidas : null;
+  };
 
   const equipos = (leer("poketeams-equipos-v1", []) || []).filter((equipo) => Array.isArray(equipo.pokemon));
   const rutasTodas = ((leer("poketeams-rutas-propias-v1", null) || {}).listas) || [];
@@ -288,7 +309,10 @@ async function contexto() {
     mios,
     muertosDe,
     vidasDe: (locke) => (locke.vidas || {})[yo] || 0,
-    jugadoresDe: (locke) => (locke.jugadores || []).filter((uid) => estadoDe(locke, uid) === "aceptado").length,
+    apuntados,
+    misVidasEn,
+    jugados: lockes.length + apuntados.length,
+    masJugadores: Math.max(0, ...lockes.map(jugadoresDe), ...apuntados.map((ganado) => (ganado.participantes || []).length)),
     muertos: lockes.flatMap(muertosDe),
     ganados: (perfil.ganados || []).length,
     victorias: lockes.reduce((suma, locke) => suma + ((locke.marcador || {})[yo] || 0), 0),

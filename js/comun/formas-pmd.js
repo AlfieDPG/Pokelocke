@@ -19,6 +19,10 @@ const CORRECCIONES = {
   10312: 2, // Darkrai Mega
   10314: 1, // Meowstic Mega (macho)
   10326: 1, // Meowstic Mega (hembra): comparten el mismo retrato «Mega»
+  10253: 2, // Wooper de Paldea (la 1 es un Wooper «Beta»)
+  10273: 5, // Ogerpon Máscara Fuente: el retrato con la máscara puesta (las 1-3 son
+  10274: 6, // Ogerpon Máscara Horno     la cara sin máscara, con la capucha de otro color)
+  10275: 7, // Ogerpon Máscara Cimiento
   10248: 0, // Basculegion hembra: Mundo Misterioso no tiene retrato suyo
   10254: 0, // Oinkologne hembra: tampoco
   10158: 0, // Pikachu Compañero: tampoco

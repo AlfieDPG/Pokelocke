@@ -38,6 +38,11 @@ function textoSuceso(suceso, locke) {
     case "vida":
       if (suceso.delta > 0) return `${quien} ha recuperado una vida`;
       return muerto ? `${quien} ha perdido una vida: ${muerto}${contra}` : `${quien} ha perdido una vida`;
+    case "eliminado":
+      if (suceso.delta > 0) return `${quien} ha recuperado la vida cero y vuelve al locke`;
+      return muerto
+        ? `${quien} ha perdido la vida cero con ${muerto}${contra}: <strong>eliminado</strong>`
+        : `${quien} ha perdido la vida cero: <strong>eliminado</strong>`;
     case "muerte":
       return `${quien} ha perdido a ${muerto}${contra}`;
     case "victoria":
@@ -56,6 +61,7 @@ function iconoSuceso(suceso) {
     creado: "mas",
     entra: "personaMas",
     vida: "corazon",
+    eliminado: "calavera",
     victoria: "espadas",
     ganador: "corona"
   }[suceso.tipo];

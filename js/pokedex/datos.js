@@ -1,11 +1,12 @@
 // Estadísticas base de todos los Pokémon, incluidas las megaevoluciones y las formas
 // alternativas (Palafin Héroe, Necrozma Ultra, Deoxys Ataque, las de Alola...).
 //
-// Solo entran las formas que CAMBIAN las estadísticas: con esa regla se quedan fuera
-// solas las puramente estéticas (Gigamax, gorras de Pikachu, Vivillon, Unown...), que
-// tienen las mismas que la forma normal. Si varias formas comparten estadísticas
-// (los siete colores del núcleo de Minior, los tres Tatsugiri Mega...) solo sale una,
-// porque en una tabla de estadísticas base serían filas repetidas.
+// Solo entran las formas que CAMBIAN las estadísticas o el tipo: con esa regla se quedan
+// fuera solas las puramente estéticas (Gigamax, gorras de Pikachu, Vivillon, Unown...), que
+// son iguales que la forma normal. Ojo con mirar solo las estadísticas: Vulpix de Alola,
+// Marowak de Alola o los Rotom tienen las mismas que la normal y solo cambian de tipo. Si
+// varias formas comparten estadísticas y tipo (los siete colores del núcleo de Minior, los
+// tres Tatsugiri Mega...) solo sale una, porque serían filas repetidas.
 //
 // Todo sale de los CSV de PokeAPI, igual que el resto de datos de la web:
 //   pokemon_stats.csv    -> las estadísticas de cada forma
@@ -21,7 +22,7 @@ import { leer, escribir } from "../comun/almacen.js";
 
 // NO cambiar esta clave sin motivo: si se cambia, se vuelve a descargar todo. Sí hay que
 // subirla al rehacer datos/pokedex.json, para que los navegadores dejen la copia vieja.
-const CLAVE_POKEDEX = "poketeams-pokedex-v6";
+const CLAVE_POKEDEX = "poketeams-pokedex-v7";
 
 // Formas que no salen aunque sus estadísticas cambien un poco. Los tamaños de Pumpkaboo y
 // Gourgeist solo se mueven unos puntos de PS y Velocidad y llenaban la tabla de filas casi
@@ -117,12 +118,13 @@ function suma(numeros) {
 }
 
 // Formas de una especie que salen en la tabla: la normal primero y después las que
-// tengan unas estadísticas que no se hayan visto ya.
-function formasConEstadisticasPropias(variedades, bases) {
+// tengan unas estadísticas o un tipo que no se hayan visto ya.
+function formasDistintas(variedades, bases, tipos) {
   const normal = variedades.find((v) => v.porDefecto);
   if (!normal || !completo(bases[normal.id])) return [];
 
-  const vistas = new Set([String(bases[normal.id])]);
+  const huella = (v) => `${bases[v.id]}|${(tipos[v.id] || []).filter(Boolean)}`;
+  const vistas = new Set([huella(normal)]);
   const elegidas = [];
 
   // Cuando varias formas comparten estadísticas hay que quedarse con una sola. Se prefiere
@@ -138,7 +140,7 @@ function formasConEstadisticasPropias(variedades, bases) {
     );
 
   for (const variedad of candidatas) {
-    const linea = String(bases[variedad.id]);
+    const linea = huella(variedad);
     if (vistas.has(linea)) continue;
     vistas.add(linea);
     elegidas.push(variedad);
@@ -180,7 +182,7 @@ function montarTabla(bases, variedades, slugsEspecie, tipos, nombresEspecies) {
 
     const indices = indicesPMD(porEspecie.get(especie));
 
-    for (const variedad of formasConEstadisticasPropias(porEspecie.get(especie), bases)) {
+    for (const variedad of formasDistintas(porEspecie.get(especie), bases, tipos)) {
       const etiqueta = variedad.porDefecto ? "" : etiquetaForma(variedad.slug, slugsEspecie[especie]);
 
       filas.push({
@@ -248,6 +250,7 @@ export async function cargarPokedex() {
     localStorage.removeItem("poketeams-pokedex-v3"); // versión antigua (sin los tipos)
     localStorage.removeItem("poketeams-pokedex-v4"); // versión antigua (con los tamaños de Pumpkaboo)
     localStorage.removeItem("poketeams-pokedex-v5"); // versión antigua (sin la hoja de retratos)
+    localStorage.removeItem("poketeams-pokedex-v6"); // versión antigua (sin las formas que solo cambian de tipo)
   } catch (error) {
     // si el navegador no deja tocar el almacén, da igual: solo es limpieza
   }

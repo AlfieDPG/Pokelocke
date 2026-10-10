@@ -418,6 +418,90 @@ button.locke-anadir .icono {
   opacity: 0.6;
 }
 
+/* ---------- Eliminado: perdió la vida cero ---------- */
+
+/* El bloque apagado y en gris, con borde rojo, la foto tachada por una calavera y una
+   etiqueta «Eliminado» */
+.locke-jugador.eliminado,
+.locke-jugador.mio.eliminado {
+  background:
+    repeating-linear-gradient(-45deg, rgba(231, 76, 60, 0.07) 0 0.6rem, transparent 0.6rem 1.2rem),
+    #1f2029;
+  box-shadow: inset 0 0 0 1px rgba(231, 76, 60, 0.55);
+}
+
+.locke-jugador.eliminado .locke-cara {
+  border-color: #555a70;
+}
+
+.locke-jugador.eliminado .locke-cara img {
+  filter: grayscale(1) brightness(0.55);
+}
+
+.locke-cara-fuera {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e74c3c;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
+}
+
+.locke-cara-fuera .icono {
+  width: 2.2rem;
+  height: 2.2rem;
+}
+
+.locke-jugador.eliminado .locke-quien {
+  color: rgba(242, 242, 242, 0.55);
+  text-decoration: line-through;
+  text-decoration-color: rgba(231, 76, 60, 0.8);
+  text-decoration-thickness: 2px;
+}
+
+.locke-eliminado {
+  padding: 0.15rem 0.55rem;
+  border-radius: 0.3rem;
+  background: #c0392b;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.locke-jugador.eliminado .locke-cifra.victorias {
+  opacity: 0.5;
+}
+
+.locke-numero .locke-sin-vidas .icono {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+/* Con 0 vidas aún se juega, pero ya es la vida cero: el corazón y el número laten */
+.locke-cifra.vida-cero {
+  box-shadow: inset 0 0 0 1px rgba(231, 76, 60, 0.6);
+  animation: vida-cero 1.6s ease-in-out infinite;
+}
+
+@keyframes vida-cero {
+  50% {
+    background: rgba(231, 76, 60, 0.16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .locke-cifra.vida-cero {
+    animation: none;
+  }
+}
+
+.suceso.eliminado .suceso-icono {
+  color: #e74c3c;
+}
+
 /* Tu bloque, un poco destacado: es el único que puedes tocar */
 .locke-jugador.mio {
   box-shadow: inset 0 0 0 1px rgba(241, 196, 15, 0.35);

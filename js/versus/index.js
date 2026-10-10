@@ -34,7 +34,7 @@ import {
 import {
   alCambiarLockes, misLockes, invitacionesALockes, estadoDe, fallaLosLockes, soyCreador,
   crearLocke, editarLocke, invitarALocke, quitarDeLocke, sePuedenCambiarVidas,
-  cambiarNumero, elegirGanador, borrarLocke, lockePorId
+  cambiarNumero, elegirGanador, borrarLocke, lockePorId, estaEliminado
 } from "../comun/lockes.js";
 
 let seccion = null;
@@ -74,6 +74,25 @@ function plantillaCifras(locke, uid, editable) {
   const victorias = (locke.marcador || {})[uid] || 0;
   const vidas = locke.vidasIlimitadas ? "∞" : (locke.vidas || {})[uid] || 0;
 
+  // Fuera del locke (perdió la vida cero): las victorias se quedan como estaban y en las vidas,
+  // una calavera. Solo le queda el «+», por si fue sin querer.
+  if (estaEliminado(locke, uid)) {
+    return `
+      <div class="locke-cifras">
+        <div class="locke-cifra victorias">
+          <span class="locke-etiqueta">${icono("espadas")} Victorias</span>
+          <div class="locke-numero marcador">${botonesCifra("marcador", false, victorias)}</div>
+        </div>
+        <div class="locke-cifra vidas">
+          <span class="locke-etiqueta">${icono("corazon")} Vidas</span>
+          <div class="locke-numero vidas">
+            <span class="locke-valor locke-sin-vidas">${icono("calavera")}</span>
+            ${editable ? `<button class="mas" data-campo="vidas" aria-label="Recuperar la vida cero" title="Recuperar la vida cero">${icono("mas")}</button>` : ""}
+          </div>
+        </div>
+      </div>`;
+  }
+
   return `
     <div class="locke-cifras">
       <div class="locke-cifra victorias">
@@ -82,10 +101,10 @@ function plantillaCifras(locke, uid, editable) {
           ${botonesCifra("marcador", editable, victorias, "Quitar una victoria", "Sumar una victoria")}
         </div>
       </div>
-      <div class="locke-cifra vidas ${locke.vidasIlimitadas ? "ilimitadas" : ""}">
+      <div class="locke-cifra vidas ${locke.vidasIlimitadas ? "ilimitadas" : ""} ${vidas === 0 ? "vida-cero" : ""}">
         <span class="locke-etiqueta">${icono("corazon")} Vidas</span>
         <div class="locke-numero vidas">
-          ${botonesCifra("vidas", editable && !locke.vidasIlimitadas, vidas, "Quitar una vida", "Sumar una vida")}
+          ${botonesCifra("vidas", editable && !locke.vidasIlimitadas, vidas, vidas === 0 ? "Perder la vida cero" : "Quitar una vida", "Sumar una vida")}
         </div>
       </div>
     </div>`;
@@ -99,19 +118,22 @@ function plantillaJugador(locke, uid) {
   const gano = locke.ganador === uid;
   const pendiente = estadoDe(locke, uid) === "pendiente";
   const esMio = uid === usuario.uid;
+  const eliminado = !gano && estaEliminado(locke, uid);
 
-  // Elegir ganador: solo quien creó el locke, y solo entre los que han aceptado
-  const puedeGanar = !cerrado && soyCreador(locke) && !pendiente;
+  // Elegir ganador: solo quien creó el locke, y solo entre los que han aceptado y siguen dentro
+  const puedeGanar = !cerrado && soyCreador(locke) && !pendiente && !eliminado;
 
   return `
-    <div class="locke-jugador ${gano ? "ganador" : ""} ${pendiente ? "pendiente" : ""} ${esMio ? "mio" : ""}"
+    <div class="locke-jugador ${gano ? "ganador" : ""} ${pendiente ? "pendiente" : ""} ${esMio ? "mio" : ""} ${eliminado ? "eliminado" : ""}"
          data-uid="${escaparHTML(uid)}">
       <div class="locke-cara">
         ${foto ? `<img src="${escaparHTML(foto)}" alt="" referrerpolicy="no-referrer" data-respaldo="" data-quitar-si-falla>` : ""}
+        ${eliminado ? `<span class="locke-cara-fuera">${icono("calavera")}</span>` : ""}
       </div>
       <span class="locke-quien">${nombre}${esMio ? ` <small>(tú)</small>` : ""}</span>
       ${gano ? `<span class="locke-corona">${icono("corona")}</span>` : ""}
       ${pendiente ? `<span class="locke-pendiente">Sin contestar</span>` : ""}
+      ${eliminado ? `<span class="locke-eliminado">Eliminado</span>` : ""}
 
       ${plantillaCifras(locke, uid, esMio && !cerrado)}
 

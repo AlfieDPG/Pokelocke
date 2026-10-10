@@ -15,6 +15,7 @@
 //     estados: {uid: "aceptado"|"pendiente"},
 //     nombres: {uid}, fotos: {uid}, creador,
 //     vidasIniciales, vidasIlimitadas, vidas: {uid:n}, marcador: {uid:n},
+//                                  // vidas -1 (ELIMINADO): perdió también la vida cero, está fuera
 //     normas: { id, nombre, conGenerales, lista },  // copia del conjunto elegido (normas.js)
 //     rutasPropias, capsPropios,   // copias de unas rutas / level caps personalizados (personalizados.js)
 //     muertos: {uid: [muerto]},    // cementerio de cada uno (ver Cementerio, abajo)
@@ -48,6 +49,14 @@ const oyentes = new Set();
 
 export function lockes() {
   return todos;
+}
+
+// La vida cero: con 0 vidas se sigue jugando; perder una más deja las vidas en -1, y eso es
+// haber perdido el locke. Con el «+» se vuelve a 0 (por si fue sin querer).
+export const ELIMINADO = -1;
+
+export function estaEliminado(locke, uid) {
+  return Boolean(locke) && !locke.vidasIlimitadas && ((locke.vidas || {})[uid] || 0) <= ELIMINADO;
 }
 
 // Los que ya has aceptado: los que se enseñan en «Versus»
@@ -296,13 +305,16 @@ export async function cambiarNumero(id, uid, campo, cuanto) {
   const usuario = usuarioActual();
   if (!locke || locke.estado === "cerrado" || !usuario || uid !== usuario.uid) return;
 
+  const vidas = campo === "vidas" && !locke.vidasIlimitadas;
   const actual = (locke[campo] || {})[uid] || 0;
-  const nuevo = Math.max(0, Math.min(999, actual + cuanto));
+  const nuevo = Math.max(vidas ? ELIMINADO : 0, Math.min(999, actual + cuanto));
   if (nuevo === actual) return;
 
   const { fn, ref } = referencia(id);
   await fn.updateDoc(ref, { [`${campo}.${uid}`]: nuevo, actualizado: Date.now() });
-  await apuntarCambio(id, campo === "vidas" ? "vida" : "victoria", Math.sign(cuanto));
+  // Entrar o salir de la vida cero se apunta aparte: «X ha perdido el locke»
+  const tipo = !vidas ? "victoria" : Math.min(actual, nuevo) === ELIMINADO ? "eliminado" : "vida";
+  await apuntarCambio(id, tipo, Math.sign(cuanto));
 }
 
 // Solo quien creó el locke elige ganador. Se apunta el día, que luego sale en la ficha.
@@ -359,14 +371,15 @@ export async function apuntarMuerto(id, muerto, quitarVida) {
     actualizado: Date.now()
   };
   const vidas = (locke.vidas || {})[usuario.uid] || 0;
-  const restaVida = quitarVida && !locke.vidasIlimitadas && vidas > 0;
+  const restaVida = quitarVida && !locke.vidasIlimitadas && vidas > ELIMINADO;
   if (restaVida) cambios[`vidas.${usuario.uid}`] = vidas - 1;
 
   const { fn, ref } = referencia(id);
   await fn.updateDoc(ref, cambios);
 
   const { especie, nombre, mote } = nuevo;
-  await apuntarSuceso(id, restaVida ? "vida" : "muerte", {
+  const tipo = !restaVida ? "muerte" : vidas - 1 === ELIMINADO ? "eliminado" : "vida";
+  await apuntarSuceso(id, tipo, {
     ...(restaVida ? { delta: -1 } : {}),
     muerto: { especie, nombre, mote, ...formaDelMuerto(nuevo) }
   });
@@ -419,7 +432,7 @@ export async function reordenarMuertos(id, ids) {
 // Cada uno apunta solo lo suyo. Los nombres no se copian: se leen de locke.nombres al pintar.
 //
 //   { uid, tipo, cuando (hora del servidor), delta?, muerto?, ganador? }
-//   tipo: "creado" | "entra" | "vida" | "victoria" | "muerte" | "ganador"
+//   tipo: "creado" | "entra" | "vida" | "eliminado" (la vida cero) | "victoria" | "muerte" | "ganador"
 //
 // Si apuntar falla (p. ej. faltan reglas por publicar), lo de verdad ya está hecho: solo se
 // avisa en la consola.

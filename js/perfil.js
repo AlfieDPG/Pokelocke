@@ -35,6 +35,8 @@ import {
 } from "./comun/imagenes.js";
 import { cargarDatos, datos } from "./comun/datos.js";
 import { activarAutocompletado } from "./comun/autocompletado.js";
+import { obtenerVariedades } from "./comun/formas.js";
+import { elegirForma, datosDeForma } from "./comun/elegir-forma.js";
 import { LOGROS, insignia } from "./comun/logros.js";
 
 const MAX_DESTACADOS = 12;   // los que caben en el perfil (cada uno es una copia dentro de él)
@@ -456,13 +458,52 @@ async function copiarEquipo(boton) {
 
 // ---------- Foto (un Pokémon) ----------
 
-let avatarElegido = null; // { id, es }
+// { id, es, forma } · forma: {} la normal, o { etiqueta, idForma, formaPMD, imagenForma? }
+// (Mega, Alola...: se pregunta como en el creador de equipos, ver js/comun/elegir-forma.js)
+let avatarElegido = null;
+let eligiendoAvatar = null; // la elección en curso (mientras sale la ventana de la forma)
 const listaPokemon = [];
+
+// Su retrato de Mundo Misterioso y, si no tiene, su sprite pequeño (el de la forma)
+function urlsAvatar(elegido) {
+  const { idForma, formaPMD, imagenForma } = elegido.forma || {};
+  return [
+    ...urlsPMD({ id: elegido.id, idForma, formaPMD }),
+    urlSpritePixel(imagenForma || idForma || elegido.id)
+  ];
+}
 
 function pintarMuestra() {
   dialogoAvatar.querySelector(".avatar-muestra").innerHTML = avatarElegido
-    ? imagenConRespaldo([...urlsPMD({ id: avatarElegido.id }), urlSpritePixel(avatarElegido.id)], `alt=""`)
+    ? imagenConRespaldo(urlsAvatar(avatarElegido), `alt=""`)
     : plantillaFoto(miPerfil() || {}, "perfil-foto");
+}
+
+// Elegida la especie: si tiene varias formas, se pregunta cuál (cancelar = la normal)
+async function elegirAvatar(pokemon) {
+  avatarElegido = { id: pokemon.id, es: pokemon.es, forma: {} };
+  campoAvatar.value = pokemon.es;
+  pintarMuestra();
+
+  let info = { especie: "", lista: [] };
+  try {
+    info = await obtenerVariedades(pokemon.id);
+  } catch (error) {
+    // sin información de formas: la normal
+  }
+  if (info.lista.length < 2) return;
+
+  const slug = await elegirForma(pokemon, info);
+  try {
+    const forma = slug ? await datosDeForma(info, slug) : {};
+    if (forma.etiqueta) {
+      avatarElegido = { ...avatarElegido, forma };
+      campoAvatar.value = `${pokemon.es} (${forma.etiqueta})`;
+      pintarMuestra();
+    }
+  } catch (error) {
+    console.error(error); // sin conexión: se queda la normal
+  }
 }
 
 function abrirAvatar() {
@@ -481,11 +522,12 @@ function abrirAvatar() {
 // La foto es la dirección de su retrato (si no tiene, la del sprite pequeño): así sale igual
 // en todas partes donde ya se pinta la foto de alguien (Amigos, Versus...)
 async function guardarAvatar() {
+  if (eligiendoAvatar) await eligiendoAvatar;
   if (!avatarElegido) {
     dialogoAvatar.querySelector(".avatar-error").textContent = "Elige un Pokémon de la lista.";
     return;
   }
-  const opciones = [...urlsPMD({ id: avatarElegido.id }), urlSpritePixel(avatarElegido.id)];
+  const opciones = urlsAvatar(avatarElegido);
   let foto = opciones[opciones.length - 1];
   for (const url of opciones) {
     if (await precargarImagen(url)) {
@@ -583,9 +625,7 @@ campoAvatar.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && campoAvatar.parentElement.querySelector(".sugerencias .opcion")) e.preventDefault();
 });
 const autocompletadoAvatar = activarAutocompletado(campoAvatar, listaPokemon, (pokemon) => {
-  avatarElegido = pokemon;
-  campoAvatar.value = pokemon.es;
-  pintarMuestra();
+  eligiendoAvatar = elegirAvatar(pokemon).finally(() => (eligiendoAvatar = null));
 });
 campoAvatar.addEventListener("input", () => (avatarElegido = null));
 dialogoAvatar.querySelector(".avatar-formulario").addEventListener("submit", (e) => {
