@@ -17,6 +17,45 @@ body {
   display: none !important;
 }
 
+/* ---------- Barras de scroll (las de toda la web) ---------- */
+
+/* Chrome, Edge, Safari: finas, redondeadas, de los colores de la web y rojas al cogerlas */
+::-webkit-scrollbar {
+  width: 0.7rem;
+  height: 0.7rem;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 0.2rem solid transparent;
+  border-radius: 1rem;
+  background: #4a4e68 padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #60658a;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: #c0392b;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* Firefox (no tiene lo de arriba). Solo ahí: en Chrome esto anularía lo de arriba */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #4a4e68 transparent;
+  }
+}
+
 /* ---------- Desplegable de sugerencias ---------- */
 
 .sugerencias {

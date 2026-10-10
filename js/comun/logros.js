@@ -441,7 +441,43 @@ export function insignia(logro, conseguido = true) {
   return `<span class="logro-insignia ${escaparHTML(logro.nivel)} ${conseguido ? "" : "bloqueado"}">${icono(conseguido ? logro.icono : "candado")}</span>`;
 }
 
+// Una fanfarria cortita, de consola antigua, hecha por el navegador (sin archivos). Solo deja
+// sonar después de que se haya tocado la página: por eso se prepara con el primer clic o tecla.
+let audio = null;
+
+function prepararAudio() {
+  const Contexto = window.AudioContext || window.webkitAudioContext;
+  if (!audio && Contexto) audio = new Contexto();
+}
+for (const evento of ["pointerdown", "keydown"]) addEventListener(evento, prepararAudio, { once: true, capture: true });
+
+function sonar() {
+  if (!audio) return;
+  if (audio.state === "suspended") audio.resume().catch(() => {});
+  const inicio = audio.currentTime + 0.03;
+  const notas = [[784, 0], [1047, 0.09], [1319, 0.18], [1568, 0.27]]; // sol, do, mi, sol
+  notas.forEach(([frecuencia, cuando], i) => {
+    const t = inicio + cuando;
+    const dura = i === notas.length - 1 ? 0.5 : 0.12;
+    const onda = audio.createOscillator();
+    const volumen = audio.createGain();
+    onda.type = "square";
+    onda.frequency.value = frecuencia;
+    volumen.gain.setValueAtTime(0.0001, t);
+    volumen.gain.exponentialRampToValueAtTime(0.05, t + 0.01);
+    volumen.gain.exponentialRampToValueAtTime(0.0001, t + dura);
+    onda.connect(volumen).connect(audio.destination);
+    onda.start(t);
+    onda.stop(t + dura + 0.02);
+  });
+}
+
 function anunciar(logros) {
+  try {
+    sonar();
+  } catch (error) {
+    console.error(error);
+  }
   if (!caja) {
     caja = document.createElement("div");
     caja.className = "avisos-logro";

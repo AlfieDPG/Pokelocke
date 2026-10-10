@@ -41,7 +41,9 @@ const RADIO = 96;
 
 const vista = document.getElementById("vista-ruleta");
 const pestanas = vista.querySelector(".ruleta-pestanas");
-const rueda = vista.querySelector(".ruleta-rueda");
+// Lo que gira es lo de dentro del SVG, no el SVG: un cuadrado girado se sale por las esquinas y
+// la página cambiaba de tamaño (y salía y se iba la barra de scroll) mientras daba vueltas
+const rueda = vista.querySelector(".ruleta-giro");
 const botonGirar = vista.querySelector(".ruleta-girar");
 const resultado = vista.querySelector(".ruleta-resultado");
 const campoNombre = vista.querySelector(".ruleta-nombre");
@@ -126,6 +128,9 @@ function pintarRueda() {
   const total = opciones.length;
 
   if (!total) {
+    rotacion = 0; // que el texto salga derecho
+    rueda.style.transition = "none";
+    rueda.style.transform = "";
     rueda.innerHTML = `
       <circle r="${RADIO}" class="ruleta-vacia"/>
       <text class="ruleta-vacia-texto" y="-34" text-anchor="middle">Añade opciones</text>`;
@@ -187,7 +192,7 @@ function girar() {
   ganadora = null;
   const texto = opciones[casilla].texto;
   pintarRueda();
-  resultado.hidden = true;
+  resultado.classList.add("oculto");
   vista.classList.add("girando");
   botonGirar.disabled = true;
   for (const campo of vista.querySelectorAll(".ruleta-panel input, .ruleta-panel button")) campo.disabled = true;
@@ -218,7 +223,11 @@ function terminar(casilla, texto) {
       <button class="ruleta-otra">${icono("ruleta")} Otra vez</button>
       <button class="ruleta-quitar-ganadora" data-casilla="${casilla}">${icono("aspa")} Quitarla de la ruleta</button>
     </div>`;
-  resultado.hidden = false;
+  resultado.classList.remove("oculto");
+  // Oculto no desaparece (guarda su hueco, ver ruleta.css): la animación de salir, a mano
+  resultado.style.animation = "none";
+  void resultado.offsetWidth;
+  resultado.style.animation = "";
 }
 
 // ---------- Opciones ----------
@@ -261,7 +270,7 @@ function pintarHistorial() {
 // Al cambiar de ruleta o sus opciones, lo que había salido ya no vale (las casillas se mueven)
 function olvidarResultado() {
   ganadora = null;
-  resultado.hidden = true;
+  resultado.classList.add("oculto");
 }
 
 function pintarTodo() {

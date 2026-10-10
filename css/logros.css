@@ -362,7 +362,12 @@ button.perfil-titulo:hover:not(:disabled) {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.4rem;
   max-height: 60vh;
+  /* Hueco alrededor para que, al agrandarse con el ratón, no se corte el borde ni salga scroll */
+  padding: 0.4rem;
+  margin: -0.4rem;
+  overflow-x: hidden;
   overflow-y: auto;
+  outline: none; /* al abrir la ventana se le pone el foco y salía un recuadro blanco */
 }
 
 .titulo-opcion {
