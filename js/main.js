@@ -1,6 +1,7 @@
 import { activarRespaldoImagenes } from "./comun/imagenes.js";
 import { iniciarNavegacion, irA, vistaInicial } from "./navegacion.js";
 import { iniciarSesionUI } from "./sesion.js";
+import { sumarContador } from "./comun/contadores.js";
 
 activarRespaldoImagenes();
 iniciarNavegacion();
@@ -8,7 +9,10 @@ irA(vistaInicial()); // la que hubiera al recargar, o Versus si se entra de nuev
 
 // Preguntas frecuentes: el «?» al lado de «Créditos y privacidad»
 const dialogoAyuda = document.querySelector("#dialogo-ayuda");
-document.querySelector(".boton-ayuda").addEventListener("click", () => dialogoAyuda.showModal());
+document.querySelector(".boton-ayuda").addEventListener("click", () => {
+  dialogoAyuda.showModal();
+  sumarContador("ayuda"); // para los logros
+});
 dialogoAyuda.querySelector(".ayuda-cerrar").addEventListener("click", () => dialogoAyuda.close());
 
 // La sesión se monta aparte: si falla, la web sigue funcionando con el navegador

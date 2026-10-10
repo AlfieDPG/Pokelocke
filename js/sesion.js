@@ -26,6 +26,7 @@ import {
 import { iniciarLockes, salirDeTodosMisLockes } from "./comun/lockes.js";
 import { iniciarAvisos } from "./avisos.js";
 import { iniciarPresencia, borrarMiPresencia } from "./comun/presencia.js";
+import { iniciarLogros } from "./comun/logros.js";
 
 const cajon = document.querySelector(".sesion");
 const datosUsuario = cajon.querySelector(".sesion-usuario");
@@ -397,6 +398,7 @@ export async function iniciarSesionUI() {
   iniciarLockes();
   iniciarAvisos();
   iniciarPresencia();
+  iniciarLogros();
   alCambiarMiPerfil(() => {
     pintarNombre();
     revisarMote();

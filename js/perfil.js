@@ -4,6 +4,7 @@
 //   · Foto: la de Google o un Pokémon (su retrato de Mundo Misterioso). En el tuyo, pulsándola
 //     se cambia.
 //   · Nombre, con un lápiz para cambiarlo (es el nombre de usuario, ver perfiles.js).
+//   · Título: el nombre de uno de sus logros, el que elija.
 //   · Lockes ganados y, en el tuyo, amigos; en el de un amigo, los lockes jugados juntos en
 //     total (los mismos que cuenta la rivalidad de «Amigos»: js/comun/cara-a-cara.js).
 //   · Equipos destacados: los que cada uno elige enseñar (hasta MAX_DESTACADOS). Se ven los
@@ -12,6 +13,7 @@
 //     verdad son privados.
 //   · En el tuyo, tus VER_AMIGOS amigos con los que más lockes has jugado: pulsando uno se ve
 //     su perfil. Todos están en «Amigos».
+//   · Pestaña «Logros»: los que tiene esa persona (js/comun/logros.js).
 //
 // Se descarga la primera vez que se abre (ver sesion.js).
 
@@ -33,6 +35,7 @@ import {
 } from "./comun/imagenes.js";
 import { cargarDatos, datos } from "./comun/datos.js";
 import { activarAutocompletado } from "./comun/autocompletado.js";
+import { LOGROS, insignia } from "./comun/logros.js";
 
 const MAX_DESTACADOS = 12;   // los que caben en el perfil (cada uno es una copia dentro de él)
 const VER_DESTACADOS = 3;    // los que se ven sin pulsar «Ver todos»
@@ -43,9 +46,11 @@ const cuerpo = dialogo.querySelector(".perfil-cuerpo");
 const dialogoAvatar = document.querySelector("#dialogo-avatar");
 const dialogoEscaparate = document.querySelector("#dialogo-escaparate");
 const dialogoDestacados = document.querySelector("#dialogo-destacados");
+const dialogoTitulo = document.querySelector("#dialogo-titulo");
 
 let viendo = null;           // uid del amigo cuyo perfil se ve, o null si es el tuyo
 let desdeMiPerfil = false;   // se llegó al del amigo desde tu lista (sale «Volver»)
+let pestana = "perfil";      // "perfil" o "logros"
 let editandoNombre = false;
 let errorNombre = "";
 
@@ -104,6 +109,47 @@ function plantillaNombre(perfil, mio) {
     </div>`;
 }
 
+// El título: el nombre de uno de sus logros, el que haya elegido (perfil.titulo), debajo del
+// nombre. Solo si ese logro lo tiene. En el tuyo, pulsándolo se cambia.
+function tituloDe(perfil) {
+  const logro = LOGROS.find((cada) => cada.id === perfil.titulo);
+  return logro && (perfil.logros || {})[logro.id] ? logro : null;
+}
+
+function plantillaTitulo(perfil, mio) {
+  const logro = tituloDe(perfil);
+  if (mio) {
+    return `<button class="perfil-titulo ${logro ? `nivel-${logro.nivel}` : "sin-titulo"}" title="Cambiar título" ${editandoNombre ? "disabled" : ""}>
+              ${escaparHTML(logro ? logro.nombre : "Elegir título")}
+            </button>`;
+  }
+  return logro ? `<span class="perfil-titulo nivel-${logro.nivel}">${escaparHTML(logro.nombre)}</span>` : "";
+}
+
+function pintarTitulos() {
+  const perfil = miPerfil() || {};
+  const tengo = perfil.logros || {};
+  const conseguidos = LOGROS.filter((logro) => tengo[logro.id]);
+  dialogoTitulo.querySelector(".titulo-lista").innerHTML = conseguidos.length
+    ? conseguidos
+        .map(
+          (logro) => `
+            <button class="titulo-opcion ${logro.id === perfil.titulo ? "elegido" : ""}" data-logro="${escaparHTML(logro.id)}"
+                    title="${escaparHTML(logro.descripcion)}">
+              ${insignia(logro, true)}
+              <span>${escaparHTML(logro.nombre)}</span>
+            </button>`
+        )
+        .join("")
+    : `<p class="perfil-vacio">Todavía no tienes logros.</p>`;
+  dialogoTitulo.querySelector(".titulo-quitar").hidden = !tituloDe(perfil);
+}
+
+async function ponerTitulo(id) {
+  await guardarMiPerfil({ titulo: id });
+  dialogoTitulo.close();
+}
+
 // Lockes jugados juntos en total (los de Versus, en marcha o terminados, y los apuntados a
 // mano): lo mismo que la rivalidad de «Amigos»
 function lockesJuntos(amigo) {
@@ -156,6 +202,39 @@ function plantillaAmigos() {
     </section>`;
 }
 
+// ---------- Pestaña de logros ----------
+//
+// Los suyos (perfil.logros: { id: fecha }, ver js/comun/logros.js), del último al primero, y
+// detrás, apagados, los que le faltan. Lo que pide cada uno, al pasar el ratón.
+
+function plantillaLogrosDe(perfil) {
+  const tengo = perfil.logros || {};
+  const conseguidos = LOGROS.filter((logro) => tengo[logro.id]).sort((uno, otro) => tengo[otro.id] - tengo[uno.id]);
+  const faltan = LOGROS.filter((logro) => !tengo[logro.id]);
+
+  const ficha = (logro, hecho) => {
+    const cuando = hecho
+      ? ` · ${new Date(tengo[logro.id]).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })}`
+      : "";
+    return `
+      <div class="perfil-logro ${hecho ? "conseguido" : ""}" title="${escaparHTML(logro.descripcion + cuando)}">
+        ${insignia(logro, hecho)}
+        <span>${escaparHTML(logro.nombre)}</span>
+      </div>`;
+  };
+
+  return `
+    <section class="perfil-apartado">
+      ${conseguidos.length
+        ? `<div class="perfil-logros">${conseguidos.map((logro) => ficha(logro, true)).join("")}</div>`
+        : `<p class="perfil-vacio">Todavía ninguno.</p>`}
+      ${faltan.length
+        ? `<h3 class="perfil-logros-faltan">Por conseguir <small>${faltan.length}</small></h3>
+           <div class="perfil-logros">${faltan.map((logro) => ficha(logro, false)).join("")}</div>`
+        : ""}
+    </section>`;
+}
+
 // ---------- Pintar ----------
 
 function perfilQueSeVe() {
@@ -184,15 +263,25 @@ function pintar() {
          : `<span><strong>${juntos}</strong> ${juntos === 1 ? "locke" : "lockes"} juntos</span>`}`;
 
   const quedan = escaparate.length - VER_DESTACADOS;
+  const logros = Object.keys(perfil.logros || {}).filter((id) => LOGROS.some((logro) => logro.id === id)).length;
 
-  cuerpo.innerHTML = `
+  const cabeza = `
     <header class="perfil-cabeza">
       ${mio
         ? `<button class="perfil-avatar" title="Cambiar foto">${plantillaFoto(perfil, "perfil-foto")}<span class="perfil-avatar-lapiz">${icono("lapiz")}</span></button>`
         : `<div class="perfil-avatar">${plantillaFoto(perfil, "perfil-foto")}</div>`}
       ${plantillaNombre(perfil, mio)}
+      ${plantillaTitulo(perfil, mio)}
       <div class="perfil-cifras">${cifras}</div>
     </header>
+
+    <div class="perfil-pestanas">
+      <button data-pestana="perfil" class="${pestana === "perfil" ? "activa" : ""}">${icono("persona")} Perfil</button>
+      <button data-pestana="logros" class="${pestana === "logros" ? "activa" : ""}">${icono("trofeo")} Logros <small>${logros}/${LOGROS.length}</small></button>
+    </div>`;
+
+  cuerpo.innerHTML = pestana === "logros" ? cabeza + plantillaLogrosDe(perfil) : `
+    ${cabeza}
 
     <section class="perfil-apartado">
       <h3>
@@ -247,6 +336,7 @@ export function abrirMiPerfil() {
   viendo = null;
   desdeMiPerfil = false;
   editandoNombre = false;
+  pestana = "perfil";
   pintar();
   if (!dialogo.open) dialogo.showModal();
 }
@@ -255,6 +345,7 @@ export function abrirPerfilDe(uid, desdeElMio = false) {
   viendo = uid;
   desdeMiPerfil = desdeElMio;
   editandoNombre = false;
+  pestana = "perfil";
   pintar();
   if (!dialogo.open) dialogo.showModal();
 }
@@ -425,7 +516,14 @@ cuerpo.addEventListener("click", (e) => {
   const boton = e.target.closest("button");
   if (!boton) return;
 
-  if (boton.classList.contains("perfil-avatar")) abrirAvatar();
+  if (boton.dataset.pestana) {
+    pestana = boton.dataset.pestana;
+    pintar();
+  } else if (boton.classList.contains("perfil-avatar")) abrirAvatar();
+  else if (boton.classList.contains("perfil-titulo")) {
+    pintarTitulos();
+    dialogoTitulo.showModal();
+  }
   else if (boton.classList.contains("perfil-editar-nombre")) {
     editandoNombre = true;
     errorNombre = "";
@@ -467,6 +565,13 @@ dialogo.querySelector(".perfil-cerrar").addEventListener("click", () => dialogo.
 dialogo.querySelector(".perfil-volver").addEventListener("click", abrirMiPerfil);
 dialogo.addEventListener("close", () => (editandoNombre = false));
 
+dialogoTitulo.querySelector(".titulo-lista").addEventListener("click", (e) => {
+  const opcion = e.target.closest(".titulo-opcion");
+  if (opcion) ponerTitulo(opcion.dataset.logro).catch(siFalla);
+});
+dialogoTitulo.querySelector(".titulo-quitar").addEventListener("click", () => ponerTitulo(null).catch(siFalla));
+dialogoTitulo.querySelector(".titulo-cerrar").addEventListener("click", () => dialogoTitulo.close());
+
 dialogoEscaparate.querySelector(".escaparate-cerrar").addEventListener("click", () => dialogoEscaparate.close());
 dialogoEscaparate.querySelector(".escaparate-lista").addEventListener("click", (e) => {
   const equipo = e.target.closest(".escaparate-equipo");
@@ -501,6 +606,7 @@ const repintar = () => {
   if (dialogo.open && !editandoNombre) pintar();
   if (dialogoEscaparate.open) pintarEscaparate();
   if (dialogoDestacados.open) pintarDestacados();
+  if (dialogoTitulo.open) pintarTitulos();
 };
 alCambiarMiPerfil(repintar);
 alCambiarPerfilesAmigos(repintar);

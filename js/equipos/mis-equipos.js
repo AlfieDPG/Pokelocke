@@ -10,6 +10,7 @@ import {
 } from "../comun/imagenes.js";
 import { textoForma } from "../comun/pokemon.js";
 import { pasteDelEquipo, copiarAlPortapapeles } from "./exportar.js";
+import { sumarContador } from "../comun/contadores.js";
 import { irA } from "../navegacion.js";
 
 const lista = document.getElementById("lista-equipos");
@@ -59,6 +60,7 @@ function borrarEquipo(guardado) {
 
 async function exportarEquipo(guardado, boton) {
   const copiado = await copiarAlPortapapeles(pasteDelEquipo(guardado.pokemon));
+  if (copiado) sumarContador("exportar");
 
   boton.innerHTML = icono(copiado ? "visto" : "aspa");
   boton.title = copiado ? "Copiado al portapapeles" : "No se pudo copiar";

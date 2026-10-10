@@ -16,6 +16,7 @@ import { indicePMD } from "../comun/formas-pmd.js";
 import { imagenConRespaldo, urlsPMD } from "../comun/imagenes.js";
 import { tiposEs } from "../comun/tipos.js";
 import { escaparHTML } from "../comun/utilidades.js";
+import { sumarContador } from "../comun/contadores.js";
 
 let bocadillo = null;
 let abiertoDe = null; // botón de la foto que lo ha abierto
@@ -419,6 +420,7 @@ export async function abrirEvoluciones(boton, numero, clave = numero) {
   cerrarEvoluciones();
 
   abiertoDe = boton;
+  sumarContador("evoluciones"); // para los logros
   bocadillo = document.createElement("div");
   bocadillo.className = "bocadillo-evo";
   bocadillo.innerHTML = `<p class="evo-aviso">Cargando...</p>`;

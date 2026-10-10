@@ -7,7 +7,8 @@
 //
 // Colecciones (las reglas están en firestore.rules):
 //
-//   perfiles/{uid}   { nombre, foto, mote, tipos, ganados, avatar, escaparate }
+//   perfiles/{uid}   { nombre, foto, mote, tipos, ganados, avatar, escaparate, logros }
+//                    (logros: { idLogro: fecha }, los apunta js/comun/logros.js)
 //   motes/{mote}     { uid, mote }  (el id va en minúsculas: así no hay dos iguales)
 //   correos/{correo} { uid }        (solo cuentas de Google, para buscarlas por correo)
 //   amistades/{par}  { miembros: [uidA, uidB], estado, pidio, creado }

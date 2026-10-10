@@ -7,6 +7,7 @@ import { coloresTipo, tiposEs, iconoTipo } from "../comun/tipos.js";
 import { resumenEquipo, puntosDe, multiplicadoresDe, textoMultiplicador } from "../comun/efectividad.js";
 import { nombreOpcionForma, obtenerVariedades } from "../comun/formas.js";
 import { elegirForma } from "../comun/elegir-forma.js";
+import { sumarContador } from "../comun/contadores.js";
 import {
   pokemonDesdeAPI, pedirVariedad, cambiarForma, variedadActual,
   ataqueDesdeAPI, obtenerStats, obtenerDatosCombate, descripcionHabilidad, descripcionObjeto, textoForma
@@ -703,6 +704,7 @@ export function iniciarCrear() {
       return;
     }
     const copiado = await copiarAlPortapapeles(pasteDelEquipo(estado.equipo));
+    if (copiado) sumarContador("exportar");
     mostrarAviso(copiado ? "Equipo copiado al portapapeles ✔" : "No he podido copiarlo.");
   });
 

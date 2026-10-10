@@ -24,6 +24,8 @@
   <link rel="stylesheet" href="css/amigos.css">
   <link rel="stylesheet" href="css/versus.css">
   <link rel="stylesheet" href="css/pokedex.css">
+  <link rel="stylesheet" href="css/logros.css">
+  <link rel="stylesheet" href="css/ruleta.css">
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
@@ -45,7 +47,9 @@
         <button data-vista="levelcaps" data-icono="escudo" class="boton-seccion">Level caps</button>
         <button data-vista="pokedex" data-icono="pokedex" class="boton-seccion">Pokédex</button>
         <button data-vista="normas" data-icono="libro" class="boton-seccion">Normas</button>
+        <button data-vista="ruleta" data-icono="ruleta" class="boton-seccion">Ruleta</button>
         <button data-vista="amigos" data-icono="amigos" class="boton-seccion">Amigos</button>
+        <button data-vista="logros" data-icono="trofeo" class="boton-seccion">Logros</button>
       </nav>
 
       <div class="sesion" hidden>
@@ -159,6 +163,42 @@
             <span class="versus-aviso"></span>
           </div>
           <div class="versus-lista"></div>
+        </section>
+
+        <section id="vista-ruleta" hidden>
+          <div class="selector-regiones ruleta-pestanas"></div>
+          <div class="ruleta-cuerpo">
+            <div class="ruleta-zona">
+              <div class="ruleta-marco">
+                <span class="ruleta-puntero"></span>
+                <svg class="ruleta-rueda" viewBox="-100 -100 200 200" aria-hidden="true"></svg>
+                <button class="ruleta-girar">Girar</button>
+              </div>
+              <div class="ruleta-resultado" hidden></div>
+            </div>
+            <div class="ruleta-panel">
+              <div class="ruleta-cabecera">
+                <input class="ruleta-nombre" type="text" maxlength="30" autocomplete="off" placeholder="Nombre">
+                <button class="ruleta-borrar" title="Borrar esta ruleta"></button>
+              </div>
+              <div class="ruleta-opciones"></div>
+              <input class="ruleta-nueva" type="text" maxlength="40" autocomplete="off" placeholder="Añadir opción...">
+              <div class="ruleta-acciones">
+                <button class="ruleta-mezclar"></button>
+                <button class="ruleta-vaciar"></button>
+              </div>
+              <div class="ruleta-historial-caja" hidden>
+                <h3>Últimas tiradas</h3>
+                <ol class="ruleta-historial"></ol>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="vista-logros" hidden>
+          <div class="logros-cabecera"></div>
+          <div class="selector-regiones logros-filtro"></div>
+          <div class="logros-lista"></div>
         </section>
 
         <section id="vista-amigos" hidden>
@@ -323,6 +363,15 @@
     <div class="dialogo-botones">
       <button class="boton-gris boton-izquierda destacados-anadir">Destacar otro</button>
       <button class="boton-gris destacados-cerrar">Cerrar</button>
+    </div>
+  </dialog>
+
+  <dialog id="dialogo-titulo" class="dialogo-sesion">
+    <h2>Título</h2>
+    <div class="titulo-lista"></div>
+    <div class="dialogo-botones">
+      <button class="boton-gris boton-izquierda titulo-quitar">Sin título</button>
+      <button class="boton-gris titulo-cerrar">Cerrar</button>
     </div>
   </dialog>
 
@@ -563,6 +612,14 @@
       <details>
         <summary>¿Puedo usar las rutas o los level caps de un fan game?</summary>
         <p>Sí. En «Rutas» o en «Level caps», pestaña «Personalizado», pulsa «+ Nuevo». Puedes escribirlo todo desde cero o aprovechar lo de la web: copiar los lugares de un juego, o poner a cada combate el retrato de un personaje (o subir tu propia imagen). Luego los eliges al crear un locke y los demás jugadores los abren desde los botones «Rutas» y «Level caps» del locke.</p>
+      </details>
+      <details>
+        <summary>¿Cómo se consiguen los logros?</summary>
+        <p>Solos, usando la web: ganando lockes, perdiendo Pokémon, guardando equipos, marcando rutas, creando tus normas... En «Logros» ves todos, lo que pide cada uno y lo que te falta. Hace falta tener sesión, porque se guardan en tu perfil: cualquiera de tus amigos los puede ver en su pestaña «Logros».</p>
+      </details>
+      <details>
+        <summary>¿Para qué sirve la ruleta?</summary>
+        <p>Para echar a suertes lo que queráis, por ejemplo la recompensa del que gana un combate. Escribe las opciones a la derecha (la ruleta cambia según escribes) y pulsa el centro para girarla. Puedes tener varias ruletas, cada una con su nombre.</p>
       </details>
       <details>
         <summary>¿Para qué sirve el multiplicador de los level caps?</summary>

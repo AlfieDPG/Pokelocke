@@ -20,6 +20,8 @@ export const CLAVES_SINCRONIZADAS = [
   "poketeams-levelcaps-juego-v1",         // juego elegido en «Level caps»
   "poketeams-levelcaps-multiplicador-v1", // multiplicador de nivel
   "poketeams-normas-v2",                  // conjuntos de normas propios
+  "poketeams-contadores-v1",              // veces que se ha hecho algo (para los logros)
+  "poketeams-ruletas-v1",                 // ruletas
   "poketeams-rutas-propias-v1",           // rutas personalizadas
   "poketeams-levelcaps-propios-v1",       // level caps personalizados
   "poketeams-juegos-propios-v1"           // los de antes (rutas y level caps juntos): se pasan
@@ -62,11 +64,12 @@ function apuntarTiempo(clave, cuando) {
   guardar(CLAVE_TIEMPOS, todos);
 }
 
-// A quién avisar cuando cambie algo que se sincroniza (lo usa nube.js)
-let avisar = null;
+// A quién avisar cuando cambie algo que se sincroniza (nube.js, para subirlo, y logros.js,
+// para mirar si se ha conseguido alguno)
+const oyentes = new Set();
 
 export function alCambiar(funcion) {
-  avisar = funcion;
+  oyentes.add(funcion);
 }
 
 // Devuelve false si el navegador no deja guardar
@@ -75,7 +78,7 @@ export function escribir(clave, valor) {
   if (!ok || !CLAVES_SINCRONIZADAS.includes(clave)) return ok;
 
   apuntarTiempo(clave, Date.now());
-  if (avisar) avisar(clave);
+  for (const funcion of oyentes) funcion(clave);
   return ok;
 }
 

@@ -6,6 +6,7 @@ import { obtenerVariedades } from "../comun/formas.js";
 import { pokemonDesdeAPI, pedirVariedad, ataqueDesdeAPI } from "../comun/pokemon.js";
 import { quitarAcentos } from "../comun/utilidades.js";
 import { irA } from "../navegacion.js";
+import { sumarContador } from "../comun/contadores.js";
 
 // ---------- Importar paste de Showdown ----------
 
@@ -233,6 +234,7 @@ async function importarPaste(texto) {
   }
 
   reemplazarEquipo(validos, interpretado.nombre, null);
+  sumarContador("importar");
   irA("crear");
 
   if (problemas.length > 0) {
